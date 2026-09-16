@@ -6,8 +6,8 @@
 
 ## 🔗 Tautan Penting
 - **Deployment (PWS):** [Tautan Deployment PWS](#) *(Akan diperbarui)*
-- **Desain UI/UX (Figma):** [Tautan Prototipe Desain Figma](#)
-- **Repositori Git:** [https://github.com/PBP-D-Kelompok-8/SaveBite](#)
+- **Desain UI/UX (Figma):** [Tautan Prototipe Desain Figma](https://www.figma.com/team_invite/redeem/woFR9NgdX8H0JKkRXPhlUH?t=ktOcTlt7UlLpleuI-21)
+- **Repositori Git:** [Tautan Repository Kelompok 8 PBP D](https://github.com/PBP-D-Kelompok-8/SaveBite)
 
 ---
 
