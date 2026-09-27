@@ -5,7 +5,7 @@
 ---
 
 ## 🔗 Tautan Penting
-- **Deployment (PWS):** [Tautan Deployment PWS](#) *(Akan diperbarui)*
+- **Deployment (PWS):** [Tautan Deployment PWS](reshandy-taftazani-savebite.pws.cs.ui.ac.id)
 - **Desain UI/UX (Figma):** [Tautan Prototipe Desain Figma](https://www.figma.com/team_invite/redeem/woFR9NgdX8H0JKkRXPhlUH?t=ktOcTlt7UlLpleuI-21)
 - **Repositori Git:** [Tautan Repository Kelompok 8 PBP D](https://github.com/PBP-D-Kelompok-8/SaveBite)
 
