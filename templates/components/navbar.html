@@ -1,0 +1,37 @@
+{% load static %}
+<header class="navbar">
+  <div class="navbar__inner">
+
+    <a href="#" class="navbar__logo" aria-label="SaveBite beranda">
+      <img src="{% static 'images/logo-dark.svg' %}" alt="SaveBite">
+    </a>
+
+    <button class="navbar__toggle" id="navToggle" type="button"
+            aria-expanded="false" aria-controls="navMenu" aria-label="Buka menu">
+      <img src="{% static 'icons/chevron-down.svg' %}" alt="" width="24" height="24">
+    </button>
+
+    <nav class="navbar__menu" id="navMenu" aria-label="Navigasi utama">
+      <ul class="navbar__links">
+        <li>{% include 'components/button.html' with label="Page 1" type="quaternary" color="bright" %}</li>
+        <li>{% include 'components/button.html' with label="Page 2" type="quaternary" color="bright" %}</li>
+        <li>{% include 'components/button.html' with label="Page 3" type="quaternary" color="bright" %}</li>
+        <li>{% include 'components/button.html' with label="Page 4" type="quaternary" color="bright" %}</li>
+      </ul>
+      <div class="navbar__actions">
+        {% include 'components/button.html' with label="Login" type="secondary" color="blue" %}
+        {% include 'components/button.html' with label="Daftar" type="tertiary" color="bright" %}
+      </div>
+    </nav>
+
+  </div>
+</header>
+
+<script>
+  const toggle = document.getElementById("navToggle");
+  const menu = document.getElementById("navMenu");
+  toggle.addEventListener("click", () => {
+    const open = menu.classList.toggle("is-open");
+    toggle.setAttribute("aria-expanded", open);
+  });
+</script>

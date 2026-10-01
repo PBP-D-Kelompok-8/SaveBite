@@ -1,0 +1,111 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SaveBite</title>
+  <link rel="stylesheet" href="{% static 'css/static.css' %}">
+  <link rel="stylesheet" href="{% static 'css/button.css' %}">
+  <link rel="stylesheet" href="{% static 'css/navbar.css' %}">
+  <link rel="stylesheet" href="{% static 'css/card.css' %}">
+  <link rel="stylesheet" href="{% static 'css/footer.css' %}">
+  <link rel="stylesheet" href="{% static 'css/landing.css' %}">
+</head>
+<body>
+  {% include 'components/navbar.html' %}
+
+  <main>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero__brand">
+        <img class="hero__logo" src="{% static 'images/logo-light.svg' %}" alt="SaveBite">
+        <h1 class="h2">Less Waste, More Taste!</h1>
+      </div>
+      <img class="hero__image" src="{% static 'images/hero.png' %}" alt="Tempat sampah penuh sisa makanan">
+      <p class="hero__text p2">SaveBite adalah platform untuk mengurangi food waste dengan menyelamatkan bahan makanan tersisa, menemukan resep kreatif, dan berbagi makanan bersama komunitas. Setiap langkah kecil berarti untuk masa depan yang lebih berkelanjutan.</p>
+      <div class="hero__actions">
+        {% include 'components/button.html' with label="Join SaveBite" type="primary" icon_left="icons/join-savebite.svg" %}
+        {% include 'components/button.html' with label="Explore More" type="secondary" color="blue" %}
+      </div>
+    </section>
+
+    <!-- LANGKAH -->
+    <section class="steps">
+      <h2 class="h3 steps__title">Selamatkan Makanan, Mulai dari Sini</h2>
+      <div class="steps__list">
+        <div class="step">
+          <div class="step__circle" aria-hidden="true">🔍</div>
+          <div class="step__body">
+            <p class="p3 step__label">1. Cari</p>
+            <p class="p4 step__text">Temukan makanan dan resep yang bisa diselamatkan.</p>
+          </div>
+        </div>
+        <img class="steps__arrow" src="{% static 'icons/arrow-right-stroke.svg' %}" alt="" width="48" height="48">
+        <div class="step">
+          <div class="step__circle" aria-hidden="true">🤲</div>
+          <div class="step__body">
+            <p class="p3 step__label">2. Selamatkan</p>
+            <p class="p4 step__text">Buat rencana sebelum makanan terbuang.</p>
+          </div>
+        </div>
+        <img class="steps__arrow" src="{% static 'icons/arrow-right-stroke.svg' %}" alt="" width="48" height="48">
+        <div class="step">
+          <div class="step__circle" aria-hidden="true">📋</div>
+          <div class="step__body">
+            <p class="p3 step__label">3. Catat</p>
+            <p class="p4 step__text">Lacak makanan yang berhasil kamu selamatkan.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FITUR -->
+    <section class="features">
+      <h2 class="h3 features__title">Semua yang Kamu Butuhkan untuk Menyelamatkan Makanan</h2>
+      <div class="features__grid">
+        <article class="feature">
+          <span class="feature__icon" aria-hidden="true">✅</span>
+          <h3 class="p2 feature__title">Food Rescue Planner</h3>
+          <p class="p4 feature__text">Rencanakan penyelamatan makanan dengan target dan metode aksi.</p>
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+        </article>
+        <article class="feature">
+          <span class="feature__icon" aria-hidden="true">🍲</span>
+          <h3 class="p2 feature__title">Katalog Resep</h3>
+          <p class="p4 feature__text">Temukan resep dari bahan yang hampir kedaluwarsa.</p>
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+        </article>
+        <article class="feature">
+          <span class="feature__icon" aria-hidden="true">👥</span>
+          <h3 class="p2 feature__title">Resep Komunitas</h3>
+          <p class="p4 feature__text">Bagikan dan temukan resep kreasi dari pengguna lain.</p>
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+        </article>
+        <article class="feature feature--wide">
+          <span class="feature__icon" aria-hidden="true">🤝</span>
+          <h3 class="p2 feature__title">Food Rescue Request Board</h3>
+          <p class="p4 feature__text">Posting atau temukan permintaan bahan makanan dari komunitas.</p>
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+        </article>
+        <article class="feature feature--wide">
+          <span class="feature__icon" aria-hidden="true">📋</span>
+          <h3 class="p2 feature__title">Jurnal Jejak Makanan</h3>
+          <p class="p4 feature__text">Catat makanan yang berhasil diselamatkan atau terbuang dan lihat progresmu.</p>
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+        </article>
+      </div>
+
+      <div class="cta">
+        <div class="cta__text">
+          <h2 class="h4">Siap Menyelamatkan Makanan Hari Ini?</h2>
+          <p class="p2">Mulai dari langkah kecil, selamatkan lebih banyak makanan.</p>
+        </div>
+        {% include 'components/button.html' with label="Mulai Sekarang" type="secondary" color="light-green" icon_right="icons/arrow-right-stroke.svg" %}
+      </div>
+    </section>
+  </main>
+
+  {% include 'components/footer.html' %}
+</body>
+</html>
