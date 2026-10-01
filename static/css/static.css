@@ -1,0 +1,46 @@
+/* Import font Poppins from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+/* ---- DESIGN SYSTEM VARIABLES (:root) ---- */
+:root{
+    /* Color Pallete */
+    --accent-dark-green: #23361A;
+    --accent-blue: #52707B;
+    --ink-dark: #362F22;
+    --accent-green: #A2B448;
+    --ink-light:#FCFFE6;
+    --paper:#EFF4BD;
+    --line:#556F30;
+
+    /* Typography variables*/
+    --font-family-main: 'Poppins', sans-serif;
+
+}
+
+
+
+/* ---- GLOBAL TYPOGRAPHY AND BASE STYLES ---- */
+body {
+    font-family: var(--font-family-main);
+    color: var(--ink-dark);
+    background-color: var(--paper);
+    margin: 0;
+    padding: 0;
+}
+
+/* Headings (Poppins Bold) */
+h1, .h1 { font-size: 64px; font-weight: 700; line-height: 1.2; }
+h2, .h2 { font-size: 48px; font-weight: 700; line-height: 1.2; }
+h3, .h3 { font-size: 40px; font-weight: 700; line-height: 1.2; }
+h4, .h4 { font-size: 36px; font-weight: 700; line-height: 1.2; }
+h5, .h5 { font-size: 32px; font-weight: 700; line-height: 1.2; }
+h6, .h6 { font-size: 28px; font-weight: 700; line-height: 1.2; }
+.h7     { font-size: 24px; font-weight: 700; line-height: 1.2; }
+
+/* Paragraphs (Poppins SemiBold/Regular) */
+p, .p1 { font-size: 28px; font-weight: 600; }
+.p2    { font-size: 24px; font-weight: 600; }
+.p3    { font-size: 20px; font-weight: 600; }
+.p4    { font-size: 16px; font-weight: 600; }
+.p5    { font-size: 12px; font-weight: 600; }
+.p6    { font-size: 8px;  font-weight: 600; }
