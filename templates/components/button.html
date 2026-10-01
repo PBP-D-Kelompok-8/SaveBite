@@ -1,0 +1,18 @@
+{% load static %}
+
+<a href="{{ href|default:'#' }}" 
+   class="btn btn--{{ type|default:'primary' }} btn--{{ color|default:'dark-green' }}" 
+   {% if disabled %} aria-disabled="true" tabindex="-1"{% endif %}>
+    
+    {% if icon_left %}
+        <span class="btn__icon" style="--icon: url('{% static icon_left %}')" aria-hidden="true"></span>
+    {% elif icon %}
+        <span class="btn__icon" style="--icon: url('{% static icon %}')" aria-hidden="true"></span>
+    {% endif %}
+
+    {{ label }}
+
+    {% if icon_right %}
+        <span class="btn__icon" style="--icon: url('{% static icon_right %}')" aria-hidden="true"></span>
+    {% endif %}
+</a>

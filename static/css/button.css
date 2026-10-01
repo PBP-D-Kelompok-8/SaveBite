@@ -1,0 +1,95 @@
+/* ---- BUTTON ----
+   Dari Figma: Type (primary/secondary/tertiary/quaternary)
+   x Color (dark-green/green/light-green/blue/bright)
+   x State (default/hover/disabled) x Desktop/Mobile */
+
+   :root {
+    --button-radius: 16px;
+    --gap-button: 12px;
+    --gap-header: 44px;
+  }
+  
+  .btn {
+    --overlay: linear-gradient(transparent, transparent);
+    --btn-fill: linear-gradient(transparent, transparent);
+    --btn-color: var(--accent-dark-green);
+    --btn-text: var(--ink-light);
+  
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    padding: 8px 16px;
+    border: 0;
+    border-radius: var(--button-radius);
+    font-family: var(--font-family-main);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: normal;
+    color: var(--btn-text);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    background-color: transparent;
+    background-image: var(--overlay), var(--btn-fill);
+  }
+  
+  /* Warna */
+  .btn--dark-green  { --btn-color: var(--accent-dark-green); }
+  .btn--green       { --btn-color: var(--line); }
+  .btn--light-green { --btn-color: var(--accent-green); }
+  .btn--blue        { --btn-color: var(--accent-blue); }
+  .btn--bright      { --btn-color: var(--ink-light); }
+  
+  /* Tipe */
+  .btn--primary {
+    --btn-fill: linear-gradient(90deg, var(--ink-dark) 7.7%, var(--line) 51.4%, var(--accent-green) 100%);
+  }
+  .btn--secondary { --btn-fill: linear-gradient(var(--btn-color), var(--btn-color)); }
+  .btn--secondary.btn--bright { --btn-text: var(--ink-dark); }
+  .btn--tertiary,
+  .btn--quaternary { --btn-text: var(--btn-color); }
+  .btn--tertiary { box-shadow: inset 0 0 0 2px var(--btn-color); }
+  
+  /* Hover */
+  .btn--primary:hover,
+  .btn--secondary:hover {
+    --overlay: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5));
+  }
+  .btn--tertiary:hover,
+  .btn--quaternary:hover {
+    --overlay: linear-gradient(color-mix(in srgb, var(--btn-color) 15%, transparent), color-mix(in srgb, var(--btn-color) 15%, transparent));
+  }
+  
+  /* Disabled */
+  .btn[aria-disabled="true"],
+  .btn:disabled {
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+  .btn--primary[aria-disabled="true"],
+  .btn--secondary[aria-disabled="true"] {
+    --overlay: linear-gradient(rgba(239, 244, 189, 0.5), rgba(239, 244, 189, 0.5));
+  }
+  .btn--tertiary[aria-disabled="true"],
+  .btn--quaternary[aria-disabled="true"] { opacity: 0.5; }
+  
+  /* Ikon (ikut warna teks lewat mask) */
+  .btn__icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    background-color: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
+  }
+  
+  .btn:focus-visible { outline: 2px solid var(--accent-green); outline-offset: 2px; }
+  
+  /* Mobile */
+  @media (max-width: 768px) {
+    :root { --button-radius: 12px; }
+    .btn { gap: 6px; font-size: 16px; }
+    .btn__icon { width: 18px; height: 18px; }
+  }
