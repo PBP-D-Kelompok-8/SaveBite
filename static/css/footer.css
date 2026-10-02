@@ -1,0 +1,43 @@
+/* ---- FOOTER (pakai variable dari static.css) ---- */
+
+.footer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    width: 100%;                      /* di Figma 1440px, dibuat fleksibel */
+    padding: 160px 80px 80px 80px;
+    background-color: var(--accent-dark-green);
+    color: var(--ink-light);
+    box-sizing: border-box;
+  }
+  
+  .footer-logo {
+    width: 237px;
+    height: 50px;
+    aspect-ratio: 237 / 50;
+    display: block;
+  }
+  
+  .footer-text {
+    align-self: stretch;
+    margin: 0;
+    font-size: 28px;                  /* p1 */
+    font-weight: 600;
+  }
+  
+  /* ---- MOBILE ---- */
+  @media (max-width: 768px) {
+    .footer {
+      gap: 15px;
+      padding: 40px 20px 20px 20px;
+    }
+    .footer-logo {
+      width: 160px;
+      height: 33.722px;
+      aspect-ratio: 223 / 47;
+    }
+    .footer-text {
+      font-size: 16px;                /* p4 */
+    }
+  }

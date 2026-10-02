@@ -1,0 +1,69 @@
+/* ---- CARD (pakai variable dari static.css) ---- */
+
+.card-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 24px;
+  }
+  
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    color: var(--ink-light);
+  }
+  
+  /* Variasi warna card */
+  .card--green { background-color: var(--accent-green); }
+  .card--dark  { background-color: var(--accent-dark-green); }
+  .card--blue  { background-color: var(--accent-blue); }
+  
+  /* Gambar (placeholder abu-abu, nanti bisa diganti <img>) */
+  .card__image {
+    aspect-ratio: 4 / 3;
+    margin-bottom: 28px;
+    background-color: #EBEBEB;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    overflow: hidden;
+  }
+  .card__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  
+  /* Teks (menimpa ukuran h3 dan p dari static.css) */
+  .card__title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .card__text {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  
+  /* Tombol */
+  .card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  
+  /* ---- MOBILE ---- */
+  @media (max-width: 768px) {
+    .card-list {
+      grid-template-columns: 1fr;
+      padding: 16px;
+    }
+  }
