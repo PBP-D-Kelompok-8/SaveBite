@@ -1,0 +1,56 @@
+/* ---- BADGE STATUS (pakai variable dari static.css) ----
+   Dari Figma "Badge status": Property 1 = Default (soft) | Variant2 (solid)
+   x Status (On Going / Success / Failed) */
+
+/* Badge memakai Poppins 500 (Medium). static.css hanya mengimpor 400/600/700, jadi 500 diimpor di sini. */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap');
+
+:root {
+  --badge-ongoing-soft-bg: #F6EAC4;  --badge-ongoing-soft-text: #633806;
+  --badge-success-soft-bg: #DDEBC0;  --badge-success-soft-text: #23361A;
+  --badge-failed-soft-bg:  #F5D9D2;  --badge-failed-soft-text:  #712B13;
+  --badge-ongoing-solid-bg: #C0851D;
+  --badge-success-solid-bg: #556F30;
+  --badge-failed-solid-bg:  #B35A44;
+}
+
+.badge {
+  --badge-bg: var(--badge-ongoing-soft-bg);
+  --badge-text: var(--badge-ongoing-soft-text);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  height: 38px;
+  padding: 0 10.5px 0 6px;
+  border-radius: 999px;
+  background-color: var(--badge-bg);
+  color: var(--badge-text);
+  font-family: var(--font-family-main);
+  font-size: 12px;                /* .p5 */
+  font-weight: 500;               /* Poppins 500: diimpor di baris atas file ini */
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* Soft (Figma: Default) */
+.badge--ongoing { --badge-bg: var(--badge-ongoing-soft-bg); --badge-text: var(--badge-ongoing-soft-text); }
+.badge--success { --badge-bg: var(--badge-success-soft-bg); --badge-text: var(--badge-success-soft-text); }
+.badge--failed  { --badge-bg: var(--badge-failed-soft-bg);  --badge-text: var(--badge-failed-soft-text); }
+
+/* Solid (Figma: Variant2) */
+.badge--solid { --badge-text: var(--ink-light); }
+.badge--solid.badge--ongoing { --badge-bg: var(--badge-ongoing-solid-bg); }
+.badge--solid.badge--success { --badge-bg: var(--badge-success-solid-bg); }
+.badge--solid.badge--failed  { --badge-bg: var(--badge-failed-solid-bg); }
+
+/* Ikon 16x16 dari Figma (ikut warna teks lewat mask, sama seperti .btn__icon) */
+.badge__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
