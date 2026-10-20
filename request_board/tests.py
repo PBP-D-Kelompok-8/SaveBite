@@ -9,7 +9,7 @@ from django.utils import timezone
 from request_board import models
 
 
-class RequestModelM01M02Tests(TestCase):
+class RequestCreationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         User = get_user_model()
@@ -20,7 +20,7 @@ class RequestModelM01M02Tests(TestCase):
         request_model = getattr(models, "Request", None)
         self.assertIsNotNone(
             request_model,
-            "M01-M02 belum diimplementasikan: request_board.models.Request belum tersedia.",
+            "Model Request belum tersedia.",
         )
         return request_model.objects.create(
             owner=self.owner,
@@ -66,7 +66,7 @@ class RequestModelM01M02Tests(TestCase):
         self.assertIn(food_request.title, str(food_request))
 
 
-class RequestModelM03M04Tests(TestCase):
+class RequestValidationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.owner = get_user_model().objects.create_user(
@@ -148,7 +148,7 @@ class RequestModelM03M04Tests(TestCase):
                 self.assertEqual(models.Request.objects.count(), 0)
 
 
-class RequestOfferModelM05M07Tests(TestCase):
+class RequestOfferTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         User = get_user_model()
@@ -174,7 +174,7 @@ class RequestOfferModelM05M07Tests(TestCase):
         offer_model = getattr(models, "RequestOffer", None)
         self.assertIsNotNone(
             offer_model,
-            "M05-M07 belum diimplementasikan: request_board.models.RequestOffer belum tersedia.",
+            "Model RequestOffer belum tersedia.",
         )
         return offer_model
 
