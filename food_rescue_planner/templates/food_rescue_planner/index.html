@@ -1,5 +1,43 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<div class="container">
     <h1>Food Rescue Planner</h1>
+    <p>Kelola rencana penyelamatan makananmu di sini.</p>
+
+    <section>
+        <h2>Daftar Rencana Makanan</h2>
+
+        {% if plans %}
+            {% for plan in plans %}
+                <article>
+                    <h3>{{ plan.food_name }}</h3>
+
+                    <p>
+                        Jumlah: {{ plan.quantity }} {{ plan.unit }}
+                    </p>
+
+                    <p>
+                        Target tanggal: {{ plan.target_date }}
+                    </p>
+
+                    <p>
+                        Metode: {{ plan.get_action_method_display }}
+                    </p>
+
+                    <p>
+                        Status: {{ plan.get_status_display }}
+                    </p>
+
+                    {% if plan.notes %}
+                        <p>Catatan: {{ plan.notes }}</p>
+                    {% endif %}
+                </article>
+                <hr>
+            {% endfor %}
+        {% else %}
+            <p>Belum ada rencana makanan. Yuk, buat rencana pertamamu!</p>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}
