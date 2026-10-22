@@ -1,0 +1,10 @@
+{% if messages %}
+  <div class="request-board__messages" aria-label="Pemberitahuan">
+    {% for message in messages %}
+      <div class="request-board__alert request-board__alert--{{ message.level_tag|default:'info' }}"
+           {% if message.level_tag == 'error' %}role="alert" aria-live="assertive"{% else %}role="status" aria-live="polite"{% endif %}>
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

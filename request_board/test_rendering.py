@@ -11,7 +11,8 @@ from django.urls import reverse
 from django.utils.dateparse import parse_datetime
 from django.utils.html import escape, strip_tags
 
-from request_board.models import Request
+from request_board.forms import RequestForm
+from request_board.models import Request, RequestOffer
 from request_board.services import fulfill_request, offer_request
 
 
@@ -487,3 +488,244 @@ class BoardPaginationRenderingTests(TestCase):
         ):
             with self.subTest(query=query[:60]):
                 self.assertEqual(self.client.get(self.board_url + query).status_code, status)
+
+
+class RequestCreateRenderingTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.actor = get_user_model().objects.create_user(username="Pembuat-permintaan")
+        cls.create_url = reverse("request_board:request_create")
+        cls.board_url = reverse("request_board:request_board")
+
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+        self.client.force_login(self.actor)
+        # A pre-existing row makes unintended updates/deletes observable too.
+        Request.objects.create(owner=self.actor, title="Tetap utuh", food_item="Beras",
+                               quantity=1, unit="kg")
+
+    def snapshot(self):
+        return (list(Request.objects.order_by("pk").values()),
+                list(RequestOffer.objects.order_by("pk").values()))
+
+    def valid_data(self):
+        return {"title": "Bahan untuk dapur", "food_item": "Beras merah",
+                "quantity": "2.50", "unit": "kg", "description": "Untuk warga",
+                "location": "Kecamatan sekitar"}
+
+    def create_page(self):
+        response = self.client.get(self.create_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response, TemplateResponse)
+        self.assertTrue(response.is_rendered)
+        self.assertTemplateUsed(response, "request_board/request_form.html")
+        self.assertTemplateUsed(response, "base.html")
+        markup = BoardMarkup(response.content.decode())
+        forms = [node for node in markup.select("form")
+                 if node["attrs"].get("method", "").lower() == "post"
+                 and node["attrs"].get("action") == self.create_url]
+        self.assertEqual(len(forms), 1, "Form create harus POST ke route existing")
+        tokens = [node for node in markup.select("input", within=forms[0])
+                  if node["attrs"].get("name") == "csrfmiddlewaretoken"]
+        self.assertEqual(len(tokens), 1)
+        self.assertEqual(tokens[0]["attrs"].get("type"), "hidden")
+        token = tokens[0]["attrs"].get("value", "")
+        self.assertTrue(token)
+        self.assertIn("csrftoken", self.client.cookies)
+        return response, markup, forms[0], token
+
+    def controls(self, markup):
+        controls = {}
+        for node in markup.nodes:
+            if node["tag"] in {"input", "select", "textarea"}:
+                name = node["attrs"].get("name")
+                if name in {"title", "food_item", "quantity", "unit", "description", "location"}:
+                    self.assertNotIn(name, controls, "Field tidak boleh terduplikasi")
+                    controls[name] = node
+        self.assertEqual(set(controls),
+                         {"title", "food_item", "quantity", "unit", "description", "location"})
+        ids = [node["attrs"].get("id") for node in markup.nodes if node["attrs"].get("id")]
+        self.assertEqual(len(ids), len(set(ids)), "ID dokumen harus unik untuk association")
+        for name, control in controls.items():
+            control_id = control["attrs"].get("id")
+            labels = [node for node in markup.select("label")
+                      if node["attrs"].get("for") == control_id and node["text"].strip()]
+            self.assertTrue(control_id and labels, f"Label {name} belum terhubung")
+        return controls
+
+    def assert_control_value(self, markup, control, expected):
+        if control["tag"] == "textarea":
+            actual = control["text"]
+        elif control["tag"] == "select":
+            options = markup.select("option", within=control)
+            selected = [node for node in options if "selected" in node["attrs"]]
+            self.assertEqual(len(selected), 1)
+            actual = selected[0]["attrs"].get("value")
+        else:
+            actual = control["attrs"].get("value", "")
+        self.assertEqual(actual, expected)
+
+    def test_authenticated_get_renders_production_form_without_writes(self):
+        before = self.snapshot()
+        response, markup, form_node, _ = self.create_page()
+
+        self.assertEqual(self.snapshot(), before)
+        self.assertIsInstance(response.context_data["form"], RequestForm)
+        self.assertFalse(response.context_data["form"].is_bound)
+        self.assertEqual(len(markup.select("main")), 1)
+        self.assertEqual(len(markup.select("h1")), 1)
+        self.assertTrue(any("request-board" in node["attrs"].get("class", "").split()
+                            and node["attrs"].get("lang") == "id" for node in markup.nodes))
+        self.assertTrue(any(node["attrs"].get("type", "submit") == "submit"
+                            and node["text"].strip()
+                            for node in markup.select("button", within=form_node)))
+        self.assertTrue(any(node["attrs"].get("href") == self.board_url
+                            and re.search(r"batal|kembali", node["text"], re.I)
+                            for node in markup.select("a", within=markup.select("main")[0])))
+
+    def test_six_labelled_fields_required_optional_and_existing_units(self):
+        _, markup, form_node, _ = self.create_page()
+        controls = self.controls(markup)
+        names = [node["attrs"].get("name") for node in markup.nodes
+                 if node["tag"] in {"input", "select", "textarea"}
+                 and any(parent is form_node for parent in node["parents"])]
+        self.assertEqual(set(names), set(controls) | {"csrfmiddlewaretoken"})
+        for name, control in controls.items():
+            with self.subTest(field=name):
+                self.assertNotEqual(control["attrs"].get("type"), "hidden")
+                self.assertNotIn("disabled", control["attrs"])
+                self.assertNotIn("readonly", control["attrs"])
+                self.assertEqual("required" in control["attrs"],
+                                 name not in {"description", "location"})
+                if name in {"description", "location"}:
+                    related_ids = control["attrs"].get("aria-describedby", "").split()
+                    text = " ".join(node["text"] for node in markup.nodes
+                                    if node["attrs"].get("for") == control["attrs"]["id"]
+                                    or node["attrs"].get("id") in related_ids)
+                    self.assertRegex(text.lower(), r"opsional|tidak wajib|boleh.*kosong")
+        self.assertEqual(controls["unit"]["tag"], "select")
+        choices = [(node["attrs"].get("value"), node["text"].strip())
+                   for node in markup.select("option", within=controls["unit"])
+                   if node["attrs"].get("value")]
+        self.assertEqual(choices, [("gram", "Gram"), ("kg", "Kg"), ("ml", "Ml"),
+                                   ("liter", "Liter"), ("buah", "Buah"), ("butir", "Butir"),
+                                   ("ikat", "Ikat"), ("porsi", "Porsi")])
+        self.assertFalse(any(node["attrs"].get("name") in {"owner", "owner_id", "status"}
+                             for node in markup.nodes))
+
+    def test_valid_submit_uses_actor_pending_prg_and_visible_success_message(self):
+        for empty_optional in (False, True):
+            with self.subTest(empty_optional=empty_optional):
+                _, _, _, token = self.create_page()
+                data = self.valid_data()
+                if empty_optional:
+                    data.update(description="", location="")
+                old_ids = set(Request.objects.values_list("pk", flat=True))
+                offers_before = list(RequestOffer.objects.values())
+
+                response = self.client.post(self.create_url, {**data, "csrfmiddlewaretoken": token})
+
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.headers["Location"], self.board_url)
+                created = Request.objects.exclude(pk__in=old_ids).get()
+                self.assertEqual(created.owner_id, self.actor.pk)
+                self.assertEqual(created.status, "pending")
+                for name, value in data.items():
+                    self.assertEqual(getattr(created, name), Decimal(value) if name == "quantity" else value)
+                self.assertEqual(Request.objects.count(), len(old_ids) + 1)
+                self.assertEqual(list(RequestOffer.objects.values()), offers_before)
+                board = self.client.get(response.headers["Location"])
+                self.assertEqual(board.status_code, 200)
+                self.assertEqual(board.wsgi_request.method, "GET")
+                self.assertTemplateUsed(board, "request_board/index.html")
+                feedback = [message for message in board.context["messages"] if message.level_tag == "success"]
+                self.assertTrue(feedback, "Pesan sukses harus tersedia setelah redirect")
+                markup = BoardMarkup(board.content.decode())
+                for message in feedback:
+                    self.assertTrue(any(str(message) in node["text"] and
+                                        (node["attrs"].get("role") in {"status", "alert"}
+                                         or node["attrs"].get("aria-live") in {"polite", "assertive"})
+                                        for node in markup.nodes), "Feedback harus terlihat dan semantik")
+                before_refresh = self.snapshot()
+                refreshed = self.client.get(self.board_url)
+                self.assertEqual(self.snapshot(), before_refresh)
+                for message in feedback:
+                    self.assertNotContains(refreshed, escape(str(message)))
+
+    def test_invalid_bound_form_preserves_values_and_associates_errors_without_writes(self):
+        cases = [(name, "") for name in ("title", "food_item", "quantity", "unit")]
+        cases += [("quantity", value) for value in ("0", "-1", "abc", "1.001", "1000000")]
+        cases += [("unit", "ember")]
+        cases += [(name, "x" * length) for name, length in
+                  (("title", 121), ("food_item", 121), ("description", 1001), ("location", 121))]
+        for name, invalid in cases:
+            with self.subTest(field=name, value=invalid[:25]):
+                _, _, _, token = self.create_page()
+                data = {**self.valid_data(), name: invalid}
+                before = self.snapshot()
+
+                response = self.client.post(self.create_url, {**data, "csrfmiddlewaretoken": token})
+
+                self.assertEqual(self.snapshot(), before)
+                self.assertEqual(response.status_code, 200)
+                self.assertTemplateUsed(response, "request_board/request_form.html")
+                form = response.context_data["form"]
+                self.assertTrue(form.is_bound)
+                self.assertIn(name, form.errors)
+                markup = BoardMarkup(response.content.decode())
+                controls = self.controls(markup)
+                for field_name, value in data.items():
+                    self.assertEqual(form[field_name].value(), value)
+                    if field_name != "unit" or value in {"kg", ""}:
+                        self.assert_control_value(markup, controls[field_name], value)
+                for field_name in form.errors:
+                    if field_name == "__all__":
+                        continue
+                    control = controls[field_name]
+                    self.assertEqual(control["attrs"].get("aria-invalid"), "true")
+                    error_ids = control["attrs"].get("aria-describedby", "").split()
+                    associated = [node for node in markup.nodes if node["attrs"].get("id") in error_ids]
+                    self.assertTrue(associated, f"Error {field_name} belum terhubung")
+                    for error in form[field_name].errors:
+                        self.assertTrue(any(str(error) in node["text"] for node in associated))
+                    self.assertTrue(any(node["attrs"].get("href") == "#" + control["attrs"]["id"]
+                                        and node["text"].strip() for node in markup.select("a")),
+                                    "Ringkasan error harus menaut ke field")
+                for error in form.non_field_errors():
+                    self.assertContains(response, escape(error))
+
+    def test_bound_user_values_are_escaped_without_injecting_markup(self):
+        _, _, _, token = self.create_page()
+        payloads = {"title": '<script>alert("judul")</script>',
+                    "food_item": '<b>Beras & kacang</b>',
+                    "description": '</textarea><img src=x onerror="alert(1)">',
+                    "location": '<svg onload="alert(2)">Area</svg>'}
+        data = {**self.valid_data(), **payloads, "quantity": "0", "csrfmiddlewaretoken": token}
+        before = self.snapshot()
+
+        response = self.client.post(self.create_url, data)
+
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context_data["form"].is_bound)
+        markup = BoardMarkup(response.content.decode())
+        controls = self.controls(markup)
+        for name, payload in payloads.items():
+            with self.subTest(field=name):
+                self.assertNotContains(response, payload)
+                self.assertContains(response, escape(payload))
+                self.assert_control_value(markup, controls[name], payload)
+
+    def test_missing_and_mismatched_html_csrf_tokens_reject_without_writes(self):
+        for token_case in ("missing", "mismatch"):
+            with self.subTest(token_case=token_case):
+                _, _, _, token = self.create_page()
+                data = self.valid_data()
+                if token_case == "mismatch":
+                    data["csrfmiddlewaretoken"] = ("a" if token[0] != "a" else "b") + token[1:]
+                before = self.snapshot()
+
+                response = self.client.post(self.create_url, data)
+
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(self.snapshot(), before)
