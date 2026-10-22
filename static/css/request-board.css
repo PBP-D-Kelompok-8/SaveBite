@@ -136,3 +136,237 @@
     flex: 1;
   }
 }
+
+/* Board header */
+.request-board__header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1.5px solid var(--line);
+}
+
+.request-board__title {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--accent-dark-green);
+  margin: 0 0 8px 0;
+}
+
+.request-board__subtitle {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ink-dark);
+  margin: 0;
+  max-width: 680px;
+}
+
+.request-board__header-action {
+  display: flex;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .request-board__header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+}
+
+/* Cards grid */
+.request-board__cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 640px) {
+  .request-board__cards {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+/* Request card */
+.request-board__card {
+  box-sizing: border-box;
+  background-color: var(--ink-light);
+  border: 2px solid var(--line);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 4px 16px rgba(35, 54, 26, 0.06);
+  transition: box-shadow 0.2s;
+}
+
+.request-board__card:hover {
+  box-shadow: 0 8px 24px rgba(35, 54, 26, 0.12);
+}
+
+.request-board__card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Status badges */
+.request-board__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.request-board__badge--pending {
+  background-color: #FEF3C7;
+  color: #78350F;
+  border: 1px solid #F59E0B;
+}
+
+.request-board__badge--offered {
+  background-color: #E0F2FE;
+  color: #075985;
+  border: 1px solid #38BDF8;
+}
+
+.request-board__badge--fulfilled {
+  background-color: #DCFCE7;
+  color: #14532D;
+  border: 1px solid #22C55E;
+}
+
+.request-board__card-time {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-blue);
+}
+
+.request-board__card-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--accent-dark-green);
+  margin: 0;
+  word-break: break-word;
+}
+
+/* Card metadata */
+.request-board__card-meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 12px 14px;
+  background-color: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  border: 1px solid rgba(85, 111, 48, 0.2);
+}
+
+.request-board__meta-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.request-board__meta-label {
+  font-weight: 600;
+  color: var(--ink-dark);
+  flex-shrink: 0;
+}
+
+.request-board__meta-value {
+  font-weight: 500;
+  color: var(--accent-dark-green);
+  text-align: right;
+  word-break: break-word;
+}
+
+.request-board__card-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-dark);
+  margin: 0;
+  word-break: break-word;
+}
+
+.request-board__card-desc p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Empty state */
+.request-board__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  background-color: var(--ink-light);
+  border: 2px dashed var(--line);
+  border-radius: var(--card-radius);
+  margin: 32px 0;
+  gap: 16px;
+}
+
+.request-board__empty-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent-dark-green);
+  margin: 0;
+}
+
+.request-board__empty-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink-dark);
+  max-width: 540px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.request-board__empty-action {
+  margin-top: 8px;
+}
+
+/* Pagination */
+.request-board__pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1.5px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.request-board__pagination-info {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-dark);
+}
+
+.request-board__pagination-current {
+  font-weight: 700;
+  color: var(--accent-dark-green);
+}
+
+.request-board__pagination-link {
+  font-size: 16px;
+  padding: 6px 14px;
+  border-radius: 12px;
+}

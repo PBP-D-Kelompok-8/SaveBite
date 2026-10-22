@@ -1,0 +1,43 @@
+<article class="request-board__card request-board__card--{{ item.status }}">
+  <div class="request-board__card-header">
+    <span class="request-board__badge request-board__badge--{{ item.status }}">
+      {{ item.get_status_display }}
+    </span>
+    <time class="request-board__card-time" datetime="{{ item.created_at|date:'c' }}">
+      {{ item.created_at|date:"d M Y, H:i" }}
+    </time>
+  </div>
+
+  <h2 class="request-board__card-title">{{ item.title }}</h2>
+
+  <div class="request-board__card-meta">
+    <div class="request-board__meta-item">
+      <span class="request-board__meta-label">Bahan:</span>
+      <span class="request-board__meta-value">{{ item.food_item }}</span>
+    </div>
+    <div class="request-board__meta-item">
+      <span class="request-board__meta-label">Jumlah:</span>
+      <span class="request-board__meta-value">{{ item.quantity }} {{ item.get_unit_display }}</span>
+    </div>
+    <div class="request-board__meta-item">
+      <span class="request-board__meta-label">Pemohon:</span>
+      <span class="request-board__meta-value">{{ item.owner.get_username }}</span>
+    </div>
+    <div class="request-board__meta-item">
+      <span class="request-board__meta-label">Penawaran:</span>
+      <span class="request-board__meta-value">{{ item.offer_count }} penawaran</span>
+    </div>
+    {% if item.location %}
+      <div class="request-board__meta-item">
+        <span class="request-board__meta-label">Lokasi:</span>
+        <span class="request-board__meta-value">{{ item.location }}</span>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if item.description %}
+    <div class="request-board__card-desc">
+      <p>{{ item.description }}</p>
+    </div>
+  {% endif %}
+</article>
