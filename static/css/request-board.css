@@ -488,6 +488,114 @@
   color: var(--accent-dark-green);
 }
 
+/* Owner-only donor preview (server-rendered, no per-card queries) */
+.request-board__donors {
+  border-top: 1px solid rgba(85, 111, 48, 0.2);
+  padding-top: 12px;
+}
+
+.request-board__donors-title {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-dark);
+}
+
+.request-board__donors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.request-board__donor {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.request-board__donor-name {
+  font-weight: 600;
+  color: var(--accent-dark-green);
+  overflow-wrap: anywhere;
+}
+
+.request-board__donor-time {
+  flex-shrink: 0;
+  font-weight: 500;
+  color: var(--accent-blue);
+}
+
+.request-board__donors-more {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-dark);
+}
+
+/* Delete confirmation (native details, works without JavaScript) */
+.request-board__delete {
+  border-top: 1px solid rgba(85, 111, 48, 0.2);
+  padding-top: 12px;
+}
+
+.request-board__delete-summary {
+  display: inline-block;
+  padding: 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #991B1B;
+  cursor: pointer;
+}
+
+.request-board__delete-summary:focus-visible,
+.request-board__delete-cancel:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 2px;
+}
+
+.request-board__delete-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  background-color: #FEE2E2;
+  border: 1px solid #DC2626;
+  border-radius: 12px;
+}
+
+.request-board__delete-warning {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #991B1B;
+  overflow-wrap: anywhere;
+}
+
+.request-board__delete-confirm {
+  background-image: none;
+  background-color: #991B1B;
+  --btn-text: var(--ink-light);
+  font-size: 15px;
+}
+
+.request-board__delete-confirm:hover {
+  background-color: #7F1D1D;
+}
+
+.request-board__delete-cancel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-dark-green);
+}
+
 /* Empty state */
 .request-board__empty-state {
   display: flex;

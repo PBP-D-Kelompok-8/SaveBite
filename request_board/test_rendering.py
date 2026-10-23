@@ -6,8 +6,10 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 from django.contrib.auth import SESSION_KEY, get_user_model
 from django.contrib import messages
+from django.db import connection
 from django.template.response import TemplateResponse
 from django.test import Client, TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils.dateparse import parse_datetime
 from django.utils.html import escape, strip_tags
@@ -1416,3 +1418,487 @@ class BoardActionRenderingTests(TestCase):
                 self.assert_latest_card(markup, self.fulfilled, "Terpenuhi", 1)
                 self.assert_no_action(markup, self.fulfilled, ("fulfill",))
                 self.assertEqual(self.snapshot(), before)
+class BoardDeleteConfirmationTests(TestCase):
+    """Delete markup/HTTP/data only; disclosure interaction belongs to T3-05."""
+
+    board = BoardActionRenderingTests.board
+    card = BoardActionRenderingTests.card
+    assert_no_action = BoardActionRenderingTests.assert_no_action
+    assert_delete_prg = BoardActionRenderingTests.assert_offer_prg
+    direct_token = BoardActionRenderingTests.fulfill_direct_token
+
+    @classmethod
+    def setUpTestData(cls):
+        users = get_user_model()
+        cls.owner = users.objects.create_user(username="Pemohon-delete")
+        cls.donor = users.objects.create_user(username="Donor-delete")
+        cls.other_owner = users.objects.create_user(username="Pemohon-lain-delete")
+        cls.board_url = reverse("request_board:request_board")
+        cls.items = []
+        for state in (Request.STATUS_PENDING, Request.STATUS_OFFERED, Request.STATUS_FULFILLED):
+            item = Request.objects.create(
+                owner=cls.owner, title=f"Target hapus {state} <b>jelas</b>",
+                food_item="Beras", quantity=2, unit="kg",
+            )
+            if state != Request.STATUS_PENDING:
+                offer_request(actor=cls.donor, request_id=item.pk)
+                offer_request(actor=cls.other_owner, request_id=item.pk)
+            if state == Request.STATUS_FULFILLED:
+                fulfill_request(actor=cls.owner, request_id=item.pk)
+            item.refresh_from_db()
+            cls.items.append(item)
+        cls.unrelated = Request.objects.create(
+            owner=cls.other_owner, title="Posting lain tetap ada", food_item="Sayur",
+            quantity=1, unit="kg",
+        )
+        offer_request(actor=cls.donor, request_id=cls.unrelated.pk)
+
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+
+    def snapshot(self):
+        return (list(Request.objects.order_by("pk").values()),
+                list(RequestOffer.objects.order_by("pk").values()),
+                list(get_user_model().objects.order_by("pk").values()))
+
+    def confirmation(self, markup, item):
+        card = self.card(markup, item)
+        disclosures = markup.select("details", within=card)
+        self.assertEqual(len(disclosures), 1, "Owner memerlukan konfirmasi delete no-JS details/summary")
+        details = disclosures[0]
+        self.assertNotIn("open", details["attrs"])
+        summaries = markup.select("summary", within=details)
+        self.assertEqual(len(summaries), 1)
+        self.assertIs(summaries[0]["parents"][-1], details)
+        self.assertIn("hapus", summaries[0]["text"].lower())
+        warnings = [node for tag in ("p", "strong") for node in markup.select(tag, within=details)
+                    if not any(parent is summaries[0] for parent in node["parents"])
+                    and item.title in node["text"]
+                    and "hapus" in node["text"].lower()]
+        self.assertTrue(warnings, "Peringatan harus menyebut judul target dan penghapusan")
+        self.assertRegex(" ".join(details["text"].lower().split()),
+                         r"tidak (?:dapat|bisa) (?:dibatalkan|dikembalikan|dipulihkan)")
+        url = reverse("request_board:request_delete", args=[item.pk])
+        forms = markup.select("form", within=details)
+        self.assertEqual(len(forms), 1)
+        form = forms[0]
+        self.assertEqual(form["attrs"].get("action"), url)
+        self.assertEqual(form["attrs"].get("method", "").lower(), "post")
+        self.assertEqual([node for node in markup.select("form", within=card)
+                          if node["attrs"].get("action") == url], [form])
+        self.assertFalse(any(parent is summaries[0] for parent in form["parents"]))
+        tokens = [node for node in markup.select("input", within=form)
+                  if node["attrs"].get("name") == "csrfmiddlewaretoken"]
+        self.assertEqual(len(tokens), 1)
+        self.assertEqual(tokens[0]["attrs"].get("type"), "hidden")
+        token = tokens[0]["attrs"].get("value", "")
+        self.assertTrue(token)
+        self.assertIn("csrftoken", self.client.cookies)
+        submits = [node for node in markup.select("button", within=form)
+                   if node["attrs"].get("type", "submit") == "submit"
+                   and "hapus" in node["text"].lower()]
+        self.assertEqual(len(submits), 1)
+        self.assertFalse(any(parent is summaries[0] for parent in submits[0]["parents"]))
+        cancel = [node for node in markup.select("a", within=details)
+                  if node["text"].strip() == "Batal"]
+        self.assertEqual(len(cancel), 1)
+        self.assertEqual(cancel[0]["attrs"].get("href"), self.board_url)
+        for node in (summaries[0], form, submits[0], cancel[0]):
+            for ancestor in (node, *node["parents"]):
+                self.assertNotIn("hidden", ancestor["attrs"])
+                self.assertNotIn("disabled", ancestor["attrs"])
+                self.assertNotEqual(ancestor["attrs"].get("aria-hidden"), "true")
+            self.assertFalse(any(key.startswith("on") for key in node["attrs"]))
+        self.assertFalse(any(node["attrs"].get("href") == url for node in markup.select("a", within=card)))
+        return url, {"csrfmiddlewaretoken": token}, cancel[0]["attrs"]["href"]
+
+    def assert_deleted_only(self, response, before, item):
+        expected = ([row for row in before[0] if row["id"] != item.pk],
+                    [row for row in before[1] if row["request_id"] != item.pk], before[2])
+        self.assertEqual(self.snapshot(), expected)
+        markup = self.assert_delete_prg(
+            response, messages.SUCCESS, "Permintaan makanan berhasil dihapus.",
+        )
+        self.assertFalse(any(node["text"].strip() == item.title for node in markup.select("h2")))
+        self.card(markup, self.unrelated)
+        self.assertEqual(self.snapshot(), expected)
+
+    def test_owner_has_closed_confirmation_for_each_state_with_escaped_target(self):
+        self.client.force_login(self.owner)
+        response, markup = self.board()
+        for item in self.items:
+            with self.subTest(state=item.status):
+                self.confirmation(markup, item)
+                self.assertContains(response, escape(item.title))
+                self.assertNotContains(response, item.title)
+
+    def test_guest_and_nonowners_have_no_delete_controls_or_disclosures(self):
+        for actor in (None, self.donor, self.other_owner):
+            self.client = Client(enforce_csrf_checks=True)
+            if actor is not None:
+                self.client.force_login(actor)
+            _, markup = self.board()
+            for item in self.items:
+                with self.subTest(actor=actor, state=item.status):
+                    self.assert_no_action(markup, item, ("delete",))
+                    card = self.card(markup, item)
+                    self.assertEqual(markup.select("details", within=card), [])
+                    self.assertFalse(any("hapus" in node["text"].lower()
+                                         for tag in ("a", "button", "summary")
+                                         for node in markup.select(tag, within=card)))
+
+    def test_cancel_link_get_preserves_all_records_and_confirmation_remains(self):
+        self.client.force_login(self.owner)
+        for item in self.items:
+            with self.subTest(state=item.status):
+                _, markup = self.board()
+                _, _, cancel_url = self.confirmation(markup, item)
+                before = self.snapshot()
+                response = self.client.get(cancel_url)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(self.snapshot(), before)
+                self.assertEqual(list(response.context["messages"]), [])
+                self.confirmation(BoardMarkup(response.content.decode()), item)
+
+    def test_confirm_production_post_cascades_only_target_then_toast_and_board_absence(self):
+        self.client.force_login(self.owner)
+        for item in self.items:
+            with self.subTest(state=item.status):
+                _, markup = self.board()
+                url, payload, _ = self.confirmation(markup, item)
+                before = self.snapshot()
+                response = self.client.post(url, payload)
+                self.assert_deleted_only(response, before, item)
+
+    def test_missing_and_foreign_confirmation_tokens_reject_without_writes_or_toast(self):
+        self.client.force_login(self.owner)
+        foreign = self.direct_token(Client(enforce_csrf_checks=True))
+        for item in self.items:
+            with self.subTest(state=item.status):
+                _, markup = self.board()
+                url, payload, _ = self.confirmation(markup, item)
+                self.assertNotEqual(payload["csrfmiddlewaretoken"], foreign)
+                for data in ({}, {"csrfmiddlewaretoken": foreign}):
+                    with self.subTest(token="missing" if not data else "mismatch"):
+                        before = self.snapshot()
+                        response = self.client.post(url, data)
+                        self.assertEqual(response.status_code, 403)
+                        self.assertNotIn("Location", response)
+                        self.assertEqual(self.snapshot(), before)
+                        board, markup = self.board()
+                        self.assertEqual(list(board.context["messages"]), [])
+                        self.confirmation(markup, item)
+
+    def test_forged_valid_token_rejects_guest_nonowner_and_missing_target(self):
+        for actor in (None, self.donor, self.other_owner, self.owner):
+            self.client = Client(enforce_csrf_checks=True)
+            if actor is not None:
+                self.client.force_login(actor)
+            token = self.direct_token(self.client)
+            targets = [None] if actor == self.owner else [*self.items, None]
+            for item in targets:
+                with self.subTest(actor=actor, item=item):
+                    url = reverse("request_board:request_delete", args=[item.pk if item else 999999])
+                    before = self.snapshot()
+                    response = self.client.post(url, {"csrfmiddlewaretoken": token})
+                    self.assertEqual(response.status_code, 302 if actor is None else 403 if item else 404)
+                    self.assertEqual(self.snapshot(), before)
+                    if actor is None:
+                        target = urlsplit(response["Location"])
+                        self.assertEqual(target.path, reverse("request_board:login"))
+                        self.assertEqual(parse_qs(target.query), {"next": [url]})
+                    else:
+                        self.assertNotIn("Location", response)
+                    board, _ = self.board()
+                    self.assertEqual(list(board.context["messages"]), [])
+
+    def test_forged_missing_and_foreign_tokens_reject_all_actors_states_and_missing_id(self):
+        foreign = self.direct_token(Client(enforce_csrf_checks=True))
+        for actor in (None, self.owner, self.donor, self.other_owner):
+            self.client = Client(enforce_csrf_checks=True)
+            if actor is not None:
+                self.client.force_login(actor)
+            self.assertNotEqual(self.direct_token(self.client), foreign)
+            for item in (*self.items, None):
+                url = reverse("request_board:request_delete", args=[item.pk if item else 999999])
+                for data in ({}, {"csrfmiddlewaretoken": foreign}):
+                    with self.subTest(actor=actor, item=item, token="missing" if not data else "mismatch"):
+                        before = self.snapshot()
+                        response = self.client.post(url, data)
+                        self.assertEqual(response.status_code, 403)
+                        self.assertNotIn("Location", response)
+                        self.assertEqual(self.snapshot(), before)
+                        board, _ = self.board()
+                        self.assertEqual(list(board.context["messages"]), [])
+
+    def test_direct_get_never_deletes_or_opens_a_get_delete_endpoint(self):
+        for actor in (None, self.owner, self.donor, self.other_owner):
+            self.client = Client(enforce_csrf_checks=True)
+            if actor is not None:
+                self.client.force_login(actor)
+            for item in (*self.items, None):
+                with self.subTest(actor=actor, item=item):
+                    url = reverse("request_board:request_delete", args=[item.pk if item else 999999])
+                    before = self.snapshot()
+                    response = self.client.get(url)
+                    self.assertEqual(response.status_code, 302 if actor is None else 405)
+                    if actor is not None:
+                        self.assertEqual(response["Allow"], "POST")
+                    self.assertEqual(self.snapshot(), before)
+
+    def test_owner_direct_valid_token_deletes_all_states_and_replay_is_404(self):
+        self.client.force_login(self.owner)
+        token = self.direct_token(self.client)
+        for item in self.items:
+            with self.subTest(state=item.status):
+                url = reverse("request_board:request_delete", args=[item.pk])
+                before = self.snapshot()
+                response = self.client.post(url, {"csrfmiddlewaretoken": token})
+                self.assert_deleted_only(response, before, item)
+                remaining = self.snapshot()
+                response = self.client.post(url, {"csrfmiddlewaretoken": token})
+                self.assertEqual(response.status_code, 404)
+                self.assertNotIn("Location", response)
+                self.assertEqual(self.snapshot(), remaining)
+                board, _ = self.board()
+                self.assertEqual(list(board.context["messages"]), [])
+
+
+class OwnerOfferPrivacyRenderingTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        users = get_user_model()
+        cls.owner = users.objects.create_user(username="Publik-owner-A")
+        cls.other_owner = users.objects.create_user(username="Publik-owner-B")
+        cls.reader = users.objects.create_user(username="Pembaca-tanpa-posting")
+        cls.donors = [users.objects.create_user(
+            username=f"DONOR_SENTINEL_{index:02d}_END",
+            email=f"private-donor-{index:02d}@example.invalid",
+            first_name=f"CONTACT_PRIVATE_{index:02d}_END",
+            last_name=f"PHONE_PRIVATE_08170000{index:02d}",
+        ) for index in range(24)]
+        cls.dangerous_name = '<img src=x onerror="alert(1)">DONOR_SENTINEL_XSS_END&\'"'
+        cls.donors[21].username = cls.dangerous_name
+        cls.donors[21].save(update_fields=["username"])
+        cls.board_url = reverse("request_board:request_board")
+        cls.fixed_time = datetime(2026, 10, 23, 9, tzinfo=timezone.utc)
+        cls.items = []
+        cls.offers = {}
+        for title, owner, donors in (
+            ("Privasi A pertama", cls.owner, cls.donors[:21]),
+            ("Privasi A kedua", cls.owner, list(reversed(cls.donors[:22]))),
+            ("Privasi B terpisah", cls.other_owner, cls.donors[22:]),
+        ):
+            item = Request.objects.create(
+                owner=owner, title=title, food_item="Beras", quantity=2,
+                unit="kg", status=Request.STATUS_OFFERED,
+            )
+            cls.items.append(item)
+            cls.offers[item.pk] = []
+            for index, donor in enumerate(donors):
+                offer = RequestOffer.objects.create(request=item, offered_by=donor)
+                # Reverse chronological groups disagree with insertion order; ties
+                # also straddle the preview cutoff, so both ordering keys matter.
+                timestamp = cls.fixed_time - timedelta(minutes=index // 3)
+                RequestOffer.objects.filter(pk=offer.pk).update(created_at=timestamp)
+                cls.offers[item.pk].append((timestamp, offer.pk, donor.username))
+
+    def board(self, client):
+        response = client.get(self.board_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response, TemplateResponse)
+        self.assertTrue(response.is_rendered)
+        self.assertTemplateUsed(response, "request_board/index.html")
+        self.assertTemplateUsed(response, "request_board/_request_card.html")
+        self.assertTemplateUsed(response, "base.html")
+        return response, BoardMarkup(response.content.decode())
+
+    def card(self, markup, item):
+        cards = [node for node in markup.select("article")
+                 if any(heading["text"].strip() == item.title
+                        for heading in markup.select("h2", within=node))]
+        self.assertEqual(len(cards), 1)
+        return cards[0]
+
+    def expected(self, item):
+        return sorted(self.offers[item.pk], reverse=True)[:20]
+
+    def assert_private_fields_absent(self, response):
+        for donor in self.donors:
+            for value in (donor.email, donor.first_name, donor.last_name):
+                self.assertNotIn(value.encode(), response.content)
+
+    def test_guest_and_nonowner_have_no_donor_identity_anywhere_in_response(self):
+        for actor in (None, self.reader, self.donors[0]):
+            with self.subTest(actor=getattr(actor, "username", "guest")):
+                client = Client(enforce_csrf_checks=True)
+                if actor is not None:
+                    client.force_login(actor)
+                response, markup = self.board(client)
+                self.assertEqual(response.context_data["owner_offer_previews"], {})
+                # Inspect all bytes: hidden DOM, attributes, comments, scripts and
+                # embedded JSON are not filtered by a visible-text parser.
+                self.assertNotIn(b"DONOR_SENTINEL_", response.content)
+                self.assert_private_fields_absent(response)
+                for item in self.items:
+                    text = self.card(markup, item)["text"]
+                    self.assertIn(item.owner.username, text)
+                    self.assertIn(f"{len(self.offers[item.pk])} penawaran", text)
+
+    def test_each_owner_response_excludes_other_owners_donor_sentinels(self):
+        for actor, forbidden in ((self.owner, self.donors[22:]),
+                                 (self.other_owner, self.donors[:22])):
+            with self.subTest(actor=actor.username):
+                client = Client(enforce_csrf_checks=True)
+                client.force_login(actor)
+                response, _ = self.board(client)
+                owned_ids = {item.pk for item in self.items if item.owner_id == actor.pk}
+                self.assertEqual(set(response.context_data["owner_offer_previews"]), owned_ids)
+                for donor in forbidden:
+                    sentinel = re.search(r"DONOR_SENTINEL_\w+", donor.username).group()
+                    self.assertNotIn(sentinel.encode(), response.content)
+                self.assert_private_fields_absent(response)
+
+    def test_owner_sees_latest_twenty_in_each_owned_card_with_id_tie_break(self):
+        for actor in (self.owner, self.other_owner):
+            self.client.force_login(actor)
+            _, markup = self.board(self.client)
+            for item in self.items:
+                if item.owner_id != actor.pk:
+                    continue
+                with self.subTest(item=item.title):
+                    text = self.card(markup, item)["text"]
+                    actual = re.findall(r"DONOR_SENTINEL_(?:\d{2}|XSS)_END", text)
+                    expected = [re.search(r"DONOR_SENTINEL_\w+", name).group()
+                                for _, _, name in self.expected(item)]
+                    self.assertEqual(actual, expected,
+                                     "Preview produksi harus 20 donor terbaru per kartu, -created_at/-id")
+                    omitted = set(name for _, _, name in self.offers[item.pk]) - set(
+                        name for _, _, name in self.expected(item))
+                    for name in omitted:
+                        self.assertNotIn(name, text)
+
+    def test_preview_times_belong_to_each_rendered_offer(self):
+        self.client.force_login(self.owner)
+        _, markup = self.board(self.client)
+        for item in self.items[:2]:
+            with self.subTest(item=item.title):
+                card = self.card(markup, item)
+                # The card already has its posting time; preview must add one
+                # semantic timestamp per displayed donor, in preview order.
+                times = markup.select("time", within=card)
+                self.assertEqual(len(times), 21)
+                self.assertEqual([parse_datetime(node["attrs"].get("datetime", ""))
+                                  for node in times[1:]],
+                                 [timestamp for timestamp, _, _ in self.expected(item)])
+                self.assertTrue(all(node["text"].strip() for node in times))
+
+    def test_preview_context_matches_cap_total_and_has_more_at_boundaries(self):
+        self.client.force_login(self.owner)
+        item = self.items[0]
+        for count in (0, 1, 19, 20, 21, 22):
+            RequestOffer.objects.filter(request=item).delete()
+            RequestOffer.objects.bulk_create([
+                RequestOffer(request=item, offered_by=donor) for donor in self.donors[:count]
+            ])
+            RequestOffer.objects.filter(request=item).update(created_at=self.fixed_time)
+            response, _ = self.board(self.client)
+            with self.subTest(count=count):
+                preview = response.context_data["owner_offer_previews"][item.pk]
+                self.assertEqual(preview["total"], count)
+                self.assertIs(preview["has_more"], count > 20)
+                self.assertEqual(preview["items"], [
+                    {"display_name": self.donors[index].username, "created_at": self.fixed_time}
+                    for index in reversed(range(max(0, count - 20), count))
+                ])
+
+    def test_boundary_counts_and_more_indicator_are_rendered_on_target_card(self):
+        self.client.force_login(self.owner)
+        item = self.items[0]
+        for count in (0, 1, 19, 20, 21, 22):
+            RequestOffer.objects.filter(request=item).delete()
+            RequestOffer.objects.bulk_create([
+                RequestOffer(request=item, offered_by=donor) for donor in self.donors[:count]
+            ])
+            _, markup = self.board(self.client)
+            text = self.card(markup, item)["text"]
+            with self.subTest(count=count, assertion="total"):
+                self.assertRegex(text, rf"\b{count}\s+penawaran\b")
+            with self.subTest(count=count, assertion="preview-size"):
+                self.assertEqual(len(re.findall(r"DONOR_SENTINEL_(?:\d{2}|XSS)_END", text)),
+                                 min(count, 20))
+            with self.subTest(count=count, assertion="has-more"):
+                more = re.search(r"lainnya|lebih banyak|selengkapnya", text, re.I)
+                self.assertEqual(bool(more), count > 20,
+                                 "has_more harus punya penanda Indonesia terbaca hanya bila total > 20")
+
+    def test_dangerous_donor_name_is_escaped_and_visible_only_in_owners_preview(self):
+        item = self.items[1]
+        dangerous_offer = next(pk for _, pk, name in self.offers[item.pk]
+                               if name == self.dangerous_name)
+        RequestOffer.objects.filter(pk=dangerous_offer).update(
+            created_at=self.fixed_time + timedelta(days=1))
+        self.client.force_login(self.owner)
+        response, markup = self.board(self.client)
+        self.assertNotIn(self.dangerous_name.encode(), response.content)
+        self.assert_private_fields_absent(response)
+        with self.subTest(assertion="escaped-response"):
+            self.assertIn(str(escape(self.dangerous_name)).encode(), response.content)
+        with self.subTest(assertion="visible-owner-card"):
+            self.assertIn(self.dangerous_name, self.card(markup, item)["text"])
+        self.assertFalse(any("onerror" in node["attrs"] for node in markup.nodes))
+        for node in markup.nodes:
+            self.assertFalse(any("DONOR_SENTINEL_XSS_END" in value
+                                 for value in node["attrs"].values() if value))
+
+    def test_email_and_private_contact_never_appear_even_for_owner(self):
+        for actor in (None, self.reader, self.owner, self.other_owner):
+            with self.subTest(actor=getattr(actor, "username", "guest")):
+                client = Client(enforce_csrf_checks=True)
+                if actor is not None:
+                    client.force_login(actor)
+                response, _ = self.board(client)
+                self.assert_private_fields_absent(response)
+
+    def test_production_html_queries_stay_constant_from_one_to_twenty_cards(self):
+        Request.objects.all().delete()
+        clients = {"guest": Client(enforce_csrf_checks=True),
+                   "nonowner": Client(enforce_csrf_checks=True),
+                   "owner": Client(enforce_csrf_checks=True)}
+        clients["nonowner"].force_login(self.reader)
+        clients["owner"].force_login(self.owner)
+        profiles = {}
+        for count in (1, 20):
+            for index in range(Request.objects.count(), count):
+                item = Request.objects.create(
+                    owner=self.owner, title=f"Query privasi {index}", food_item="Beras",
+                    quantity=1, unit="kg", status=Request.STATUS_OFFERED,
+                )
+                RequestOffer.objects.create(request=item, offered_by=self.donors[0])
+            for actor, client in clients.items():
+                self.board(client)  # Warm template/session infrastructure outside capture.
+                with CaptureQueriesContext(connection) as captured:
+                    response = client.get(self.board_url)
+                    content = response.content
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.is_rendered)
+                self.assertTemplateUsed(response, "request_board/_request_card.html")
+                self.assertEqual(len(BoardMarkup(content.decode()).select("article")), count)
+                auth, builder = [], []
+                for query in captured:
+                    sql = query["sql"]
+                    if '"django_session"' in sql or (
+                        '"auth_user"' in sql and '"requests"' not in sql
+                        and '"request_offers"' not in sql
+                    ):
+                        auth.append(sql)
+                    else:
+                        builder.append(sql)
+                profiles[(actor, count)] = (len(auth), len(builder))
+                print(f"PRIVACY_QUERY actor={actor} cards={count} total={len(captured)} "
+                      f"auth_session={len(auth)} builder_render={len(builder)}")
+                self.assertEqual(len(auth), 0 if actor == "guest" else 2)
+                self.assertEqual(len(builder), 3 if actor == "owner" else 2)
+        for actor in clients:
+            with self.subTest(actor=actor):
+                self.assertEqual(profiles[(actor, 1)], profiles[(actor, 20)])
