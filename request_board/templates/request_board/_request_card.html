@@ -40,4 +40,26 @@
       <p>{{ item.description }}</p>
     </div>
   {% endif %}
+
+  {% if user.is_authenticated and user.id != item.owner_id and item.status != "fulfilled" %}
+    <div class="request-board__card-actions">
+      {% if item.has_offered %}
+        <p class="request-board__card-note">Sudah menawarkan</p>
+      {% else %}
+        <form method="post" action="{% url 'request_board:request_offer' item.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--primary request-board__action">Saya Punya!</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if user.is_authenticated and user.id == item.owner_id and item.status == "offered" %}
+    <div class="request-board__card-actions">
+      <form method="post" action="{% url 'request_board:request_fulfill' item.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--primary request-board__action">Tandai Terpenuhi</button>
+      </form>
+    </div>
+  {% endif %}
 </article>
