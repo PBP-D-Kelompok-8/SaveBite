@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.core.validators import MinValueValidator
 
 class FoodLog(models.Model):
     STATUS_CHOICES = [
@@ -19,7 +20,7 @@ class FoodLog(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="food_logs")
     food_name = models.CharField(max_length=255)
-    quantity = models.PositiveIntegerField(default=1)
+    quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)],)
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, default="pcs")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="terselamatkan")
     notes = models.TextField(blank=True)
@@ -28,6 +29,12 @@ class FoodLog(models.Model):
 
     class Meta:
         ordering = ["-completed_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gte=1),
+                name="foodlog_quantity_gte_1",
+            )
+        ]
 
     def __str__(self):
         return f"{self.food_name} - {self.status}"
