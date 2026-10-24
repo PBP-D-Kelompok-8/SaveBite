@@ -4,7 +4,7 @@ from django.utils import timezone
 
 class FoodLog(models.Model):
     STATUS_CHOICES = [
-        ("habis", "Habis"), 
+        ("terselamatkan", "Terselamatkan"), 
         ("terbuang", "Terbuang")
     ]
     
@@ -12,17 +12,19 @@ class FoodLog(models.Model):
         ("kg", "Kilogram"), 
         ("gr", "Gram"), 
         ("pcs", "Pieces"), 
-        ("porsi", "Porsi")
+        ("porsi", "Porsi"),
+        ("liter", "Liter"),
+        
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="food_logs")
     food_name = models.CharField(max_length=255)
     quantity = models.PositiveIntegerField(default=1)
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, default="pcs")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="habis")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="terselamatkan")
     notes = models.TextField(blank=True)
     completed_at = models.DateTimeField(default=timezone.now)
-    rescue_plan_id = models.PositiveIntegerField(null=True, blank=True)
+    rescue_plan_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
 
     class Meta:
         ordering = ["-completed_at"]
