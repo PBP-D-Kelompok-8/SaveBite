@@ -1,0 +1,61 @@
+{% load static %}
+{% comment %}
+  Komponen Input (Figma: "Inputs" → Type=TextInput|DropDown, State=Default|OnClick|Incorrect, Desktop=True|False)
+
+  Cara pakai (selalu tambahkan "only" agar variabel halaman tidak bocor ke komponen):
+    {% include 'components/input.html' with name="username" label="Username" placeholder="Masukkan username" only %}
+    {% include 'components/input.html' with name="password" label="Password" input_type="password" only %}
+    {% include 'components/input.html' with name="kategori" label="Kategori" input_type="select" options=daftar_opsi only %}
+
+  Parameter:
+    name         (wajib)    atribut name; id otomatis "id_<name>"
+    label        (wajib)    teks label
+    input_type   (opsional) text (default) | password | email | number | select
+    placeholder  (opsional)
+    value        (opsional) nilai awal (tidak pernah dirender untuk password)
+    autocomplete (opsional)
+    help_text    (opsional) teks bantuan di bawah field
+    error        (opsional) pesan error -> state "Incorrect" (border merah + pesan)
+    options      (opsional) daftar string untuk input_type="select"
+    required     (opsional) True -> atribut required
+
+  State "OnClick" = :focus (CSS), tidak butuh parameter.
+  Saat logika form ditambahkan nanti, parameter tinggal diisi dari form Django,
+  mis. value=form.username.value error=form.username.errors.0
+{% endcomment %}
+{% with fid="id_"|add:name %}
+<div class="input{% if error %} input--incorrect{% endif %}">
+  <label class="input__label" for="{{ fid }}">{{ label }}</label>
+
+  {% if input_type == "select" %}
+  <div class="input__control">
+    <select class="input__field input__field--select" id="{{ fid }}" name="{{ name }}"
+            {% if required %}required{% endif %}
+            {% if error %}aria-invalid="true"{% endif %}
+            {% if error or help_text %}aria-describedby="{% if error %}{{ fid }}-error {% endif %}{% if help_text %}{{ fid }}-help{% endif %}"{% endif %}>
+      {% for option in options %}
+      <option value="{{ option }}"{% if option == value %} selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <span class="input__chevron" style="--icon: url('{% static 'icons/chevron-down.svg' %}')" aria-hidden="true"></span>
+  </div>
+  {% else %}
+  <input class="input__field" id="{{ fid }}" name="{{ name }}"
+         type="{{ input_type|default:'text' }}"
+         {% if value and input_type != "password" %}value="{{ value }}"{% endif %}
+         {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+         {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+         {% if required %}required{% endif %}
+         {% if error %}aria-invalid="true"{% endif %}
+         {% if error or help_text %}aria-describedby="{% if error %}{{ fid }}-error {% endif %}{% if help_text %}{{ fid }}-help{% endif %}"{% endif %}>
+  {% endif %}
+
+  {% if error %}
+  <p class="input__error" id="{{ fid }}-error">{{ error }}</p>
+  {% endif %}
+
+  {% if help_text %}
+  <div class="input__help" id="{{ fid }}-help">{{ help_text }}</div>
+  {% endif %}
+</div>
+{% endwith %}

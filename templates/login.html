@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Login | SaveBite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/button.css' %}">
+<link rel="stylesheet" href="{% static 'css/navbar.css' %}">
+<link rel="stylesheet" href="{% static 'css/footer.css' %}">
+<link rel="stylesheet" href="{% static 'css/input.css' %}">
+<link rel="stylesheet" href="{% static 'css/auth.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="auth">
+  <h1 class="auth__title">Selamat Datang Kembali!</h1>
+  <p class="auth__subtitle">Masuk ke akun SaveBite mu</p>
+
+  {# Baru tampilan. Logika login belum ada: tombol hanya memuat ulang halaman. Isi value/error komponen dari form nanti. #}
+  <form class="auth__form" method="post">
+    {% csrf_token %}
+
+    {% include 'components/input.html' with name="username" label="Username" placeholder="Masukkan username" autocomplete="username" only %}
+    {% include 'components/input.html' with name="password" label="Password" input_type="password" placeholder="Masukkan password" autocomplete="current-password" only %}
+
+    <div class="auth__actions">
+      {% include 'components/button.html' with label="Login" type="primary" icon_left="icons/door-open-alt.svg" submit=True only %}
+      <p class="auth__switch">Belum punya akun? <a href="{% url 'register' %}">Daftar</a></p>
+    </div>
+  </form>
+</section>
+{% endblock %}
