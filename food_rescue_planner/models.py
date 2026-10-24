@@ -1,4 +1,3 @@
-
 from django.conf import settings
 from django.db import models
 
@@ -16,16 +15,28 @@ class FoodRescuePlan(models.Model):
         ('share', 'Share'),
     ]
 
+    UNIT_CHOICES = [
+        ('kg', 'Kilogram'),
+        ('gr', 'Gram'),
+        ('pcs', 'Pieces'),
+        ('porsi', 'Porsi'),
+        ('liter', 'Liter'),
+    ]
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='food_rescue_plans',
     )
-    food_name = models.CharField(max_length=100)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    unit = models.CharField(max_length=20)
+    nama_bahan = models.CharField(max_length=100)
+    jumlah = models.PositiveIntegerField(default=1)
+    satuan = models.CharField(
+        max_length=20,
+        choices=UNIT_CHOICES,
+        default='pcs',
+    )
     target_date = models.DateField()
-    action_method = models.CharField(
+    metode_aksi = models.CharField(
         max_length=10,
         choices=ACTION_CHOICES,
     )
@@ -39,4 +50,4 @@ class FoodRescuePlan(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.food_name} - {self.get_status_display()}"
+        return f"{self.nama_bahan} - {self.get_status_display()}"

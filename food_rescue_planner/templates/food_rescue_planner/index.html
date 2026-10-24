@@ -1,43 +1,42 @@
-{% extends 'base.html' %}
+{% load static %}
 
-{% block content %}
-<div class="container">
-    <h1>Food Rescue Planner</h1>
-    <p>Kelola rencana penyelamatan makananmu di sini.</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SaveBite{% endblock %}</title>
+    {% block meta %} {% endblock meta %}
+    
+    <link rel="stylesheet" href="{% static 'css/static.css' %}">
 
-    <section>
-        <h2>Daftar Rencana Makanan</h2>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
 
-        {% if plans %}
-            {% for plan in plans %}
-                <article>
-                    <h3>{{ plan.food_name }}</h3>
+    <!-- Navbar Reusable -->
+    {% include 'components/navbar.html' %}
 
-                    <p>
-                        Jumlah: {{ plan.quantity }} {{ plan.unit }}
-                    </p>
-
-                    <p>
-                        Target tanggal: {{ plan.target_date }}
-                    </p>
-
-                    <p>
-                        Metode: {{ plan.get_action_method_display }}
-                    </p>
-
-                    <p>
-                        Status: {{ plan.get_status_display }}
-                    </p>
-
-                    {% if plan.notes %}
-                        <p>Catatan: {{ plan.notes }}</p>
-                    {% endif %}
-                </article>
-                <hr>
-            {% endfor %}
-        {% else %}
-            <p>Belum ada rencana makanan. Yuk, buat rencana pertamamu!</p>
+    <!-- Konten Utama Halaman -->
+    <main>
+        <!-- Notifikasi Django Messages -->
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="message {{ message.tags }}" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
         {% endif %}
-    </section>
-</div>
-{% endblock %}
+
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Footer Reusable -->
+    {% include 'components/footer.html' %}
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
