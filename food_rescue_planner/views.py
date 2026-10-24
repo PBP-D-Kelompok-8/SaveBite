@@ -4,8 +4,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from jurnal.models import FoodLog
-from jurnal.services import create_log_from_rescue_plan
+from jurnal.services import sync_log_from_rescue_plan
 
 from .models import FoodRescuePlan
 
@@ -81,7 +80,7 @@ def create_plan(request):
         messages.error(request, 'Format tanggal tidak valid.')
         return redirect('food_rescue_planner:index')
 
-    FoodRescuePlan.objects.create(
+    plan = FoodRescuePlan.objects.create(
         user=request.user,
         nama_bahan=nama_bahan,
         jumlah=jumlah,
@@ -90,6 +89,7 @@ def create_plan(request):
         metode_aksi=metode_aksi,
         notes=notes,
     )
+    sync_log_from_rescue_plan(plan)
 
     messages.success(request, 'Rencana penyelamatan berhasil dibuat!')
     return redirect('food_rescue_planner:index')
@@ -185,13 +185,7 @@ def edit_plan(request, plan_id):
 
         plan.save()
 
-        if status in ('success', 'failed'):
-            create_log_from_rescue_plan(plan)
-        else:
-            FoodLog.objects.filter(
-                rescue_plan_id=plan.pk,
-                user=request.user,
-            ).delete()
+        sync_log_from_rescue_plan(plan)
 
         messages.success(request, 'Rencana berhasil diperbarui!')
         return redirect('food_rescue_planner:index')
@@ -206,7 +200,6 @@ def edit_plan(request, plan_id):
             'status_choices': FoodRescuePlan.STATUS_CHOICES,
         },
     )
-
 
 def delete_plan(request, plan_id):
     if not request.user.is_authenticated:
