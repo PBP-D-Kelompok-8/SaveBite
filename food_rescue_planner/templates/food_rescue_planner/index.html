@@ -1,42 +1,416 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SaveBite{% endblock %}</title>
-    {% block meta %} {% endblock meta %}
-    
-    <link rel="stylesheet" href="{% static 'css/static.css' %}">
+{% block title %}Food Rescue Planner | SaveBite{% endblock %}
 
-    {% block extra_css %}{% endblock %}
-</head>
-<body>
+{% block content %}
+<style>
+    .frp-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 20px 60px;
+        color: #26352d;
+    }
 
-    <!-- Navbar Reusable -->
-    {% include 'components/navbar.html' %}
+    .frp-header {
+        margin-bottom: 28px;
+    }
 
-    <!-- Konten Utama Halaman -->
-    <main>
-        <!-- Notifikasi Django Messages -->
-        {% if messages %}
-            <div class="messages">
-                {% for message in messages %}
-                    <div class="message {{ message.tags }}" role="alert">
-                        {{ message }}
+    .frp-header h1 {
+        margin-bottom: 10px;
+        font-size: 2rem;
+    }
+
+    .frp-header p {
+        color: #68776d;
+        line-height: 1.6;
+    }
+
+    .frp-section {
+        margin-bottom: 32px;
+        padding: 24px;
+        background: #fff;
+        border: 1px solid #e1e9e2;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(30, 60, 40, 0.05);
+    }
+
+    .frp-section h2 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 1.35rem;
+    }
+
+    .frp-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .frp-field {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .frp-field-full {
+        grid-column: 1 / -1;
+    }
+
+    .frp-field label {
+        font-weight: 600;
+        font-size: 0.92rem;
+    }
+
+    .frp-field input,
+    .frp-field select,
+    .frp-field textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 11px 12px;
+        border: 1px solid #d4ded5;
+        border-radius: 8px;
+        background: #fff;
+        color: #26352d;
+        font: inherit;
+    }
+
+    .frp-field input:focus,
+    .frp-field select:focus,
+    .frp-field textarea:focus {
+        outline: 2px solid #b7d9bd;
+        border-color: #438653;
+    }
+
+    .frp-field textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    .frp-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 16px;
+        border: 1px solid #39764a;
+        border-radius: 8px;
+        background: #39764a;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .frp-button:hover {
+        background: #2d613b;
+    }
+
+    .frp-button-secondary {
+        border-color: #cbd8cd;
+        background: #fff;
+        color: #315e3c;
+    }
+
+    .frp-button-secondary:hover {
+        background: #f0f6f1;
+    }
+
+    .frp-button-danger {
+        border-color: #bd4545;
+        background: #bd4545;
+    }
+
+    .frp-button-danger:hover {
+        background: #9f3434;
+    }
+
+    .frp-submit {
+        margin-top: 20px;
+    }
+
+    .frp-message {
+        margin-bottom: 18px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: #eef6ee;
+        color: #315e3c;
+    }
+
+    .frp-message.error {
+        background: #fff0f0;
+        color: #9f3434;
+    }
+
+    .frp-plan-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .frp-plan-card {
+        padding: 20px;
+        border: 1px solid #e1e9e2;
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .frp-plan-card h3 {
+        margin: 0 0 12px;
+        font-size: 1.15rem;
+        overflow-wrap: anywhere;
+    }
+
+    .frp-plan-detail {
+        margin: 8px 0;
+        color: #59685e;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+    }
+
+    .frp-status {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 5px 10px;
+        border-radius: 20px;
+        background: #edf3ed;
+        color: #315e3c;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .frp-status-success {
+        background: #e3f5e7;
+        color: #226837;
+    }
+
+    .frp-status-failed {
+        background: #fdeaea;
+        color: #a33333;
+    }
+
+    .frp-plan-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+        align-items: center;
+    }
+
+    .frp-plan-actions form {
+        margin: 0;
+    }
+
+    .frp-empty {
+        padding: 28px 16px;
+        border: 1px dashed #ccd9ce;
+        border-radius: 12px;
+        color: #68776d;
+        text-align: center;
+        line-height: 1.6;
+    }
+
+    @media (max-width: 700px) {
+        .frp-container {
+            padding: 24px 14px 40px;
+        }
+
+        .frp-section {
+            padding: 18px;
+        }
+
+        .frp-form-grid,
+        .frp-plan-list {
+            grid-template-columns: 1fr;
+        }
+
+        .frp-field-full {
+            grid-column: auto;
+        }
+
+        .frp-header h1 {
+            font-size: 1.65rem;
+        }
+    }
+</style>
+
+<div class="frp-container">
+    <header class="frp-header">
+        <h1>Food Rescue Planner</h1>
+        <p>
+            Rencanakan cara menyelamatkan bahan makanan agar tidak terbuang.
+            Catat bahan makanan, tentukan target, dan pantau progresnya.
+        </p>
+    </header>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="frp-message{% if message.tags == 'error' %} error{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <section class="frp-section">
+        <h2>Buat Rencana Baru</h2>
+
+        {% if user.is_authenticated %}
+            <form method="POST"
+                  action="{% url 'food_rescue_planner:create' %}">
+                {% csrf_token %}
+
+                <div class="frp-form-grid">
+                    <div class="frp-field">
+                        <label for="nama_bahan">Nama Bahan Makanan</label>
+                        <input
+                            type="text"
+                            id="nama_bahan"
+                            name="nama_bahan"
+                            maxlength="100"
+                            placeholder="Contoh: Pisang"
+                            required
+                        >
                     </div>
+
+                    <div class="frp-field">
+                        <label for="jumlah">Jumlah</label>
+                        <input
+                            type="number"
+                            id="jumlah"
+                            name="jumlah"
+                            min="1"
+                            max="2147483647"
+                            value="1"
+                            required
+                        >
+                    </div>
+
+                    <div class="frp-field">
+                        <label for="satuan">Satuan</label>
+                        <select id="satuan" name="satuan" required>
+                            <option value="pcs">Pieces</option>
+                            <option value="kg">Kilogram</option>
+                            <option value="gr">Gram</option>
+                            <option value="porsi">Porsi</option>
+                            <option value="liter">Liter</option>
+                        </select>
+                    </div>
+
+                    <div class="frp-field">
+                        <label for="target_date">Target Tanggal</label>
+                        <input
+                            type="date"
+                            id="target_date"
+                            name="target_date"
+                            required
+                        >
+                    </div>
+
+                    <div class="frp-field frp-field-full">
+                        <label for="metode_aksi">Metode Penyelamatan</label>
+                        <select id="metode_aksi" name="metode_aksi" required>
+                            <option value="cook">Cook (Dimasak)</option>
+                            <option value="preserve">Preserve (Diawetkan)</option>
+                            <option value="share">Share (Dibagikan)</option>
+                        </select>
+                    </div>
+
+                    <div class="frp-field frp-field-full">
+                        <label for="notes">Catatan (Opsional)</label>
+                        <textarea
+                            id="notes"
+                            name="notes"
+                            placeholder="Tulis rencana atau catatan tambahan..."
+                        ></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="frp-button frp-submit">
+                    Buat Rencana
+                </button>
+            </form>
+        {% else %}
+            <p>
+                Silakan login terlebih dahulu untuk membuat rencana
+                penyelamatan makanan.
+            </p>
+        {% endif %}
+    </section>
+
+    <section class="frp-section">
+        <h2>Daftar Rencana Saya</h2>
+
+        {% if not user.is_authenticated %}
+            <div class="frp-empty">
+                Login untuk melihat dan mengelola rencana penyelamatan
+                makanan milik lu.
+            </div>
+        {% elif plans %}
+            <div class="frp-plan-list">
+                {% for plan in plans %}
+                    <article class="frp-plan-card">
+                        <h3>{{ plan.nama_bahan }}</h3>
+
+                        <p class="frp-plan-detail">
+                            <strong>Jumlah:</strong>
+                            {{ plan.jumlah }} {{ plan.get_satuan_display }}
+                        </p>
+
+                        <p class="frp-plan-detail">
+                            <strong>Target:</strong>
+                            {{ plan.target_date|date:"d M Y" }}
+                        </p>
+
+                        <p class="frp-plan-detail">
+                            <strong>Metode:</strong>
+                            {{ plan.get_metode_aksi_display }}
+                        </p>
+
+                        <p class="frp-plan-detail">
+                            <strong>Status:</strong>
+                            <span class="frp-status{% if plan.status == 'success' %} frp-status-success{% elif plan.status == 'failed' %} frp-status-failed{% endif %}">
+                                {{ plan.get_status_display }}
+                            </span>
+                        </p>
+
+                        {% if plan.notes %}
+                            <p class="frp-plan-detail">
+                                <strong>Catatan:</strong>
+                                {{ plan.notes|linebreaksbr }}
+                            </p>
+                        {% endif %}
+
+                        <div class="frp-plan-actions">
+                            <a
+                                class="frp-button frp-button-secondary"
+                                href="{% url 'food_rescue_planner:edit' plan.id %}"
+                            >
+                                Edit Rencana
+                            </a>
+
+                            <form
+                                method="POST"
+                                action="{% url 'food_rescue_planner:delete' plan.id %}"
+                                onsubmit="return confirm('Yakin ingin menghapus rencana ini?');"
+                            >
+                                {% csrf_token %}
+                                <button
+                                    type="submit"
+                                    class="frp-button frp-button-danger"
+                                >
+                                    Hapus
+                                </button>
+                            </form>
+                        </div>
+                    </article>
                 {% endfor %}
             </div>
+        {% else %}
+            <div class="frp-empty">
+                Belum ada rencana penyelamatan makanan.
+                Yuk, buat rencana pertamamu!
+            </div>
         {% endif %}
-
-        {% block content %}
-        {% endblock %}
-    </main>
-
-    <!-- Footer Reusable -->
-    {% include 'components/footer.html' %}
-
-    {% block extra_js %}{% endblock %}
-</body>
-</html>
+    </section>
+</div>
+{% endblock %}

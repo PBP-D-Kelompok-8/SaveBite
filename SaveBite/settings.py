@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'food_rescue_planner',
+    'jurnal',
 ]
 
 MIDDLEWARE = [
