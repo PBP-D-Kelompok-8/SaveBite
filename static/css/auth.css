@@ -1,0 +1,61 @@
+/* ---- AUTH: halaman Login & Register (pakai variable dari static.css) ---- */
+
+/* Footer menempel di bawah pada halaman auth (frame Figma mobile = tinggi layar penuh) */
+body:has(.auth) { min-height: 100vh; display: flex; flex-direction: column; }
+body:has(.auth) > main { flex: 1; }
+
+.auth {
+  max-width: 1080px;              /* 1040px konten + 2 x 20px padding → konten 200px dari tepi di 1440px */
+  margin: 0 auto;
+  padding: 72px 20px 76px;        /* bawah +4px: tinggi main di Figma desktop = 656/852px (login/register) */
+  box-sizing: border-box;
+}
+
+.auth__title {
+  margin: 0;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.auth__subtitle {
+  margin: 0;
+  font-size: 28px;                /* .p1 */
+  font-weight: 600;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink-dark) 70%, transparent);
+}
+
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: var(--gap-header);
+}
+.auth__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;       /* tombol tidak melebar penuh */
+  gap: 4px;
+  margin-top: 28px;              /* 16px gap form + 28px = 44px dari field terakhir */
+}
+
+.auth__switch {
+  margin: 0;
+  font-size: 20px;                /* .p3 */
+  font-weight: 600;
+  line-height: 1.5;
+}
+.auth__switch a { color: var(--line); text-decoration: none; }
+.auth__switch a:hover,
+.auth__switch a:focus-visible { text-decoration: underline; }
+
+/* ---- MOBILE ---- */
+@media (max-width: 768px) {
+  .auth { padding: 40px 20px 48px; }
+  .auth__title { font-size: 36px; }
+  .auth__subtitle { font-size: 20px; }  /* .p3 */
+  .auth__form { gap: 10px; margin-top: 24px; }
+  .auth__actions { margin-top: 14px; }
+  .auth__form > .input:has(+ .auth__actions) .input__help { margin-bottom: -1px; }
+  .auth__switch { font-size: 16px; }    /* .p4 */
+}
