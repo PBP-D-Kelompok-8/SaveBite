@@ -36,7 +36,7 @@
               {% for error in field.errors %}
                 <li>
                   <a href="#{{ field.id_for_label }}" class="request-board__error-link">
-                    {{ field.label }}: {{ error }}
+                    {% if field.name == 'title' %}Judul Permintaan{% elif field.name == 'food_item' %}Bahan Makanan{% elif field.name == 'quantity' %}Jumlah{% elif field.name == 'unit' %}Satuan{% elif field.name == 'description' %}Deskripsi{% elif field.name == 'location' %}Lokasi{% else %}{{ field.label }}{% endif %}: {{ error }}
                   </a>
                 </li>
               {% endfor %}

@@ -46,30 +46,18 @@
 
 /* Toast notifications (shared _messages.html) */
 .request-board__toasts {
-  position: fixed;
-  left: 16px;
-  right: 16px;
-  bottom: max(16px, env(safe-area-inset-bottom));
-  z-index: 30;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* Informational only: the floating stack must never swallow a click on a control. */
-  pointer-events: none;
+  margin-bottom: 24px;
+  width: 100%;
 }
 
 .request-board__toasts .request-board__alert {
   margin: 0;
   overflow-wrap: anywhere;
-  box-shadow: 0 8px 24px rgba(35, 54, 26, 0.18);
-}
-
-@media (min-width: 768px) {
-  .request-board__toasts {
-    left: auto;
-    width: min(420px, calc(100vw - 32px));
-  }
+  box-shadow: 0 4px 12px rgba(35, 54, 26, 0.08);
 }
 
 /* Alert banner and messages */
@@ -553,10 +541,29 @@
   cursor: pointer;
 }
 
+/* Primary CTA button scoped to Board (D03 contrast fix) */
+.request-board .btn--primary {
+  --btn-fill: linear-gradient(90deg, var(--ink-dark) 0%, var(--accent-dark-green) 50%, var(--line) 100%);
+}
+
 .request-board__delete-summary:focus-visible,
-.request-board__delete-cancel:focus-visible {
-  outline: 2px solid var(--accent-green);
+.request-board__delete-cancel:focus-visible,
+.request-board__delete-confirm:focus-visible {
+  outline: 2px solid var(--accent-dark-green);
   outline-offset: 2px;
+}
+
+.request-board__delete-summary:focus,
+.request-board__delete-cancel:focus,
+.request-board__delete-confirm:focus {
+  outline: 2px solid var(--accent-dark-green);
+  outline-offset: 2px;
+}
+
+.request-board__delete-summary:focus:not(:focus-visible),
+.request-board__delete-cancel:focus:not(:focus-visible),
+.request-board__delete-confirm:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .request-board__delete-panel {

@@ -5,7 +5,9 @@ import re
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 from django.contrib.auth import SESSION_KEY, get_user_model
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db import connection
 from django.template.response import TemplateResponse
 from django.test import Client, TestCase
@@ -13,6 +15,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils.dateparse import parse_datetime
 from django.utils.html import escape, strip_tags
+from django.utils.translation import get_language, override
 
 from request_board.forms import RequestForm
 from request_board.models import Request, RequestOffer
@@ -1902,3 +1905,118 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
         for actor in clients:
             with self.subTest(actor=actor):
                 self.assertEqual(profiles[(actor, 1)], profiles[(actor, 20)])
+
+
+class BoardIndonesianErrorRenderingTests(TestCase):
+    """D02: localized errors from real forms, routes and CSRF-protected POSTs."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.password = "Synthetic-D02-password-847!"
+        cls.actor = get_user_model().objects.create_user(
+            username="d02-owner", password=cls.password,
+        )
+        cls.inactive = get_user_model().objects.create_user(
+            username="d02-inactive", password=cls.password, is_active=False,
+        )
+        cls.login_url = reverse("request_board:login")
+        cls.create_url = reverse("request_board:request_create")
+
+    def csrf_token(self, client, url):
+        response = client.get(url)
+        self.assertEqual(response.status_code, 200)
+        return next(attrs["value"] for attrs in LoginMarkup(response.content.decode()).attributes("input")
+                    if attrs.get("name") == "csrfmiddlewaretoken")
+
+    def test_create_errors_render_indonesian_messages_with_original_validation_codes(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.actor)
+        token = self.csrf_token(client, self.create_url)
+        valid = {"title": "Beras warga", "food_item": "Beras", "quantity": "2.50", "unit": "kg"}
+        required = "Kolom ini wajib diisi."
+        cases = [
+            ({}, {name: ("required", required) for name in valid}),
+            ({**valid, "quantity": "abc"}, {"quantity": ("invalid", "Masukkan nilai yang valid.")}),
+            ({**valid, "quantity": "0"}, {"quantity": ("min_value", "Pastikan nilai minimal 0.01.")}),
+            ({**valid, "quantity": "1234567.89"}, {"quantity": ("max_digits", "Gunakan paling banyak 8 digit.")}),
+            ({**valid, "quantity": "1.234"}, {"quantity": ("max_decimal_places", "Gunakan paling banyak 2 angka di belakang koma.")}),
+            ({**valid, "quantity": "1234567"}, {"quantity": ("max_whole_digits", "Gunakan paling banyak 6 digit sebelum koma.")}),
+            ({**valid, "unit": "invalid"}, {"unit": ("invalid_choice", "Pilih salah satu pilihan yang tersedia.")}),
+            ({**valid, "title": "a\x00b"}, {"title": ("null_characters_not_allowed", "Karakter null tidak diperbolehkan.")}),
+        ]
+        for name, limit in [("title", 120), ("food_item", 120), ("location", 120), ("description", 1000)]:
+            cases.append(({**valid, name: "x" * (limit + 1)},
+                          {name: ("max_length", f"Gunakan paling banyak {limit} karakter.")}))
+        before = list(Request.objects.values()), list(RequestOffer.objects.values())
+
+        for data, expected in cases:
+            with self.subTest(fields=expected):
+                response = client.post(self.create_url, {**data, "csrfmiddlewaretoken": token})
+                self.assertEqual(response.status_code, 200)
+                self.assertTemplateUsed(response, "request_board/request_form.html")
+                form = response.context["form"]
+                self.assertEqual(set(form.errors), set(expected))
+                for name, (code, message) in expected.items():
+                    self.assertEqual([error.code for error in form.errors.as_data()[name]], [code])
+                    self.assertEqual(list(form.errors[name]), [message])
+                    # Both the linked summary and inline field error must render the backend message.
+                    self.assertContains(response, escape(message), count=2 * len(expected) if data == {} else 2)
+                self.assertEqual((list(Request.objects.values()), list(RequestOffer.objects.values())), before)
+
+    def test_login_required_and_null_character_errors_are_indonesian_without_session(self):
+        client = Client(enforce_csrf_checks=True)
+        token = self.csrf_token(client, self.login_url)
+        for data, names, message in [
+            ({}, ["username", "password"], "Kolom ini wajib diisi."),
+            ({"username": "a\x00b", "password": self.password}, ["username"], "Karakter null tidak diperbolehkan."),
+        ]:
+            with self.subTest(fields=names):
+                response = client.post(self.login_url, {**data, "csrfmiddlewaretoken": token})
+                self.assertEqual(response.status_code, 200)
+                self.assertTemplateUsed(response, "request_board/login.html")
+                form = response.context_data["form"]
+                self.assertEqual(set(form.errors), set(names))
+                for name in names:
+                    self.assertEqual(list(form.errors[name]), [message])
+                self.assertContains(response, message, count=len(names))
+                self.assertNotIn(SESSION_KEY, client.session)
+
+    def test_login_rejections_share_indonesian_message_and_preserve_safe_next(self):
+        message = "Nama pengguna atau kata sandi tidak benar. Periksa kembali keduanya."
+        for username, password in [(self.actor.username, "wrong"), ("unknown-d02", self.password),
+                                   (self.inactive.username, self.password)]:
+            with self.subTest(username=username):
+                client = Client(enforce_csrf_checks=True)
+                token = self.csrf_token(client, self.login_url)
+                response = client.post(self.login_url, {
+                    "username": username, "password": password, "next": self.create_url,
+                    "csrfmiddlewaretoken": token,
+                })
+                self.assertEqual(response.status_code, 200)
+                form = response.context_data["form"]
+                self.assertEqual(list(form.non_field_errors()), [message])
+                self.assertEqual(form.errors.as_data()["__all__"][0].code, "invalid_login")
+                self.assertEqual(response.context_data["next"], self.create_url)
+                self.assertContains(response, message)
+                self.assertNotContains(response, password)
+                self.assertNotIn(SESSION_KEY, client.session)
+
+    def test_inactive_guard_is_localized_without_changing_default_auth_or_language(self):
+        client = Client(enforce_csrf_checks=True)
+        original_language = get_language()
+        with override("en-us"):
+            response = client.get(self.login_url)
+            form = response.context_data["form"]
+            with self.assertRaises(ValidationError) as caught:
+                form.confirm_login_allowed(self.inactive)
+            self.assertEqual(caught.exception.code, "inactive")
+            self.assertEqual(caught.exception.messages, ["Akun ini tidak aktif."])
+            self.assertIsNone(form.confirm_login_allowed(self.actor))
+            default = AuthenticationForm(data={})
+            self.assertFalse(default.is_valid())
+            self.assertEqual(list(default.errors["username"]), ["This field is required."])
+            self.assertEqual(default.error_messages["inactive"], "This account is inactive.")
+            model_field = Request._meta.get_field("title").formfield()
+            self.assertEqual(model_field.error_messages["required"], "This field is required.")
+            self.assertEqual(get_language(), "en-us")
+        self.assertEqual(get_language(), original_language)
