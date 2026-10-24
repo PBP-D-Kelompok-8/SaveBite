@@ -280,7 +280,6 @@ class FoodRescuePlannerTests(TestCase):
             FoodRescuePlan.objects.filter(nama_bahan='Wortel').exists()
         )
 
-    
     def test_returning_to_ongoing_deletes_existing_food_log(self):
         from jurnal.services import create_log_from_rescue_plan
 
