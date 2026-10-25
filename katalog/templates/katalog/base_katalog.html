@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Katalog Resep Bahan Sisa | SaveBite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/button.css' %}">
+<link rel="stylesheet" href="{% static 'css/navbar.css' %}">
+<link rel="stylesheet" href="{% static 'css/footer.css' %}">
+<link rel="stylesheet" href="{% static 'katalog/css/katalog.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="kat-page">
+  {% if messages %}
+    <div class="kat-messages" role="status" aria-live="polite">
+      {% for message in messages %}
+        <p class="kat-message">{{ message }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% block katalog_content %}{% endblock %}
+  <p class="kat-credit">Data resep disediakan oleh <a href="https://www.themealdb.com/" target="_blank" rel="noopener noreferrer">TheMealDB</a>.</p>
+</div>
+<div id="kat-toast" class="kat-toast" role="status" aria-live="polite" hidden></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'katalog/js/katalog.js' %}" defer></script>
+{% endblock %}

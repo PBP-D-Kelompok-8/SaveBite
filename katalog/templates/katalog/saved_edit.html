@@ -1,0 +1,26 @@
+{% extends "katalog/base_katalog.html" %}
+
+{% block katalog_content %}
+<section class="kat-form-page">
+  <a class="kat-back-link" href="{% url 'katalog:saved_list' %}">← Kembali ke resep tersimpan</a>
+  <div class="kat-panel">
+    <p class="kat-eyebrow">CATATAN PRIBADI</p>
+    <h1>Edit catatan resep</h1>
+    <h2>{{ recipe.name }}</h2>
+    <form method="post" id="kat-edit-form" class="kat-edit-form">
+      {% csrf_token %}
+      <div class="kat-field-group">
+        {{ form.note.label_tag }}
+        {{ form.note }}
+        {% for error in form.note.errors %}<p class="kat-form-error">{{ error }}</p>{% endfor %}
+      </div>
+      <p class="kat-muted">Maksimal 500 karakter. Catatan ini hanya untuk akunmu.</p>
+      <p id="kat-edit-status" class="kat-status" role="status" aria-live="polite"></p>
+      <div class="kat-search-actions">
+        <button class="kat-button" type="submit">Simpan perubahan</button>
+        <a class="kat-button kat-button--outline" href="{% url 'katalog:saved_list' %}">Kembali ke daftar</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
