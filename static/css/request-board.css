@@ -247,6 +247,14 @@
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25);
 }
 
+/* Target field scroll clearance for create form error links (T4-06-V01) */
+.request-board .request-board__form-card .request-board__form .request-board__form-group input,
+.request-board .request-board__form-card .request-board__form .request-board__form-group select,
+.request-board .request-board__form-card .request-board__form .request-board__form-group textarea {
+  scroll-margin-top: 32px;
+  scroll-margin-block-start: 32px;
+}
+
 /* Error lists */
 .request-board .errorlist {
   list-style: none;
