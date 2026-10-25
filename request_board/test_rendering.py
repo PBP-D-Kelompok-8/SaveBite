@@ -9,6 +9,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import connection
+from django.template.loader import get_template
 from django.template.response import TemplateResponse
 from django.test import Client, TestCase
 from django.test.utils import CaptureQueriesContext
@@ -259,6 +260,143 @@ class BoardLoginRenderingTests(TestCase):
                             for attrs in markup.attributes("input")))
         self.assertNotContains(response, "<script>alert(1)</script>")
         self.assertContains(response, escape(next_url))
+
+
+class BoardDocumentLanguageTests(TestCase):
+    """LANG: document language through production templates and middleware."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.password = "Synthetic-LANG-password-847!"
+        cls.owner = get_user_model().objects.create_user(
+            username="lang-owner", password=cls.password,
+        )
+        Request.objects.create(owner=cls.owner, title="Beras warga", food_item="Beras",
+                               quantity=1, unit="kg")
+        cls.board_url = reverse("request_board:request_board")
+        cls.login_url = reverse("request_board:login")
+        cls.create_url = reverse("request_board:request_create")
+
+    def setUp(self):
+        self.client = Client(enforce_csrf_checks=True)
+
+    def csrf_token(self, response):
+        tokens = [attrs for attrs in LoginMarkup(response.content.decode()).attributes("input")
+                  if attrs.get("name") == "csrfmiddlewaretoken"]
+        self.assertEqual(len(tokens), 1)
+        self.assertEqual(tokens[0].get("type"), "hidden")
+        self.assertTrue(tokens[0].get("value"))
+        self.assertIn("csrftoken", self.client.cookies)
+        return tokens[0]["value"]
+
+    def login_owner(self):
+        page = self.client.get(self.login_url)
+        self.assertEqual(page.status_code, 200)
+        response = self.client.post(self.login_url, {
+            "username": self.owner.username, "password": self.password,
+            "csrfmiddlewaretoken": self.csrf_token(page),
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], self.board_url)
+        self.assertEqual(self.client.session[SESSION_KEY], str(self.owner.pk))
+
+    def assert_board_document(self, response, template):
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, template)
+        self.assertTemplateUsed(response, "base.html")
+        markup = LoginMarkup(response.content.decode())
+        documents = markup.attributes("html")
+        self.assertEqual(len(documents), 1)
+        self.assertEqual(documents[0].get("lang"), "id")
+        roots = [attrs for _, attrs in markup.elements
+                 if "request-board" in attrs.get("class", "").split()]
+        self.assertEqual(len(roots), 1)
+        self.assertEqual(roots[0].get("lang"), "id")
+
+    def test_guest_board_document_is_indonesian(self):
+        response = self.client.get(self.board_url)
+
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
+        self.assert_board_document(response, "request_board/index.html")
+
+    def test_owner_board_document_is_indonesian(self):
+        self.login_owner()
+
+        response = self.client.get(self.board_url)
+
+        self.assertEqual(response.wsgi_request.user.pk, self.owner.pk)
+        self.assert_board_document(response, "request_board/index.html")
+
+    def test_login_get_document_is_indonesian(self):
+        response = self.client.get(self.login_url)
+
+        self.assertFalse(response.context_data["form"].is_bound)
+        self.assertNotIn(SESSION_KEY, self.client.session)
+        self.assert_board_document(response, "request_board/login.html")
+
+    def test_invalid_login_document_is_indonesian(self):
+        page = self.client.get(self.login_url)
+        self.assertEqual(page.status_code, 200)
+
+        response = self.client.post(self.login_url, {
+            "username": self.owner.username, "password": "incorrect-LANG-password",
+            "csrfmiddlewaretoken": self.csrf_token(page),
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context_data["form"].is_bound)
+        self.assertTrue(response.context_data["form"].non_field_errors())
+        self.assertNotIn(SESSION_KEY, self.client.session)
+        self.assert_board_document(response, "request_board/login.html")
+
+    def test_create_get_document_is_indonesian(self):
+        self.login_owner()
+
+        response = self.client.get(self.create_url)
+
+        self.assertEqual(response.wsgi_request.user.pk, self.owner.pk)
+        self.assertFalse(response.context_data["form"].is_bound)
+        self.assert_board_document(response, "request_board/request_form.html")
+
+    def test_invalid_create_document_is_indonesian(self):
+        self.login_owner()
+        page = self.client.get(self.create_url)
+        self.assertEqual(page.status_code, 200)
+        before = list(Request.objects.values()), list(RequestOffer.objects.values())
+
+        response = self.client.post(self.create_url, {
+            "csrfmiddlewaretoken": self.csrf_token(page),
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.wsgi_request.user.pk, self.owner.pk)
+        self.assertTrue(response.context_data["form"].is_bound)
+        self.assertTrue(response.context_data["form"].errors)
+        self.assertEqual((list(Request.objects.values()), list(RequestOffer.objects.values())), before)
+        self.assert_board_document(response, "request_board/request_form.html")
+
+
+class DocumentLanguageControlTests(TestCase):
+    def assert_document_language(self, html, expected):
+        documents = LoginMarkup(html).attributes("html")
+        self.assertEqual(len(documents), 1)
+        self.assertEqual(documents[0].get("lang"), expected)
+
+    def test_base_without_override_defaults_to_english(self):
+        response = self.client.get(reverse("landing_page"))
+        self.assertEqual(response.status_code, 200)
+        template = get_template("base.html")
+
+        html = template.render({}, request=response.wsgi_request)
+
+        self.assert_document_language(html, "en")
+
+    def test_landing_document_remains_indonesian(self):
+        response = self.client.get(reverse("landing_page"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "index.html")
+        self.assert_document_language(response.content.decode(), "id")
 
 
 class BoardMarkup(HTMLParser):
