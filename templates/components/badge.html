@@ -1,0 +1,34 @@
+{% load static %}
+{% comment %}
+  Komponen Badge status (Figma: "Badge status" → Property 1=Default | Variant2)
+
+  Cara pakai:
+    {% include 'components/badge.html' with status="ongoing" %}
+    {% include 'components/badge.html' with status="success" variant="solid" %}
+    {% include 'components/badge.html' with status="failed" label="Gagal" %}
+
+  Parameter:
+    status   ongoing (default) | success | failed
+    variant  soft (default, Figma "Default") | solid (Figma "Variant2")
+    label    (opsional) menimpa teks bawaan: "On Going" / "Success" / "Failed"
+
+  Catatan: tautkan css/badge.css di {% block extra_css %} halaman yang memakai badge ini.
+
+  Ikon yang dipakai (export Figma, 16x16): icons/badge-ongoing.svg, icons/badge-success.svg, icons/badge-failed.svg
+{% endcomment %}
+{% if status == "success" %}
+<span class="badge badge--success badge--{{ variant|default:'soft' }}">
+  <span class="badge__icon" style="--icon: url('{% static 'icons/badge-success.svg' %}')" aria-hidden="true"></span>
+  <span class="badge__label">{{ label|default:"Success" }}</span>
+</span>
+{% elif status == "failed" %}
+<span class="badge badge--failed badge--{{ variant|default:'soft' }}">
+  <span class="badge__icon" style="--icon: url('{% static 'icons/badge-failed.svg' %}')" aria-hidden="true"></span>
+  <span class="badge__label">{{ label|default:"Failed" }}</span>
+</span>
+{% else %}
+<span class="badge badge--ongoing badge--{{ variant|default:'soft' }}">
+  <span class="badge__icon" style="--icon: url('{% static 'icons/badge-ongoing.svg' %}')" aria-hidden="true"></span>
+  <span class="badge__label">{{ label|default:"On Going" }}</span>
+</span>
+{% endif %}
