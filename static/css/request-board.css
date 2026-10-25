@@ -546,6 +546,12 @@
   --btn-fill: linear-gradient(90deg, var(--ink-dark) 0%, var(--accent-dark-green) 50%, var(--line) 100%);
 }
 
+.request-board__delete-summary,
+.request-board__delete-cancel,
+.request-board__delete-confirm {
+  scroll-margin-block: 8px;
+}
+
 .request-board__delete-summary:focus-visible,
 .request-board__delete-cancel:focus-visible,
 .request-board__delete-confirm:focus-visible {

@@ -9,7 +9,7 @@
     </time>
   </div>
 
-  <h2 class="request-board__card-title">{{ item.title }}</h2>
+  <h2 id="request-title-{{ item.pk }}" class="request-board__card-title">{{ item.title }}</h2>
 
   <div class="request-board__card-meta">
     <div class="request-board__meta-item">
@@ -87,14 +87,14 @@
 
   {% if user.is_authenticated and user.id == item.owner_id %}
     <details class="request-board__delete">
-      <summary class="request-board__delete-summary">Hapus</summary>
+      <summary class="request-board__delete-summary" id="delete-summary-{{ item.pk }}" aria-describedby="delete-warning-{{ item.pk }}">Hapus</summary>
       <div class="request-board__delete-panel">
-        <p class="request-board__delete-warning">
-          Hapus <strong>{{ item.title }}</strong>? Tindakan ini tidak dapat dibatalkan.
+        <p id="delete-warning-{{ item.pk }}" class="request-board__delete-warning">
+          Hapus <strong id="delete-target-{{ item.pk }}">{{ item.title }}</strong>? Tindakan ini tidak dapat dibatalkan.
         </p>
         <form method="post" action="{% url 'request_board:request_delete' item.pk %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn--secondary request-board__action request-board__delete-confirm">Ya, hapus</button>
+          <button type="submit" id="delete-confirm-{{ item.pk }}" class="btn btn--secondary request-board__action request-board__delete-confirm" aria-describedby="delete-warning-{{ item.pk }}">Ya, hapus</button>
         </form>
         <a href="{% url 'request_board:request_board' %}" class="request-board__delete-cancel">Batal</a>
       </div>
