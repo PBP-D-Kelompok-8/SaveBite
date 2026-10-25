@@ -76,6 +76,24 @@ class BoardLoginRenderingTests(TestCase):
             "csrfmiddlewaretoken": token,
         }
 
+    def test_navbar_login_on_landing_and_board_opens_production_login(self):
+        client = Client(enforce_csrf_checks=True)
+        for page_url in (reverse("landing_page"), self.board_url):
+            with self.subTest(page_url=page_url):
+                response = client.get(page_url)
+                self.assertEqual(response.status_code, 200)
+                markup = BoardMarkup(response.content.decode())
+                links = [node for node in markup.select("a")
+                         if node["text"].strip() == "Login"
+                         and any(parent["tag"] == "nav"
+                                 and parent["attrs"].get("aria-label") == "Navigasi utama"
+                                 for parent in node["parents"])]
+                self.assertEqual(len(links), 1)
+                self.assertEqual(links[0]["attrs"].get("href"), self.login_url)
+
+                login, login_markup, _ = self.login_page(client)
+                self.assert_labelled_fields(login, login_markup)
+
     def assert_labelled_fields(self, response, markup):
         html = response.content.decode()
         for name in ("username", "password"):

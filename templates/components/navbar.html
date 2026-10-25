@@ -19,7 +19,8 @@
         <li>{% include 'components/button.html' with label="Page 4" type="quaternary" color="bright" %}</li>
       </ul>
       <div class="navbar__actions">
-        {% include 'components/button.html' with label="Login" type="secondary" color="blue" %}
+        {% url 'request_board:login' as navbar_login_url %}
+        {% include 'components/button.html' with label="Login" type="secondary" color="blue" href=navbar_login_url %}
         {% include 'components/button.html' with label="Daftar" type="tertiary" color="bright" %}
       </div>
     </nav>
