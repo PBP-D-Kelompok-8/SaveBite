@@ -1,0 +1,135 @@
+/* ==========================================================================
+   SaveBite — Form Modal
+   Sumber: Figma > Design System > Form Modal (node 267:631)
+   Butuh: static.css (token warna), button.css (.btn), input.css (field di dalam modal).
+   Mobile-first: ukuran mobile = default, ukuran desktop mulai 768px
+   ========================================================================== */
+
+.modal {
+  /* Mode Mobile (Desktop=False) */
+  --modal-w: 360px;
+  --modal-pad: 24px;
+  --modal-gap: 16px;
+  --modal-radius: 24px;
+
+  box-sizing: border-box;
+  width: min(var(--modal-w), calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid var(--dark-green);
+  border-radius: var(--modal-radius);
+  background: var(--ink-light);
+  color: var(--ink-dark);
+  font-family: var(--font-family-main, "Poppins", system-ui, sans-serif);
+  overflow: hidden; /* sudut membulat tetap rapi; yang scroll hanya .modal__content */
+}
+
+/* Mode Desktop (Desktop=True). Tinggi di Figma fix 880px; di sini mengikuti isi. */
+@media (min-width: 768px) {
+  .modal {
+    --modal-w: 580px;
+    --modal-pad: 32px;
+    --modal-gap: 24px;
+    --modal-radius: var(--card-radius, 32px);
+  }
+}
+
+/* Jangan set display di .modal (tanpa [open]) — dialog tertutup harus tetap tersembunyi. */
+.modal[open] {
+  display: block;
+}
+
+
+.modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--modal-gap);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 0;
+  max-height: calc(100dvh - 34px);
+  margin: 0;
+  padding: var(--modal-pad);
+}
+
+
+/* ---- Header: judul + tombol tutup ---- */
+.modal__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal__title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  font-size: 24px; /* Heading/H7 */
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.modal__close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  padding: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-dark);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.modal__close:hover { opacity: 0.7; }
+.modal__close:focus-visible {
+  outline: 3px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+.modal__close-icon {
+  width: 24px;
+  height: 24px;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+          mask: var(--icon) center / contain no-repeat;
+}
+
+/* ---- Content: slot untuk field. Kalau kepanjangan, bagian ini yang scroll. ---- */
+.modal__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-card, 16px);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+
+/* ---- Actions: mobile bertumpuk (Simpan di atas, lebar penuh), desktop berdampingan rata kanan.
+   Urutan DOM: Batal, Simpan — Batal dulu supaya fokus keyboard awal aman. ---- */
+.modal__actions {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: var(--gap-button, 12px);
+}
+@media (min-width: 768px) {
+  .modal__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+  }
+}
+
+/* Latar belakang: tidak ada di Figma — pilihan sendiri, sama dengan delete-confirm. */
+dialog.modal::backdrop {
+  background: rgb(35 54 26 / 0.55);
+}
+
+/* Kunci scroll halaman selama modal terbuka */
+body:has(dialog.modal[open]) {
+  overflow: hidden;
+}

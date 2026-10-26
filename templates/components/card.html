@@ -1,33 +1,19 @@
-<section class="card-list">
-
-    <article class="card card--green">
-      <div class="card__image"></div>
-      <h3 class="card__title">Heading 3</h3>
-      <p class="card__text">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-      <div class="card__actions">
-        {% include 'components/button.html' with label="Button" type="secondary" color="blue" icon="icons/folder-minus.svg" %}
-        {% include 'components/button.html' with label="Button" type="tertiary" color="bright" icon="icons/folder-minus.svg" %}
-      </div>
-    </article>
-  
-    <article class="card card--dark">
-      <div class="card__image"></div>
-      <h3 class="card__title">Heading 3</h3>
-      <p class="card__text">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-      <div class="card__actions">
-        {% include 'components/button.html' with label="Button" type="secondary" color="blue" icon="icons/folder-minus.svg" %}
-        {% include 'components/button.html' with label="Button" type="tertiary" color="bright" icon="icons/folder-minus.svg" %}
-      </div>
-    </article>
-  
-    <article class="card card--blue">
-      <div class="card__image"></div>
-      <h3 class="card__title">Heading 3</h3>
-      <p class="card__text">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-      <div class="card__actions">
-        {% include 'components/button.html' with label="Button" type="secondary" color="dark-green" icon="icons/folder-minus.svg" %}
-        {% include 'components/button.html' with label="Button" type="tertiary" color="bright" icon="icons/folder-minus.svg" %}
-      </div>
-    </article>
-  
-  </section>
+﻿{% load static %}
+{% comment %}
+Reusable card. Parameters: title, text, image, image_alt, variant (green|dark|blue),
+badge_status, badge_label, action_label, action_href, second_action_label, second_action_href.
+{% endcomment %}
+<article class="card card--{{ variant|default:'green' }}">
+  {% if image %}
+  <div class="card__image"><img src="{{ image }}" alt="{{ image_alt|default:title }}" loading="lazy"></div>
+  {% endif %}
+  {% if badge_status %}{% include 'components/badge.html' with status=badge_status label=badge_label only %}{% endif %}
+  {% if title %}<h3 class="card__title">{{ title }}</h3>{% endif %}
+  {% if text %}<p class="card__text">{{ text }}</p>{% endif %}
+  {% if action_label or second_action_label %}
+  <div class="card__actions">
+    {% if action_label %}{% include 'components/button.html' with label=action_label type='secondary' color='blue' href=action_href %}{% endif %}
+    {% if second_action_label %}{% include 'components/button.html' with label=second_action_label type='tertiary' color='bright' href=second_action_href %}{% endif %}
+  </div>
+  {% endif %}
+</article>
