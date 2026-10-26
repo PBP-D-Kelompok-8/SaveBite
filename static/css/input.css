@@ -1,104 +1,132 @@
-/* ---- INPUT (pakai variable dari static.css) ----
-   Dari Figma "Inputs": Type (TextInput/DropDown) x State (Default/OnClick/Incorrect) x Desktop/Mobile */
 
-:root {
-  --error: #AD0003;
-  --input-height: 56px;
-  --input-font-size: 24px;
-  --input-chevron-size: 24px;
-}
+/* ==========================================================================
+   SaveBite — Input & Form Field
+   Depends on tokens from static.css
+   ========================================================================== */
 
-.input {
+.form-field {
+  --field-border: var(--dark-green);
+  --field-bg: var(--ink-light);
+  --field-text: var(--ink-dark);
+  --field-placeholder: #777d72;
+
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
 }
 
-.input__label {
-  font-size: 20px;                /* .p3 */
+/* Label */
+
+.form-field__label {
+  color: var(--field-text);
+  font-family: var(--font-family-main, "Poppins", system-ui, sans-serif);
+  font-size: 14px;
   font-weight: 600;
-  line-height: 1.5;
-  color: var(--ink-dark);
-  margin-bottom: 4px;
+  line-height: 1.4;
 }
 
-.input__control { position: relative; }
+.form-field__required {
+  color: #b42318;
+  margin-left: 2px;
+}
 
-.input__field {
+/* Input control */
+
+.form-field__control {
+  box-sizing: border-box;
   display: block;
   width: 100%;
-  height: var(--input-height);
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0 12px;
-  border: 2px solid var(--ink-dark);
-  border-radius: var(--button-radius, 16px);
-  background-color: var(--ink-light);
-  font-family: var(--font-family-main);
-  font-size: var(--input-font-size);
-  font-weight: 600;
+  min-height: 48px;
+  padding: 12px 16px;
+
+  border: 1px solid var(--field-border);
+  border-radius: var(--input-radius, 12px);
+
+  background: var(--field-bg);
+  color: var(--field-text);
+  font: inherit;
+  font-size: 14px;
   line-height: 1.5;
-  color: var(--ink-dark);
-  outline: none;
+
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
 }
-.input__field::placeholder {
-  color: color-mix(in srgb, var(--ink-dark) 60%, transparent);
+
+.form-field__control::placeholder {
+  color: var(--field-placeholder);
   opacity: 1;
 }
 
-/* State OnClick */
-.input__field:focus { border-color: var(--line); }
+.form-field__control:hover:not(:disabled):not(:focus) {
+  border-color: var(--dark-green);
+}
 
-/* State Incorrect */
-.input--incorrect .input__field,
-.input--incorrect .input__field:focus { border-color: var(--error); }
+.form-field__control:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
 
-/* DropDown */
-.input__field--select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 64px;
+.form-field__control:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: #f0f0ec;
+}
+
+/* Textarea */
+
+textarea.form-field__control {
+  min-height: 112px;
+  resize: vertical;
+}
+
+/* Select */
+
+select.form-field__control {
   cursor: pointer;
 }
-.input__chevron {
-  position: absolute;
-  top: 50%;
-  right: 30px;
-  width: var(--input-chevron-size);
-  height: var(--input-chevron-size);
-  transform: translateY(-50%);
-  background-color: var(--ink-dark);
-  -webkit-mask: var(--icon) center / contain no-repeat;
-  mask: var(--icon) center / contain no-repeat;
-  pointer-events: none;
-}
 
-/* Teks bantuan & error (Figma hanya mendefinisikan help text; style error = asumsi, lihat catatan) */
-.input__help,
-.input__error {
+/* Helper and error text */
+
+.form-field__hint,
+.form-field__error {
   margin: 0;
-  font-size: 20px;                /* .p3 */
-  font-weight: 600;
+  font-size: 12px;
   line-height: 1.5;
 }
-.input__help { color: color-mix(in srgb, var(--ink-dark) 70%, transparent); }
-.input__error { color: var(--error); }
 
-/* ---- MOBILE ---- */
-@media (max-width: 768px) {
-  :root {
-    --input-height: 50px;
-    --input-font-size: 20px;
-    --input-chevron-size: 18px;
-  }
-  .input__label { font-size: 16px; margin-bottom: 2px; }   /* .p4 */
-  .input__help { margin-top: 1px; margin-bottom: 3px; }
-  .input__help,
-  .input__error { font-size: 16px; }
-  .input__chevron { right: 26px; }
-  .input__field--select { padding-right: 56px; }
+.form-field__hint {
+  color: var(--field-placeholder);
 }
 
-/* Desktop: dropdown di Figma 4px lebih tinggi dari text input */
-@media (min-width: 769px) {
-  .input__field--select { height: calc(var(--input-height) + 4px); }
+.form-field__error {
+  color: #b42318;
+}
+
+/* Error state */
+
+.form-field--error .form-field__control {
+  border-color: #b42318;
+}
+
+.form-field--error .form-field__control:focus-visible {
+  outline-color: #b42318;
+}
+
+/* Optional compact variant */
+
+.form-field--compact .form-field__control {
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
+/* Respect reduced-motion preferences */
+
+@media (prefers-reduced-motion: reduce) {
+  .form-field__control {
+    transition: none;
+  }
 }

@@ -1,0 +1,53 @@
+
+{% comment %}
+  Reusable Form Field
+
+  Parameters:
+    id          : input ID
+    name        : form field name
+    label       : visible label
+    type        : text, number, email, date, etc.
+    placeholder : placeholder text
+    value       : initial value
+    required    : True/False
+    disabled    : True/False
+    hint        : helper text
+    error       : validation message
+{% endcomment %}
+
+<div class="form-field{% if error %} form-field--error{% endif %}">
+  {% if label %}
+    <label class="form-field__label" for="{{ id }}">
+      {{ label }}
+      {% if required %}
+        <span class="form-field__required"
+              aria-hidden="true">*</span>
+      {% endif %}
+    </label>
+  {% endif %}
+
+  <input
+    class="form-field__control"
+    type="{{ type|default:'text' }}"
+    id="{{ id }}"
+    name="{{ name }}"
+    {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+    {% if value != None %}value="{{ value }}"{% endif %}
+    {% if required %}required{% endif %}
+    {% if disabled %}disabled{% endif %}
+    {% if error %}aria-invalid="true"{% endif %}
+    {% if error %}aria-describedby="{{ id }}-error"{% elif hint %}aria-describedby="{{ id }}-hint"{% endif %}
+  >
+
+  {% if hint and not error %}
+    <p class="form-field__hint" id="{{ id }}-hint">
+      {{ hint }}
+    </p>
+  {% endif %}
+
+  {% if error %}
+    <p class="form-field__error" id="{{ id }}-error">
+      {{ error }}
+    </p>
+  {% endif %}
+</div>
