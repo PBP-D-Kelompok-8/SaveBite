@@ -1,0 +1,61 @@
+from decimal import Decimal
+
+from django import forms
+from django.contrib.auth.forms import AuthenticationForm
+
+from request_board.models import Request
+
+
+BOARD_FIELD_ERRORS = {
+    "required": "Kolom ini wajib diisi.",
+    "invalid": "Masukkan nilai yang valid.",
+    "invalid_choice": "Pilih salah satu pilihan yang tersedia.",
+    "min_value": "Pastikan nilai minimal %(limit_value)s.",
+    "max_length": "Gunakan paling banyak %(limit_value)s karakter.",
+    "max_digits": "Gunakan paling banyak %(max)s digit.",
+    "max_decimal_places": "Gunakan paling banyak %(max)s angka di belakang koma.",
+    "max_whole_digits": "Gunakan paling banyak %(max)s digit sebelum koma.",
+    "null_characters_not_allowed": "Karakter null tidak diperbolehkan.",
+}
+
+
+class RequestForm(forms.ModelForm):
+    quantity = forms.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+    )
+    description = forms.CharField(
+        max_length=1000,
+        required=False,
+        widget=forms.Textarea,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Instance fields also translate errors from native/model validators by code.
+        for field in self.fields.values():
+            field.error_messages.update(BOARD_FIELD_ERRORS)
+
+    class Meta:
+        model = Request
+        fields = [
+            "title",
+            "food_item",
+            "quantity",
+            "unit",
+            "description",
+            "location",
+        ]
+
+
+class BoardAuthenticationForm(AuthenticationForm):
+    error_messages = {
+        "invalid_login": "Nama pengguna atau kata sandi tidak benar. Periksa kembali keduanya.",
+        "inactive": "Akun ini tidak aktif.",
+    }
+
+    def __init__(self, request=None, *args, **kwargs):
+        super().__init__(request, *args, **kwargs)
+        for field in self.fields.values():
+            field.error_messages.update(BOARD_FIELD_ERRORS)

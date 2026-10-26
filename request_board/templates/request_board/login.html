@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block html_lang %}id{% endblock %}
+
+{% block title %}Masuk — Food Rescue Request Board | SaveBite{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/button.css' %}">
+  <link rel="stylesheet" href="{% static 'css/navbar.css' %}">
+  <link rel="stylesheet" href="{% static 'css/footer.css' %}">
+  <link rel="stylesheet" href="{% static 'css/request-board.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="request-board" lang="id">
+  {% include 'request_board/_messages.html' %}
+  <div class="request-board__login-container">
+    <div class="request-board__login-card">
+      <h1 class="request-board__login-title">Masuk ke Food Rescue Request Board</h1>
+      <p class="request-board__login-subtitle">Masuk dengan akun SaveBite Anda untuk membuat permintaan, menawarkan bahan makanan, atau mengelola permintaan Anda.</p>
+
+      {% if form.non_field_errors %}
+        <style>
+          #login-error {
+            box-sizing: border-box;
+            scroll-margin-top: 16px;
+            margin-bottom: 0;
+          }
+          #login-error ~ .request-board__form {
+            margin-top: 20px;
+          }
+          #login-error:focus,
+          #login-error:focus-within {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+          }
+          #login-error:focus {
+            outline: 3px solid var(--accent-dark-green);
+            outline-offset: -3px;
+          }
+        </style>
+        <div id="login-error" class="request-board__alert request-board__alert--error" role="alert" tabindex="-1" autofocus>
+          {{ form.non_field_errors }}
+        </div>
+        <script>
+          (function () {
+            var err = document.getElementById('login-error');
+            if (err) {
+              err.focus();
+              window.addEventListener('DOMContentLoaded', function () {
+                err.focus();
+              });
+            }
+          })();
+        </script>
+      {% endif %}
+
+      <form method="post" action="{% url 'request_board:login' %}" class="request-board__form">
+        {% csrf_token %}
+        {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+
+        <div class="request-board__form-group">
+          <label for="{{ form.username.id_for_label }}" class="request-board__label">Nama Pengguna</label>
+          {% if form.non_field_errors %}
+            <input type="text" name="username" value="{{ form.username.value|default_if_none:'' }}" autofocus autocapitalize="none" autocomplete="username" maxlength="{{ form.username.field.max_length }}" required id="{{ form.username.id_for_label }}" aria-describedby="login-error{% if form.username.errors %} {{ form.username.auto_id }}_error{% endif %}" aria-invalid="true">
+          {% else %}
+            {{ form.username }}
+          {% endif %}
+          {% if form.username.errors %}
+            <div class="request-board__field-error" role="alert">
+              {{ form.username.errors }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="request-board__form-group">
+          <label for="{{ form.password.id_for_label }}" class="request-board__label">Kata Sandi</label>
+          {{ form.password }}
+          {% if form.password.errors %}
+            <div class="request-board__field-error" role="alert">
+              {{ form.password.errors }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="request-board__form-actions">
+          <button type="submit" class="btn btn--primary">
+            Masuk
+          </button>
+          <a href="{% url 'request_board:request_board' %}" class="btn btn--secondary btn--dark-green">
+            Kembali ke Board
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

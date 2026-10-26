@@ -1,0 +1,11 @@
+{
+  "read_only": true,
+  "database_writes": 0,
+  "connected": false,
+  "exception_type": "OperationalError",
+  "timeout": true,
+  "authentication_failure": false,
+  "refused": false,
+  "recovery": false,
+  "sqlstate": null
+}

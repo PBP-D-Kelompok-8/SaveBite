@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Daftar | SaveBite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/button.css' %}">
+<link rel="stylesheet" href="{% static 'css/navbar.css' %}">
+<link rel="stylesheet" href="{% static 'css/footer.css' %}">
+<link rel="stylesheet" href="{% static 'css/input.css' %}">
+<link rel="stylesheet" href="{% static 'css/auth.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="auth">
+  <h1 class="auth__title">Selamat Datang!</h1>
+  <p class="auth__subtitle">Gabung dengan SaveBite.</p>
+
+  {# Baru tampilan. Logika register belum ada: tombol hanya memuat ulang halaman. Nama field (username, password1, password2) sengaja sama dengan UserCreationForm Django. #}
+  <form class="auth__form" method="post">
+    {% csrf_token %}
+
+    {% include 'components/input.html' with name="username" label="Username" placeholder="Masukkan username" autocomplete="username" help_text="150 characters or fewer. Letters, digits and @/./+/-/_ only." only %}
+    {% include 'components/input.html' with name="password1" label="Password" input_type="password" placeholder="Buat password" autocomplete="new-password" help_text="Your password must contain at least 8 characters." only %}
+    {% include 'components/input.html' with name="password2" label="Password Confirmation" input_type="password" placeholder="Ulangi password" autocomplete="new-password" help_text="Enter the same password as before, for verification." only %}
+
+    <div class="auth__actions">
+      {% include 'components/button.html' with label="Daftar" type="primary" icon_left="icons/door-open-alt.svg" submit=True only %}
+      <p class="auth__switch">Sudah punya akun? <a href="{% url 'login' %}">Login</a></p>
+    </div>
+  </form>
+</section>
+{% endblock %}
