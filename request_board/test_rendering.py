@@ -1972,7 +1972,7 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                 times = markup.select("time", within=card)
                 self.assertEqual(len(times), 21)
                 self.assertEqual([parse_datetime(node["attrs"].get("datetime", ""))
-                                  for node in times[1:]],
+                      for node in times if "request-board__donor-time" in node["attrs"].get("class", "").split()],
                                  [timestamp for timestamp, _, _ in self.expected(item)])
                 self.assertTrue(all(node["text"].strip() for node in times))
 

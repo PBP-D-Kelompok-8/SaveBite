@@ -1,3 +1,4 @@
+{% load static %}
 {% if messages %}
     <div class="request-board__toasts" aria-label="Notifikasi" role="region" data-toast-region>
       {% for message in messages %}
@@ -5,11 +6,18 @@
              class="request-board__toast request-board__alert request-board__alert--{{ message.level_tag|default:'info' }}"
              tabindex="-1"
              {% if message.level_tag == 'error' %}role="alert" aria-live="assertive"{% else %}role="status" aria-live="polite"{% endif %}>
+           <span class="request-board__toast-icon">
+             {% if message.level_tag == 'error' %}
+               <img src="{% static 'request-board/toast-error.svg' %}" alt="">
+             {% elif message.level_tag == 'success' %}
+               <img src="{% static 'request-board/toast-success.svg' %}" alt="">
+             {% else %}
+               <img src="{% static 'request-board/toast-warning.svg' %}" alt="">
+             {% endif %}
+           </span>
            <span>{{ message }}</span>
            <button type="button" class="request-board__toast-close" aria-label="Tutup notifikasi">
-             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
-               <path d="m6 6 12 12M18 6 6 18" />
-             </svg>
+             <img src="{% static 'request-board/close.svg' %}" alt="" width="24" height="24">
            </button>
         </div>
       {% endfor %}
@@ -20,8 +28,11 @@
       if (!region) return;
       region.classList.add('request-board__toasts--dismissible');
       region.querySelectorAll('.request-board__toast-close').forEach(function (button) {
-        button.addEventListener('click', function () {
-          var toast = button.closest('.request-board__toast');
+        var toast = button.closest('.request-board__toast');
+        var lifetime = toast.classList.contains('request-board__alert--success') ? 4000 : 6000;
+        var timer;
+        function dismiss() {
+          window.clearTimeout(timer);
           var hadFocus = toast.contains(document.activeElement);
           var adjacent = toast.nextElementSibling || toast.previousElementSibling;
           toast.remove();
@@ -37,7 +48,21 @@
             }
           }
           if (!region.children.length) region.remove();
+        }
+        function pause() { window.clearTimeout(timer); }
+        function resume() {
+          pause();
+          if (!toast.isConnected || toast.contains(document.activeElement) || toast.matches(':hover')) return;
+          timer = window.setTimeout(dismiss, lifetime);
+        }
+        button.addEventListener('click', dismiss);
+        toast.addEventListener('mouseenter', pause);
+        toast.addEventListener('mouseleave', resume);
+        toast.addEventListener('focusin', pause);
+        toast.addEventListener('focusout', function (event) {
+          if (!toast.contains(event.relatedTarget)) resume();
         });
+        resume();
       });
     })();
   </script>
