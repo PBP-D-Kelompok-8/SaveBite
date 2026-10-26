@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
+    'request_board.apps.RequestBoardConfig',
+    'food_rescue_planner',
+    'jurnal',
     "resep_komunitas.apps.ResepKomunitasConfig",
 ]
 
