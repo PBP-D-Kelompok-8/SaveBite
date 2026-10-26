@@ -1,0 +1,36 @@
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Hapus Resep | SaveBite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/button.css' %}">
+<link rel="stylesheet" href="{% static 'css/resep_komunitas.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="recipe-form-page">
+    <div class="recipe-form-card">
+        <p class="recipes-eyebrow">KONFIRMASI</p>
+        <h1 class="h3">Hapus Resep?</h1>
+
+        <p>
+            Kamu yakin ingin menghapus
+            <strong>{{ recipe.title }}</strong>?
+            Tindakan ini tidak dapat dibatalkan.
+        </p>
+
+        <form method="post" class="recipe-form__actions">
+            {% csrf_token %}
+            <button class="btn btn--primary btn--dark-green" type="submit">
+                Ya, Hapus Resep
+            </button>
+            <a class="btn btn--tertiary btn--dark-green"
+               href="{% url 'resep_komunitas:recipe_detail' recipe.pk %}">
+                Batal
+            </a>
+        </form>
+    </div>
+</section>
+{% endblock %}

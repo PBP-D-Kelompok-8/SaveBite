@@ -1,0 +1,44 @@
+
+<article class="recipe-card">
+    <a
+        class="recipe-card__image-link"
+        href="{% url 'resep_komunitas:recipe_detail' recipe.pk %}"
+        aria-label="Lihat {{ recipe.title }}"
+    >
+        {% if recipe.image_url %}
+            <img
+                class="recipe-card__image"
+                src="{{ recipe.image_url }}"
+                alt="Foto {{ recipe.title }}"
+                loading="lazy"
+            >
+        {% else %}
+            <div class="recipe-card__image recipe-card__image--placeholder">
+                <span>SaveBite</span>
+            </div>
+        {% endif %}
+    </a>
+
+    <div class="recipe-card__content">
+        <h2 class="recipe-card__title">{{ recipe.title }}</h2>
+
+        <div class="recipe-card__meta">
+            <span>{{ recipe.author.username }}</span>
+            <span aria-label="Jumlah star">&#9734; {{ recipe.star_count }}</span>
+        </div>
+
+        <p class="recipe-card__description">
+            {{ recipe.description|truncatewords:18 }}
+        </p>
+
+        <div class="recipe-card__actions">
+            {% url 'resep_komunitas:recipe_detail' recipe.pk as detail_url %}
+            {% include 'components/button.html' with label="Lihat Detail" type="primary" color="dark-green" href=detail_url %}
+
+            {% if user.is_authenticated and user.pk == recipe.author_id %}
+                {% url 'resep_komunitas:recipe_update' recipe.pk as edit_url %}
+                {% include 'components/button.html' with label="Edit" type="secondary" color="blue" href=edit_url %}
+            {% endif %}
+        </div>
+    </div>
+</article>
