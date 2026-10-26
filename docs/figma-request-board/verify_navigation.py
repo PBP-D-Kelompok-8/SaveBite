@@ -49,8 +49,8 @@ with sync_playwright() as playwright:
             assert link.count() == 1 and link.get_attribute('href') == '/board/'
             assert link.is_visible(), f'Request Board card link is hidden at {width}px'
             nav = page.locator('.navbar')
-            page4 = nav.get_by_role('link', name='Page 4', exact=True, include_hidden=True)
-            assert page4.count() == 1 and page4.get_attribute('href') == '#'
+            page4 = nav.get_by_role('button', name='Page 4', exact=True, include_hidden=True)
+            assert page4.count() == 1 and page4.get_attribute('type') == 'button'
             assert nav.locator('a[href="/board/"]').count() == 0
             assert page.locator('.features .feature a[href="/board/"]').count() == 1
             bounds = link.bounding_box()
@@ -64,8 +64,8 @@ with sync_playwright() as playwright:
             page.get_by_role('heading', name='Food Rescue Request Board', exact=True).wait_for(state='visible')
             if width <= 768:
                 page.locator('#navToggle').click()
-            assert page.get_by_role('link', name='Page 4', exact=True).is_visible()
-            report.append({'width': width, 'landing_card_visible': True, 'destination': '/board/', 'navbar_page4_href': '#', 'link_bounds': bounds})
+            assert page.get_by_role('button', name='Page 4', exact=True).is_visible()
+            report.append({'width': width, 'landing_card_visible': True, 'destination': '/board/', 'navbar_page4_type': 'button', 'link_bounds': bounds})
             page.close()
             print(f'PASS landing card navigation and Page 4 navbar at {width}px', flush=True)
     finally:

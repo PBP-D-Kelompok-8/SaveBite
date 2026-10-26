@@ -6,6 +6,8 @@ Implementasi menggunakan template Django (HTML), CSS biasa, serta JavaScript unt
 
 Navigasi landing page mengikuti permintaan terakhir: navbar tetap **Page 4** dengan placeholder semula. Hanya tombol **Jelajahi** di kartu **Food Rescue Request Board** yang mengarah ke `/board/`. Tombol pada kartu tersebut juga tetap tersedia di mobile; kartu fitur lainnya tidak diubah.
 
+Integrasi `origin/main` mempertahankan default bahasa Indonesia dan komponen design system terbaru. Item navbar tanpa tujuan mengikuti komponen baru sebagai tombol `type="button"`. CSS navbar mendukung elemen tombol dan tautan; override gradasi Request Board memakai token `--primary-gradient` yang digunakan design system terbaru. Stylesheet dan script modal, toast, pagination, serta pencarian dari `main` tetap dimuat melalui `base.html`.
+
 - Daftar publik, donor, dan pemilik memakai kartu hijau, badge status, baris detail sejajar, serta pagination.
 - Formulir mencakup enam field, petunjuk pengisian, error per field, dan ringkasan error yang dapat diklik.
 - Penawaran terbaru hanya ditampilkan kepada pemilik permintaan.
