@@ -1,8 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, JsonResponse
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from . import services
@@ -13,69 +12,67 @@ from .models import SavedRecipe
 ERROR_API = "TheMealDB sedang tidak bisa dihubungi. Periksa koneksi lalu coba lagi."
 
 
-def _wants_json(request):
-    """Bedakan submit biasa dengan submit Fetch API berdasarkan header Accept."""
-    return "application/json" in request.headers.get("Accept", "")
+def _search_context(request):
+    """Siapkan hasil pencarian untuk halaman biasa maupun permintaan Fetch."""
+    search_form = SearchForm(request.GET or None)
+    initial_query = request.GET.get("q", "")
+    initial_ingredients = request.GET.get("ingredients", "")
+    meals = []
+    search_error = ""
+    search_performed = "q" in request.GET or "ingredients" in request.GET
+    has_search = bool(initial_query.strip() or initial_ingredients.strip())
+
+    if search_performed and search_form.is_valid():
+        initial_query = search_form.cleaned_data["q"]
+        initial_ingredients = search_form.cleaned_data["ingredients"]
+        has_search = bool(initial_query or initial_ingredients)
+
+        if has_search:
+            try:
+                found_meals = services.search_meals(
+                    query=initial_query,
+                    ingredients=initial_ingredients,
+                )
+                for found_meal in found_meals:
+                    meal = found_meal.copy()
+                    meal_id = str(meal.get("idMeal") or "")
+                    name = meal.get("strMeal")
+                    if not meal_id.isdigit() or not isinstance(name, str) or not name.strip():
+                        continue
+
+                    meal["idMeal"] = meal_id
+                    meal["strMeal"] = name.strip()
+                    thumbnail = meal.get("strMealThumb")
+                    if not isinstance(thumbnail, str) or not thumbnail.startswith("https://www.themealdb.com/"):
+                        meal["strMealThumb"] = ""
+                    meals.append(meal)
+            except services.MealDBError:
+                search_error = ERROR_API
+    elif search_performed:
+        search_error = next(iter(search_form.errors.values()))[0]
+
+    return {
+        "initial_query": initial_query,
+        "initial_ingredients": initial_ingredients,
+        "meals": meals,
+        "search_error": search_error,
+        "has_search": has_search,
+    }
 
 
 def home(request):
-    # Mendukung tautan dari Planner, misalnya /katalog/?ingredients=ayam%2C+nasi.
-    search_form = SearchForm(request.GET)
-    initial_query = ""
-    initial_ingredients = ""
-    if request.GET and search_form.is_valid():
-        initial_query = search_form.cleaned_data["q"]
-        initial_ingredients = search_form.cleaned_data["ingredients"]
-    return render(
-        request,
-        "katalog/home.html",
-        {
-            "initial_query": initial_query,
-            "initial_ingredients": initial_ingredients,
-        },
-    )
+    """Tampilkan katalog; form GET tetap berfungsi saat JavaScript tidak aktif."""
+    return render(request, "katalog/home.html", _search_context(request))
 
 
 @require_GET
 def api_search(request):
-    """Endpoint JSON yang dipanggil oleh JavaScript Fetch API."""
-    form = SearchForm(request.GET)
-    if not form.is_valid():
-        first_error = next(iter(form.errors.values()))[0]
-        return JsonResponse({"error": str(first_error)}, status=400)
-
-    query = form.cleaned_data["q"]
-    ingredients = form.cleaned_data["ingredients"]
-    if not query and not ingredients:
-        return JsonResponse({"results": [], "count": 0})
-
-    try:
-        meals = services.search_meals(query=query, ingredients=ingredients)
-    except services.MealDBError:
-        return JsonResponse({"error": ERROR_API}, status=502)
-
-    results = []
-    for meal in meals:
-        meal_id = meal.get("idMeal")
-        name = meal.get("strMeal")
-        if not isinstance(meal_id, (str, int)) or not str(meal_id).isdigit():
-            continue
-        if not isinstance(name, str) or not name.strip():
-            continue
-
-        item = {
-            "idMeal": str(meal_id),
-            "strMeal": name.strip(),
-            "strMealThumb": meal.get("strMealThumb") if isinstance(meal.get("strMealThumb"), str) else "",
-            "strCategory": meal.get("strCategory") if isinstance(meal.get("strCategory"), str) else "",
-            "strArea": meal.get("strArea") if isinstance(meal.get("strArea"), str) else "",
-        }
-        matches = meal.get("matches")
-        if isinstance(matches, int) and matches > 0:
-            item["matches"] = matches
-        results.append(item)
-
-    return JsonResponse({"results": results, "count": len(results)})
+    """Kirim potongan HTML hasil pencarian untuk ditampilkan oleh Fetch API."""
+    return render(
+        request,
+        "katalog/partials/recipe_results.html",
+        _search_context(request),
+    )
 
 
 def meal_detail(request, meal_id):
@@ -110,44 +107,43 @@ def meal_detail(request, meal_id):
     )
 
 
+@login_required(login_url="request_board:login")
 @require_POST
 def saved_create(request):
-    """Verifikasi ID resep ke TheMealDB sebelum menyimpannya untuk user aktif."""
-    if not request.user.is_authenticated:
-        return JsonResponse(
-            {
-                "error": "Silakan login terlebih dahulu untuk menyimpan resep.",
-                "login_url": reverse("login"),
-            },
-            status=401,
-        )
-
+    """Simpan resep yang dikirim dari halaman detail."""
     form = SaveRecipeForm(request.POST)
     if not form.is_valid():
-        return JsonResponse({"error": "ID resep tidak valid."}, status=400)
+        messages.error(request, "ID resep tidak valid.")
+        return redirect("katalog:home")
 
     requested_meal_id = form.cleaned_data["meal_id"]
+    if not requested_meal_id.isdigit():
+        messages.error(request, "ID resep tidak valid.")
+        return redirect("katalog:home")
+
     try:
         meal = services.get_meal(requested_meal_id)
     except services.MealDBError:
-        return JsonResponse({"error": ERROR_API}, status=502)
+        messages.error(request, ERROR_API)
+        return redirect("katalog:home")
 
     if meal is None:
-        return JsonResponse({"error": "Resep tidak ditemukan di TheMealDB."}, status=404)
+        messages.error(request, "Resep tidak ditemukan di TheMealDB.")
+        return redirect("katalog:home")
 
     meal_id = str(meal.get("idMeal") or "")
     name = meal.get("strMeal")
     if meal_id != requested_meal_id or not isinstance(name, str) or not name.strip():
-        return JsonResponse({"error": "Respons resep dari TheMealDB tidak valid."}, status=502)
+        messages.error(request, "Data resep dari TheMealDB tidak valid.")
+        return redirect("katalog:home")
 
-    # Hanya URL gambar HTTPS dari TheMealDB yang disimpan.
     thumbnail = meal.get("strMealThumb")
     if not isinstance(thumbnail, str) or not thumbnail.startswith("https://www.themealdb.com/"):
         thumbnail = ""
 
     category = meal.get("strCategory") if isinstance(meal.get("strCategory"), str) else ""
     area = meal.get("strArea") if isinstance(meal.get("strArea"), str) else ""
-    saved_recipe, created = SavedRecipe.objects.get_or_create(
+    _saved_recipe, created = SavedRecipe.objects.get_or_create(
         user=request.user,
         meal_id=meal_id,
         defaults={
@@ -157,52 +153,39 @@ def saved_create(request):
             "area": area[:100],
         },
     )
-    return JsonResponse(
-        {
-            "message": "Resep berhasil disimpan." if created else "Resep ini sudah ada di daftar tersimpan.",
-            "created": created,
-            "saved_id": saved_recipe.pk,
-            "saved_url": reverse("katalog:saved_list"),
-        },
-        status=201 if created else 200,
-    )
+
+    if created:
+        messages.success(request, "Resep berhasil disimpan.")
+    else:
+        messages.info(request, "Resep ini sudah ada di daftar tersimpan.")
+    return redirect("katalog:saved_list")
 
 
-@login_required(login_url="login")
+@login_required(login_url="request_board:login")
 def saved_list(request):
     recipes = SavedRecipe.objects.filter(user=request.user)
     return render(request, "katalog/saved_list.html", {"recipes": recipes})
 
 
-@login_required(login_url="login")
+@login_required(login_url="request_board:login")
 def saved_update(request, pk):
     recipe = get_object_or_404(SavedRecipe, pk=pk, user=request.user)
     if request.method == "POST":
         form = SavedRecipeNoteForm(request.POST, instance=recipe)
         if form.is_valid():
             form.save()
-            success_message = "Catatan resep berhasil diperbarui."
-            if _wants_json(request):
-                return JsonResponse({"message": success_message, "note": recipe.note})
-            messages.success(request, success_message)
+            messages.success(request, "Catatan resep berhasil diperbarui.")
             return redirect("katalog:saved_list")
-
-        if _wants_json(request):
-            errors = form.errors.get("note") or ["Catatan tidak valid."]
-            return JsonResponse({"error": str(errors[0])}, status=400)
     else:
         form = SavedRecipeNoteForm(instance=recipe)
 
     return render(request, "katalog/saved_edit.html", {"form": form, "recipe": recipe})
 
 
-@login_required(login_url="login")
+@login_required(login_url="request_board:login")
 @require_POST
 def saved_delete(request, pk):
     recipe = get_object_or_404(SavedRecipe, pk=pk, user=request.user)
     recipe.delete()
-    success_message = "Resep dihapus dari daftar tersimpan."
-    if _wants_json(request):
-        return JsonResponse({"message": success_message, "deleted_id": pk})
-    messages.success(request, success_message)
+    messages.success(request, "Resep dihapus dari daftar tersimpan.")
     return redirect("katalog:saved_list")
