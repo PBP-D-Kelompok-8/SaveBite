@@ -1,0 +1,103 @@
+{% load request_board_extras %}
+<article class="request-board__card request-board__card--{{ item.status }}">
+  <div class="request-board__card-header">
+    <span class="request-board__badge request-board__badge--{{ item.status }}">
+      {{ item.get_status_display }}
+    </span>
+    <time class="request-board__card-time" datetime="{{ item.created_at|date:'c' }}">
+      {{ item.created_at|date:"d M Y, H:i" }}
+    </time>
+  </div>
+
+  <h2 id="request-title-{{ item.pk }}" class="request-board__card-title">{{ item.title }}</h2>
+
+  <div class="request-board__card-meta">
+    <div class="request-board__meta-item">
+      <span class="request-board__meta-label">Bahan:</span>
+      <span class="request-board__meta-value">{{ item.food_item }}</span>
+    </div>
+    <div class="request-board__meta-item">
+      <span class="request-board__meta-label">Jumlah:</span>
+      <span class="request-board__meta-value">{{ item.quantity }} {{ item.get_unit_display }}</span>
+    </div>
+    <div class="request-board__meta-item">
+      <span class="request-board__meta-label">Pemohon:</span>
+      <span class="request-board__meta-value">{{ item.owner.get_username }}</span>
+    </div>
+    <div class="request-board__meta-item">
+      <span class="request-board__meta-label">Penawaran:</span>
+      <span class="request-board__meta-value">{{ item.offer_count }} penawaran</span>
+    </div>
+    {% if item.location %}
+      <div class="request-board__meta-item">
+        <span class="request-board__meta-label">Lokasi:</span>
+        <span class="request-board__meta-value">{{ item.location }}</span>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if item.description %}
+    <div class="request-board__card-desc">
+      <p>{{ item.description }}</p>
+    </div>
+  {% endif %}
+
+  {% if user.is_authenticated and user.id == item.owner_id %}
+    {% with preview=owner_offer_previews|owner_preview:item.pk %}
+      {% if preview.items %}
+        <div class="request-board__donors">
+          <h3 class="request-board__donors-title">Penawaran terbaru</h3>
+          <ul class="request-board__donors-list">
+            {% for offer in preview.items %}
+              <li class="request-board__donor">
+                <span class="request-board__donor-name">{{ offer.display_name }}</span>
+                <time class="request-board__donor-time" datetime="{{ offer.created_at|date:'c' }}">{{ offer.created_at|date:"d M Y, H:i" }}</time>
+              </li>
+            {% endfor %}
+          </ul>
+          {% if preview.has_more %}
+            <p class="request-board__donors-more">Menampilkan 20 penawaran terbaru; penawaran lainnya tidak ditampilkan.</p>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endwith %}
+  {% endif %}
+
+  {% if user.is_authenticated and user.id != item.owner_id and item.status != "fulfilled" %}
+    <div class="request-board__card-actions">
+      {% if item.has_offered %}
+        <p class="request-board__card-note">Sudah menawarkan</p>
+      {% else %}
+        <form method="post" action="{% url 'request_board:request_offer' item.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--primary request-board__action">Saya Punya!</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if user.is_authenticated and user.id == item.owner_id and item.status == "offered" %}
+    <div class="request-board__card-actions">
+      <form method="post" action="{% url 'request_board:request_fulfill' item.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--primary request-board__action">Tandai Terpenuhi</button>
+      </form>
+    </div>
+  {% endif %}
+
+  {% if user.is_authenticated and user.id == item.owner_id %}
+    <details class="request-board__delete">
+      <summary class="request-board__delete-summary" id="delete-summary-{{ item.pk }}" aria-describedby="delete-warning-{{ item.pk }}">Hapus</summary>
+      <div class="request-board__delete-panel">
+        <p id="delete-warning-{{ item.pk }}" class="request-board__delete-warning">
+          Hapus <strong id="delete-target-{{ item.pk }}">{{ item.title }}</strong>? Tindakan ini tidak dapat dibatalkan.
+        </p>
+        <form method="post" action="{% url 'request_board:request_delete' item.pk %}">
+          {% csrf_token %}
+          <button type="submit" id="delete-confirm-{{ item.pk }}" class="btn btn--secondary request-board__action request-board__delete-confirm" aria-describedby="delete-warning-{{ item.pk }}">Ya, hapus</button>
+        </form>
+        <a href="{% url 'request_board:request_board' %}" class="request-board__delete-cancel">Batal</a>
+      </div>
+    </details>
+  {% endif %}
+</article>

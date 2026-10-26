@@ -1,0 +1,14 @@
+{
+  "command": [
+    "D:\\Computer Science Course\\SaveBite\\env\\Scripts\\python.exe",
+    "-X",
+    "utf8",
+    "-B",
+    "C:\\Users\\Reshandy Taftazani A\\.codex\\worktrees\\0cd6\\SaveBite\\docs\\post-main-board-validation-20261026\\validate.py"
+  ],
+  "labels": [],
+  "invocation": "DiscoverRunner.run_tests([])",
+  "parallel": 1,
+  "keepdb": false,
+  "environment": "Only missing six SAVEBITE_TEST_PG_* inputs forwarded from existing Windows User scope; no values persisted"
+}
