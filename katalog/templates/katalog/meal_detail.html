@@ -1,48 +1,46 @@
 {% extends "katalog/base_katalog.html" %}
 
 {% block katalog_content %}
-<div id="katalog-app"
-     data-save-url="{% url 'katalog:saved_create' %}"
-     data-login-url="{% url 'login' %}"
-     data-is-authenticated="{{ user.is_authenticated|yesno:'true,false' }}">
-  {% if not meal %}
-    <section class="kat-panel">
-      <h1>Resep tidak dapat dimuat</h1>
-      <p>{{ error }}</p>
-      <a class="kat-button" href="{% url 'katalog:home' %}">Kembali ke katalog</a>
-    </section>
-  {% else %}
-    <a class="kat-back-link" href="{% url 'katalog:home' %}">← Kembali ke katalog</a>
-    <article class="kat-detail">
-      {% if meal.strMealThumb %}<img class="kat-detail-image" src="{{ meal.strMealThumb }}" alt="Foto {{ meal.strMeal }}">{% endif %}
-      <div class="kat-detail-content">
-        <p class="kat-eyebrow">{{ meal.strCategory|default:"RESEP" }}{% if meal.strArea %} · {{ meal.strArea }}{% endif %}</p>
-        <h1>{{ meal.strMeal }}</h1>
-        {% if user.is_authenticated %}
-          {% if is_saved %}
-            <a class="kat-button kat-button--outline" href="{% url 'katalog:saved_list' %}">Sudah tersimpan · Lihat daftar</a>
-          {% else %}
-            <button type="button" class="kat-button" data-save-meal-id="{{ meal.idMeal }}">Simpan resep</button>
-          {% endif %}
+{% if not meal %}
+  <section class="kat-panel">
+    <h1>Resep tidak dapat dimuat</h1>
+    <p>{{ error }}</p>
+    <a class="btn btn--primary btn--dark-green kat-button" href="{% url 'katalog:home' %}">Kembali ke katalog</a>
+  </section>
+{% else %}
+  <a class="kat-back-link" href="{% url 'katalog:home' %}">← Kembali ke katalog</a>
+  <article class="kat-detail">
+    {% if meal.strMealThumb %}<img class="kat-detail-image" src="{{ meal.strMealThumb }}" alt="Foto {{ meal.strMeal }}">{% endif %}
+    <div class="kat-detail-content">
+      <p class="kat-eyebrow">{{ meal.strCategory|default:"RESEP" }}{% if meal.strArea %} · {{ meal.strArea }}{% endif %}</p>
+      <h1>{{ meal.strMeal }}</h1>
+      {% if user.is_authenticated %}
+        {% if is_saved %}
+          <a class="btn btn--tertiary btn--dark-green kat-button" href="{% url 'katalog:saved_list' %}">Sudah tersimpan · Lihat daftar</a>
         {% else %}
-          <a class="kat-button kat-button--outline" href="{% url 'login' %}">Login untuk menyimpan</a>
+          <form method="post" action="{% url 'katalog:saved_create' %}">
+            {% csrf_token %}
+            <input type="hidden" name="meal_id" value="{{ meal.idMeal }}">
+            <button class="btn btn--primary btn--dark-green kat-button" type="submit">Simpan resep</button>
+          </form>
         {% endif %}
+      {% else %}
+        <a class="btn btn--tertiary btn--dark-green kat-button" href="{% url 'request_board:login' %}?next={% url 'katalog:meal_detail' meal.idMeal %}">Login untuk menyimpan</a>
+      {% endif %}
 
-        <h2>Bahan</h2>
-        <ul class="kat-ingredient-list">
-          {% for ingredient in ingredients %}
-            <li><span>{{ ingredient.name }}</span>{% if ingredient.measure %}<span>{{ ingredient.measure }}</span>{% endif %}</li>
-          {% empty %}
-            <li>Daftar bahan tidak tersedia.</li>
-          {% endfor %}
-        </ul>
+      <h2>Bahan</h2>
+      <ul class="kat-ingredient-list">
+        {% for ingredient in ingredients %}
+          <li><span>{{ ingredient.name }}</span>{% if ingredient.measure %}<span>{{ ingredient.measure }}</span>{% endif %}</li>
+        {% empty %}
+          <li>Daftar bahan tidak tersedia.</li>
+        {% endfor %}
+      </ul>
 
-        <h2>Cara memasak</h2>
-        <p class="kat-instructions">{{ meal.strInstructions|default:"Petunjuk memasak tidak tersedia."|linebreaksbr }}</p>
-        {% if meal.strSource %}<p class="kat-source">Sumber asli: <a href="{{ meal.strSource }}" target="_blank" rel="noopener noreferrer">Buka resep</a></p>{% endif %}
-      </div>
-    </article>
-  {% endif %}
-</div>
-<form id="kat-csrf-form" hidden>{% csrf_token %}</form>
+      <h2>Cara memasak</h2>
+      <p class="kat-instructions">{{ meal.strInstructions|default:"Petunjuk memasak tidak tersedia."|linebreaksbr }}</p>
+      {% if meal.strSource %}<p class="kat-source">Sumber asli: <a href="{{ meal.strSource }}" target="_blank" rel="noopener noreferrer">Buka resep</a></p>{% endif %}
+    </div>
+  </article>
+{% endif %}
 {% endblock %}

@@ -1,0 +1,41 @@
+{% if search_error %}
+  <section class="kat-panel kat-error-state" role="alert">
+    <h2>Pencarian belum berhasil</h2>
+    <p>{{ search_error }}</p>
+    <p>Periksa isian atau koneksi internet, lalu coba lagi.</p>
+  </section>
+{% elif meals %}
+  <div class="kat-grid">
+    {% for meal in meals %}
+      <article class="kat-recipe-card">
+        {% if meal.strMealThumb %}
+          <img class="kat-card-image" src="{{ meal.strMealThumb }}" alt="Foto {{ meal.strMeal }}" loading="lazy">
+        {% else %}
+          <div class="kat-card-image kat-image-placeholder" aria-hidden="true">SaveBite</div>
+        {% endif %}
+        <div class="kat-card-body">
+          <h2>{{ meal.strMeal }}</h2>
+          <p class="kat-card-meta">{% if meal.strCategory %}{{ meal.strCategory }}{% else %}Kategori tidak tersedia{% endif %}{% if meal.strArea %} · {{ meal.strArea }}{% endif %}</p>
+          {% if meal.matches %}<p class="kat-note">Cocok dengan {{ meal.matches }} bahan yang kamu masukkan.</p>{% endif %}
+          <div class="kat-card-actions">
+            <a class="btn btn--secondary btn--blue kat-button kat-button--small" href="{% url 'katalog:meal_detail' meal.idMeal %}">Lihat resep</a>
+            {% if user.is_authenticated %}
+              <form method="post" action="{% url 'katalog:saved_create' %}">
+                {% csrf_token %}
+                <input type="hidden" name="meal_id" value="{{ meal.idMeal }}">
+                <button class="btn btn--tertiary btn--bright kat-button kat-button--small" type="submit">Simpan</button>
+              </form>
+            {% else %}
+              <a class="btn btn--tertiary btn--bright kat-button kat-button--small" href="{% url 'request_board:login' %}?next={% url 'katalog:home' %}">Login untuk simpan</a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% elif has_search %}
+  <section class="kat-panel kat-empty-state">
+    <h2>Resep belum ditemukan</h2>
+    <p>Coba kata lain atau gunakan bahan yang lebih umum.</p>
+  </section>
+{% endif %}

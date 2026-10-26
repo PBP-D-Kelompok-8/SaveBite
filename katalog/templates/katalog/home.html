@@ -1,47 +1,49 @@
 {% extends "katalog/base_katalog.html" %}
-{% load static %}
 
 {% block katalog_content %}
-<section id="katalog-app"
-         data-search-url="{% url 'katalog:api_search' %}"
-         data-save-url="{% url 'katalog:saved_create' %}"
-         data-detail-url-template="{% url 'katalog:meal_detail' 0 %}"
-         data-login-url="{% url 'login' %}"
-         data-is-authenticated="{{ user.is_authenticated|yesno:'true,false' }}">
-  <header class="kat-header">
-    <p class="kat-eyebrow">SAVE FOOD, COOK SMART</p>
-    <h1>Katalog Resep Bahan Sisa</h1>
-    <p>Temukan inspirasi dari bahan yang masih kamu punya. Cari berdasarkan nama resep, bahan sisa, atau kombinasi keduanya.</p>
-    {% if user.is_authenticated %}
-      <a class="kat-button kat-button--outline" href="{% url 'katalog:saved_list' %}">Lihat resep tersimpan</a>
-    {% endif %}
-  </header>
+<header class="kat-header">
+  <p class="kat-eyebrow">SAVE FOOD, COOK SMART</p>
+  <h1>Katalog Resep Bahan Sisa</h1>
+  <p>Temukan inspirasi dari bahan yang masih kamu punya. Cari berdasarkan nama resep, bahan sisa, atau kombinasi keduanya.</p>
+  {% if user.is_authenticated %}
+    <a class="btn btn--tertiary btn--dark-green kat-button" href="{% url 'katalog:saved_list' %}">Lihat resep tersimpan</a>
+  {% endif %}
+</header>
 
-  <form id="kat-search-form" class="kat-search-panel" method="get" action="{% url 'katalog:home' %}">
-    <div class="kat-field-group">
-      <label for="kat-query">Nama resep</label>
-      <input id="kat-query" name="q" type="search" maxlength="100" value="{{ initial_query }}" placeholder="Contoh: pasta, soup, curry" autocomplete="off">
-    </div>
-    <div class="kat-field-group">
-      <label for="kat-ingredients">Bahan sisa</label>
-      <input id="kat-ingredients" name="ingredients" type="text" maxlength="200" value="{{ initial_ingredients }}" placeholder="Contoh: ayam, nasi, telur" autocomplete="off">
-      <small>Masukkan maksimal 3 bahan, pisahkan dengan koma. Bahan umum bahasa Indonesia akan dicoba diterjemahkan. Resep dengan jumlah bahan cocok terbanyak akan muncul lebih dahulu; tidak semua bahan harus cocok.</small>
-    </div>
-    <div class="kat-search-actions">
-      <button class="kat-button" type="submit">Cari resep</button>
-      <button class="kat-button kat-button--outline" id="kat-reset" type="reset">Reset</button>
-    </div>
-  </form>
+<form id="kat-search-form" class="kat-search-panel" method="get" action="{% url 'katalog:home' %}" data-search-url="{% url 'katalog:api_search' %}">
+  <div class="kat-field-group">
+    <label class="input__label" for="kat-query">Nama resep</label>
+    <input class="input__field" id="kat-query" name="q" type="search" maxlength="100" value="{{ initial_query }}" placeholder="Contoh: pasta, soup, curry" autocomplete="off">
+  </div>
+  <div class="kat-field-group">
+    <label class="input__label" for="kat-ingredients">Bahan sisa</label>
+    <input class="input__field" id="kat-ingredients" name="ingredients" type="text" maxlength="200" value="{{ initial_ingredients }}" placeholder="Contoh: ayam, nasi, telur" autocomplete="off">
+    <small class="input__help">Masukkan maksimal 3 bahan, pisahkan dengan koma. Bahan umum bahasa Indonesia akan dicoba diterjemahkan.</small>
+  </div>
+  <div class="kat-search-actions">
+    <button class="btn btn--primary btn--dark-green kat-button" type="submit">Cari resep</button>
+    <a class="btn btn--tertiary btn--dark-green kat-button" href="{% url 'katalog:home' %}">Reset</a>
+  </div>
+</form>
 
-  <section class="kat-results-section" aria-labelledby="kat-results-heading">
-    <div class="kat-results-heading">
-      <h2 id="kat-results-heading">Hasil pencarian</h2>
-      <p id="kat-result-count" class="kat-muted" aria-live="polite">Masukkan nama resep atau bahan sisa untuk memulai.</p>
-    </div>
-    <p id="kat-status" class="kat-status" role="status" aria-live="polite"></p>
-    <div id="kat-results" class="kat-grid"></div>
-  </section>
+<section class="kat-results-section" aria-labelledby="kat-results-heading">
+  <div class="kat-results-heading">
+    <h2 id="kat-results-heading">Hasil pencarian</h2>
+    <p id="kat-result-status" class="kat-muted" aria-live="polite">
+      {% if meals %}
+        {{ meals|length }} resep ditemukan.
+      {% elif search_error %}
+        Pencarian belum selesai.
+      {% elif has_search %}
+        0 resep ditemukan.
+      {% else %}
+        Masukkan nama resep atau bahan sisa untuk memulai.
+      {% endif %}
+    </p>
+  </div>
+
+  <div id="kat-results" aria-live="polite">
+    {% include "katalog/partials/recipe_results.html" %}
+  </div>
 </section>
-
-<form id="kat-csrf-form" hidden>{% csrf_token %}</form>
 {% endblock %}

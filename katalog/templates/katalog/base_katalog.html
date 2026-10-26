@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/button.css' %}">
+<link rel="stylesheet" href="{% static 'css/input.css' %}">
 <link rel="stylesheet" href="{% static 'css/navbar.css' %}">
 <link rel="stylesheet" href="{% static 'css/footer.css' %}">
 <link rel="stylesheet" href="{% static 'katalog/css/katalog.css' %}">
@@ -22,7 +23,6 @@
   {% block katalog_content %}{% endblock %}
   <p class="kat-credit">Data resep disediakan oleh <a href="https://www.themealdb.com/" target="_blank" rel="noopener noreferrer">TheMealDB</a>.</p>
 </div>
-<div id="kat-toast" class="kat-toast" role="status" aria-live="polite" hidden></div>
 {% endblock %}
 
 {% block extra_js %}
