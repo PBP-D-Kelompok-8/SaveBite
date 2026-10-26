@@ -17,12 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+
 from SaveBite.views import landing_page, login_page, register_page
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', landing_page, name='landing_page'),
     path('', include('request_board.urls')),
+    path('food-rescue-planner/', include('food_rescue_planner.urls')),
     path('login/', login_page, name='login'),
     path('register/', register_page, name='register'),
 ]
