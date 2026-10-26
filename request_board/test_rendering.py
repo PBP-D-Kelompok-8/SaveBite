@@ -978,7 +978,13 @@ class ToastNotificationRenderingTests(TestCase):
                             if any(parent is area for parent in node["parents"])]]:
             self.assertNotIn("autofocus", node["attrs"])
             self.assertNotIn("hidden", node["attrs"])
-            self.assertNotEqual(node["attrs"].get("aria-hidden"), "true")
+            if node["tag"] == "svg":
+                # The close icon is decorative; its button supplies the accessible name.
+                self.assertTrue(any(parent["tag"] == "button"
+                                    and parent["attrs"].get("aria-label") == "Tutup notifikasi"
+                                    for parent in node["parents"]))
+            else:
+                self.assertNotEqual(node["attrs"].get("aria-hidden"), "true")
         return area
 
     def test_success_info_error_are_escaped_once_in_shared_toast_on_board_and_create(self):
@@ -998,6 +1004,23 @@ class ToastNotificationRenderingTests(TestCase):
                     markup, feedback = self.assert_message_rendered_once(response, markup, text, level)
                     self.assertFalse(any("onerror" in node["attrs"] for node in markup.nodes))
                     self.assert_toast_area(markup, feedback)
+
+    def test_each_notification_has_a_labelled_non_submit_close_button(self):
+        for url in (self.board_url, self.create_url):
+            with self.subTest(url=url):
+                seed, _ = self.create_form()
+                self.queue_messages(seed, [(messages.SUCCESS, "Berhasil disimpan."),
+                                           (messages.ERROR, "Periksa kembali isian.")])
+                markup = BoardMarkup(self.client.get(url).content.decode())
+                notifications = [node for node in markup.nodes
+                                 if "request-board__toast" in node["attrs"].get("class", "").split()]
+                self.assertEqual(len(notifications), 2)
+                for notification in notifications:
+                    buttons = markup.select("button", within=notification)
+                    self.assertEqual(len(buttons), 1)
+                    self.assertEqual(buttons[0]["attrs"].get("type"), "button")
+                    self.assertEqual(buttons[0]["attrs"].get("aria-label"), "Tutup notifikasi")
+                    self.assertFalse(any(parent["tag"] == "a" for parent in buttons[0]["parents"]))
 
     def test_queued_messages_share_one_area_and_are_consumed_after_first_render(self):
         entries = [(messages.SUCCESS, "Penyimpanan uji berhasil."),

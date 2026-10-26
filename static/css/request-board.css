@@ -47,17 +47,60 @@
 /* Toast notifications (shared _messages.html) */
 .request-board__toasts {
   box-sizing: border-box;
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 24px;
-  width: 100%;
+  width: min(400px, calc(100% - 32px));
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  pointer-events: none;
 }
 
 .request-board__toasts .request-board__alert {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
   margin: 0;
+  pointer-events: auto;
   overflow-wrap: anywhere;
   box-shadow: 0 4px 12px rgba(35, 54, 26, 0.08);
+}
+
+.request-board__toast > span {
+  align-self: center;
+}
+
+.request-board__toast-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.request-board__toasts--dismissible .request-board__toast-close {
+  display: inline-flex;
+}
+
+.request-board__toast-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.request-board__toast-close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
 }
 
 /* Alert banner and messages */
