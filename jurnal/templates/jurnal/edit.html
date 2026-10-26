@@ -1,0 +1,31 @@
+﻿{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Catatan | Jurnal SaveBite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/input.css' %}">
+<link rel="stylesheet" href="{% static 'jurnal/foodlog.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="food-journal food-journal--edit">
+  <header class="food-journal__header">
+    <p class="food-journal__eyebrow">Jurnal Jejak Makanan</p>
+    <h1 class="food-journal__title">Edit Catatan</h1>
+    <p class="food-journal__intro">Perbarui detail untuk {{ food_log.food_name }}.</p>
+  </header>
+
+  <section class="food-journal__form-panel" aria-labelledby="food-log-edit-title">
+    <h2 id="food-log-edit-title" class="food-journal__section-title">Detail Catatan</h2>
+    <form method="post" action="{% url 'jurnal:update' food_log.pk %}" class="food-log-form">
+      {% csrf_token %}
+      {% include 'jurnal/foodlog_form_fields.html' %}
+      <div class="food-log-form__actions">
+        <a class="btn btn--tertiary btn--dark-green" href="{% url 'jurnal:index' %}">Batal</a>
+        <button type="submit" class="btn btn--primary">Simpan Perubahan</button>
+      </div>
+    </form>
+  </section>
+</section>
+{% endblock %}

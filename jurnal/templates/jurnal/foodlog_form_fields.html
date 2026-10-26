@@ -1,0 +1,34 @@
+﻿{% if form.non_field_errors %}
+  <div class="food-log-form__errors" role="alert">{{ form.non_field_errors }}</div>
+{% endif %}
+
+<div class="input{% if form.food_name.errors %} input--incorrect{% endif %}">
+  <label class="input__label" for="{{ form.food_name.id_for_label }}">{{ form.food_name.label }}</label>
+  {{ form.food_name }}
+  {% for error in form.food_name.errors %}<p class="input__error">{{ error }}</p>{% endfor %}
+</div>
+
+<div class="food-log-form__row">
+  <div class="input{% if form.quantity.errors %} input--incorrect{% endif %}">
+    <label class="input__label" for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}</label>
+    {{ form.quantity }}
+    {% for error in form.quantity.errors %}<p class="input__error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="input{% if form.unit.errors %} input--incorrect{% endif %}">
+    <label class="input__label" for="{{ form.unit.id_for_label }}">{{ form.unit.label }}</label>
+    {{ form.unit }}
+    {% for error in form.unit.errors %}<p class="input__error">{{ error }}</p>{% endfor %}
+  </div>
+</div>
+
+<div class="input{% if form.status.errors %} input--incorrect{% endif %}">
+  <label class="input__label" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+  {{ form.status }}
+  {% for error in form.status.errors %}<p class="input__error">{{ error }}</p>{% endfor %}
+</div>
+
+<div class="input{% if form.notes.errors %} input--incorrect{% endif %}">
+  <label class="input__label" for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+  {{ form.notes }}
+  {% for error in form.notes.errors %}<p class="input__error">{{ error }}</p>{% endfor %}
+</div>
