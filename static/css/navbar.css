@@ -44,6 +44,30 @@
     display: flex;
     gap: 8px;
     justify-content: flex-end;
+    align-items: center;
+  }
+
+  .navbar__logout-form {
+    display: flex;
+    align-items: center;
+    margin: 0;
+  }
+
+  .navbar__logout-form .btn {
+    white-space: nowrap;
+  }
+
+  .navbar__username {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    color: var(--ink-light);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0 8px;
+    white-space: nowrap;
   }
   
 
@@ -94,6 +118,14 @@
     .navbar__links { flex-direction: column; gap: 4px; }
     .navbar__links a { display: block; font-size: 12px; padding: 8px; } /* .p5 */
   
-    .navbar__actions { flex-direction: column; }
+    .navbar__actions { flex-direction: column; align-items: stretch; }
+    .navbar__username {
+      min-height: 0;
+      font-size: 12px;
+      line-height: 1.4;
+      padding: 8px;
+      text-align: center;
+    }
+    .navbar__logout-form { width: 100%; justify-content: center; }
 
   }

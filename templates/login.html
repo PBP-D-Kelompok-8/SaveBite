@@ -4,11 +4,7 @@
 {% block title %}Login | SaveBite{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/button.css' %}">
-<link rel="stylesheet" href="{% static 'css/navbar.css' %}">
-<link rel="stylesheet" href="{% static 'css/footer.css' %}">
 <link rel="stylesheet" href="{% static 'css/input.css' %}">
-<link rel="stylesheet" href="{% static 'css/auth.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -16,12 +12,20 @@
   <h1 class="auth__title">Selamat Datang Kembali!</h1>
   <p class="auth__subtitle">Masuk ke akun SaveBite mu</p>
 
-  {# Baru tampilan. Logika login belum ada: tombol hanya memuat ulang halaman. Isi value/error komponen dari form nanti. #}
-  <form class="auth__form" method="post">
-    {% csrf_token %}
+  {% for message in messages %}
+    <p class="auth__message auth__message--{{ message.tags }}" role="status" aria-live="polite">{{ message }}</p>
+  {% endfor %}
 
-    {% include 'components/input.html' with name="username" label="Username" placeholder="Masukkan username" autocomplete="username" only %}
-    {% include 'components/input.html' with name="password" label="Password" input_type="password" placeholder="Masukkan password" autocomplete="current-password" only %}
+  {% for error in form.non_field_errors %}
+    <p class="input__error" role="alert">{{ error }}</p>
+  {% endfor %}
+
+  <form class="auth__form" method="post" action="{% url 'login' %}">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+    {% include 'components/input.html' with name="username" label="Username" placeholder="Masukkan username" autocomplete="username" value=form.username.value error=form.username.errors.0 required=True only %}
+    {% include 'components/input.html' with name="password" label="Password" input_type="password" placeholder="Masukkan password" autocomplete="current-password" error=form.password.errors.0 required=True only %}
 
     <div class="auth__actions">
       {% include 'components/button.html' with label="Login" type="primary" icon_left="icons/door-open-alt.svg" submit=True only %}
