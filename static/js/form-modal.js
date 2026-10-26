@@ -1,4 +1,4 @@
-/* SaveBite — Form Modal
+﻿/* SaveBite â€” Form Modal
    Buka:  <button type="button" data-modal-open="#form-modal"
                   data-title="Edit Catatan" data-action="/log/3/edit/"
                   data-values='{"food_name":"Nasi Putih","quantity":2}'>
@@ -72,7 +72,7 @@
       fillValues(form, opener);
     }
     dialog.showModal();
-    dialog.querySelector(".input__field")?.focus();
+    dialog.querySelector(".input__field, .form-field__control")?.focus();
   }
 
   document.addEventListener("click", (e) => {

@@ -1,4 +1,4 @@
-/* ---- CARD (pakai variable dari static.css) ---- */
+﻿/* ---- CARD (pakai variable dari static.css) ---- */
 
 .card-list {
     display: grid;
@@ -19,10 +19,13 @@
   
   /* Variasi warna card */
   .card--green { background-color: var(--accent-green); }
-  .card--dark  { background-color: var(--accent-dark-green); }
+  .card--dark  { background-color: var(--dark-green); }
   .card--blue  { background-color: var(--accent-blue); }
   
   /* Gambar (placeholder abu-abu, nanti bisa diganti <img>) */
+  .card--green { color: var(--ink-dark); }
+  .card--dark, .card--blue { color: var(--ink-light); }
+
   .card__image {
     aspect-ratio: 4 / 3;
     margin-bottom: 28px;
@@ -67,3 +70,4 @@
       padding: 16px;
     }
   }
+
