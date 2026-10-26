@@ -1,0 +1,33 @@
+{% load static %}
+{% comment %}
+  Dialog konfirmasi hapus.
+  Parameter:
+    id      → id dialog (default: delete-confirm)
+    action  → URL POST untuk menghapus (bisa juga diisi lewat data-action pada tombol pemicu)
+    name    → nama item (default: [nama item]; biasanya diisi lewat data-name)
+  Pemicu:
+    <button type="button" class="btn btn--danger" data-confirm-open="#delete-confirm"
+            data-name="{{ log.nama }}" data-action="{% url 'log_delete' log.pk %}">Hapus</button>
+  Butuh: button.css, delete-confirm.css, delete-confirm.js
+{% endcomment %}
+<dialog class="confirm" id="{{ id|default:'delete-confirm' }}"
+        aria-labelledby="{{ id|default:'delete-confirm' }}-title"
+        aria-describedby="{{ id|default:'delete-confirm' }}-desc">
+  <form method="post" action="{{ action|default:'' }}" class="confirm__body">
+    {% csrf_token %}
+    <span class="confirm__icon" aria-hidden="true">
+      <span class="btn__icon" style="--icon: url('{% static 'icons/trash.svg' %}')"></span>
+    </span>
+    <h2 class="confirm__title" id="{{ id|default:'delete-confirm' }}-title">
+      Hapus <span data-confirm-name>{{ name|default:'[nama item]' }}</span>?
+    </h2>
+    <p class="confirm__desc" id="{{ id|default:'delete-confirm' }}-desc">Item yang dihapus tidak bisa dikembalikan.</p>
+    <div class="confirm__actions">
+      <button type="button" class="btn btn--tertiary btn--dark-green" data-confirm-close>Batal</button>
+      <button type="submit" class="btn btn--danger">
+        <span class="btn__icon" style="--icon: url('{% static 'icons/trash.svg' %}')" aria-hidden="true"></span>
+        Hapus
+      </button>
+    </div>
+  </form>
+</dialog>

@@ -3,14 +3,17 @@
 
 /* ---- DESIGN SYSTEM VARIABLES (:root) ---- */
 :root{
-    /* Color Pallete */
-    --accent-dark-green: #23361A;
-    --accent-blue: #52707B;
-    --ink-dark: #362F22;
-    --accent-green: #A2B448;
-    --ink-light:#FCFFE6;
-    --paper:#EFF4BD;
-    --line:#556F30;
+
+    /* Warna */
+    --ink-light: #fcffe6;
+    --ink-dark: #362f22;
+    --paper: #eff4bd;
+    --dark-green: #23361a;     /* Accent-Dark-Green */
+    --line: #556f30;           /* Line */
+    --accent-green: #a2b448;   /* Accent-Green */
+    --accent-blue: #52707b;    /* Accent-Blue */
+    --danger: #ff8888;
+    --danger-hover: #f26b6b;
 
     /* Typography variables*/
     --font-family-main: 'Poppins', sans-serif;
