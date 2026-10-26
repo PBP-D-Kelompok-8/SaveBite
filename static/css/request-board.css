@@ -17,9 +17,9 @@
 .request-board__title { margin: 0 0 12px; font-size: 48px; line-height: 1.5; font-weight: 700; color: var(--ink-dark); overflow-wrap: anywhere; }
 .request-board__subtitle { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 400; }
 .request-board__header-action { flex-shrink: 0; }
-.request-board .btn { max-width: 100%; white-space: normal; text-align: center; }
+.request-board .btn { box-sizing: border-box; max-width: 100%; white-space: normal; text-align: center; }
 /* Keep cream labels readable at the green end of the source gradient. */
-.request-board .btn--primary { --btn-fill: linear-gradient(90deg, var(--ink-dark) 7.692%, var(--accent-dark-green) 51.442%, var(--line) 100%); }
+.request-board .btn--primary { --primary-gradient: linear-gradient(90deg, var(--ink-dark) 7.692%, var(--accent-dark-green) 51.442%, var(--line) 100%); }
 .request-board__create-icon, .request-board__status-icon { display: inline-flex; flex-shrink: 0; }
 .request-board img { display: block; }
 .request-board__section-title { color: var(--line); font-size: 32px; line-height: 1.5; margin: 0 0 44px; }
@@ -104,7 +104,7 @@ dialog.request-board__delete-panel { box-sizing: border-box; width: min(600px, c
 .request-board__delete-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 12px; }
 .request-board__delete-actions form { margin: 0; }
 .request-board__delete-warning strong { font-weight: 700; }
-.request-board__delete-confirm { background: var(--board-danger); --btn-text: var(--ink-dark); font-size: 24px; }
+.request-board__delete-confirm { background: var(--board-danger); color: var(--ink-dark); font-size: 24px; }
 .request-board__delete-cancel { align-self: flex-start; padding: 8px 16px; color: var(--accent-dark-green); border: 2px solid currentColor; border-radius: 16px; text-decoration: none; font-size: 24px; font-weight: 700; }
 .request-board :is(a, button, summary):focus-visible { outline: 3px solid var(--accent-green); outline-offset: 3px; }
 

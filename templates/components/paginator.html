@@ -1,0 +1,29 @@
+﻿{# Django Page object usage: {% include "components/paginator.html" with page_obj=page_obj %} #}
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+<nav class="ds-pagination" aria-label="Navigasi halaman">
+  {% if page_obj.has_previous %}
+    <a class="ds-pagination__item ds-pagination__arrow" href="{% querystring page=page_obj.previous_page_number %}" aria-label="Halaman sebelumnya">
+  {% else %}
+    <span class="ds-pagination__item ds-pagination__arrow is-disabled" aria-disabled="true" aria-label="Halaman sebelumnya">
+  {% endif %}
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  {% if page_obj.has_previous %}</a>{% else %}</span>{% endif %}
+
+  {% for number in page_obj.paginator.page_range %}
+    {% if number == page_obj.number %}
+      <span class="ds-pagination__item is-active" aria-current="page">{{ number }}</span>
+    {% elif number >= page_obj.number|add:"-2" and number <= page_obj.number|add:"2" %}
+      <a class="ds-pagination__item" href="{% querystring page=number %}">{{ number }}</a>
+    {% endif %}
+  {% endfor %}
+
+  {% if page_obj.has_next %}
+    <a class="ds-pagination__item ds-pagination__arrow" href="{% querystring page=page_obj.next_page_number %}" aria-label="Halaman berikutnya">
+  {% else %}
+    <span class="ds-pagination__item ds-pagination__arrow is-disabled" aria-disabled="true" aria-label="Halaman berikutnya">
+  {% endif %}
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  {% if page_obj.has_next %}</a>{% else %}</span>{% endif %}
+</nav>
+{% endif %}
+

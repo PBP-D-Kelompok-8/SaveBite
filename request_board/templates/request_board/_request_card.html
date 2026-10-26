@@ -102,7 +102,7 @@
         <a href="{% url 'request_board:request_board' %}" class="request-board__delete-cancel">Batal</a>
         <form method="post" action="{% url 'request_board:request_delete' item.pk %}">
           {% csrf_token %}
-          <button type="submit" id="delete-confirm-{{ item.pk }}" class="btn btn--secondary request-board__action request-board__delete-confirm" aria-describedby="delete-warning-{{ item.pk }}"><img src="{% static 'request-board/trash.svg' %}" alt="" width="24" height="24">Ya, hapus</button>
+          <button type="submit" id="delete-confirm-{{ item.pk }}" class="btn btn--danger request-board__action request-board__delete-confirm" aria-describedby="delete-warning-{{ item.pk }}"><img src="{% static 'request-board/trash.svg' %}" alt="" width="24" height="24">Ya, hapus</button>
         </form>
         </div>
       </div>

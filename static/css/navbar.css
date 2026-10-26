@@ -30,14 +30,16 @@
     display: flex;
     gap: 32px;
   }
-  .navbar__links a {
+  .navbar__links a,
+  .navbar__links button {
     font-size: 16px;            /* .p4 */
     font-weight: 700;
     color: var(--ink-light);
     text-decoration: none;
     padding: 8px 0;
   }
-  .navbar__links a:hover { color: var(--accent-green); }
+  .navbar__links a:hover,
+  .navbar__links button:hover { color: var(--accent-green); }
   
   /* Actions */
   .navbar__actions {
@@ -92,7 +94,8 @@
     .navbar__menu.is-open { display: flex; }
   
     .navbar__links { flex-direction: column; gap: 4px; }
-    .navbar__links a { display: block; font-size: 12px; padding: 8px; } /* .p5 */
+    .navbar__links a,
+    .navbar__links button { display: block; font-size: 12px; padding: 8px; } /* .p5 */
   
     .navbar__actions { flex-direction: column; }
 

@@ -1,16 +1,20 @@
-/* Import font Poppins from Google Fonts */
+﻿/* Import font Poppins from Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
 /* ---- DESIGN SYSTEM VARIABLES (:root) ---- */
 :root{
-    /* Color Pallete */
-    --accent-dark-green: #23361A;
-    --accent-blue: #52707B;
-    --ink-dark: #362F22;
-    --accent-green: #A2B448;
-    --ink-light:#FCFFE6;
-    --paper:#EFF4BD;
-    --line:#556F30;
+
+    /* Warna */
+    --ink-light: #fcffe6;
+    --ink-dark: #362f22;
+    --paper: #eff4bd;
+    --dark-green: #23361a;     /* Accent-Dark-Green */
+    --accent-dark-green: var(--dark-green);
+    --line: #556f30;           /* Line */
+    --accent-green: #a2b448;   /* Accent-Green */
+    --accent-blue: #52707b;    /* Accent-Blue */
+    --danger: #ff8888;
+    --danger-hover: #f26b6b;
 
     /* Typography variables*/
     --font-family-main: 'Poppins', sans-serif;
@@ -46,3 +50,4 @@ p, .p1 { font-size: 28px; font-weight: 600; }
 .p4    { font-size: 16px; font-weight: 600; }
 .p5    { font-size: 12px; font-weight: 600; }
 .p6    { font-size: 8px;  font-weight: 600; }
+
