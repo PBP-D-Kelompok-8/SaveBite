@@ -27,4 +27,5 @@ urlpatterns = [
     path('food-rescue-planner/', include('food_rescue_planner.urls')),
     path('login/', login_page, name='login'),
     path('register/', register_page, name='register'),
+    path('katalog/', include('katalog.urls')),
 ]

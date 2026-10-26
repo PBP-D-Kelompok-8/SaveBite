@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'request_board.apps.RequestBoardConfig',
     'food_rescue_planner',
     'jurnal',
+    'katalog.apps.KatalogConfig',
 ]
 
 MIDDLEWARE = [
