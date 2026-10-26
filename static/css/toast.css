@@ -1,0 +1,89 @@
+/* Toast component */
+:root {
+  --ds-ink-light: var(--ink-light, #fcffe6);
+  --ds-ink-dark: var(--ink-dark, #362f22);
+  --ds-accent-dark-green: var(--accent-dark-green, #23361a);
+  --ds-accent-green: var(--accent-green, #a2b448);
+  --ds-line: var(--line, #556f30);
+  --ds-accent-light-green: var(--accent-light-green, #d8e3b5);
+  --ds-warning: var(--warning, #f3e3b6);
+  --ds-danger: var(--danger, #f88);
+  --ds-button-radius: var(--button-radius, 16px);
+  --ds-card-gap: var(--gap-card, 16px);
+  --ds-button-gap: var(--gap-button, 12px);
+}
+
+.ds-toast { font-family: "Poppins", sans-serif; }
+
+/* Toast */
+.ds-toast {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 54px;
+  padding: 12px 23px;
+  border-radius: 28px;
+  color: #000;
+}
+
+.ds-toast--success { background: var(--ds-accent-light-green); }
+.ds-toast--error { background: var(--ds-danger); }
+.ds-toast--warning {
+  background: var(--ds-warning);
+  padding-right: 34px;
+  padding-left: 34px;
+}
+
+.ds-toast__icon {
+  display: inline-flex;
+  flex: 0 0 20px;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.ds-toast__icon svg,
+.ds-toast__close svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ds-toast--warning .ds-toast__icon {
+  width: 4px;
+  height: 25px;
+  flex-basis: 4px;
+}
+
+.ds-toast__message {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ds-toast__close {
+  display: inline-flex;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ds-toast__close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
