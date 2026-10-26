@@ -129,6 +129,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'request_board:request_board'
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/

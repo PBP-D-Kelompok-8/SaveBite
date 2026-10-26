@@ -45,7 +45,7 @@ class BoardLoginRenderingTests(TestCase):
         cls.user = get_user_model().objects.create_user(
             username="board-login-reader", password=cls.password,
         )
-        cls.login_url = reverse("request_board:login")
+        cls.login_url = reverse("login")
         cls.board_url = reverse("request_board:request_board")
         cls.create_url = reverse("request_board:request_create")
 
@@ -57,7 +57,7 @@ class BoardLoginRenderingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsInstance(response, TemplateResponse)
         self.assertTrue(response.is_rendered)
-        self.assertTemplateUsed(response, "request_board/login.html")
+        self.assertTemplateUsed(response, "login.html")
         self.assertTemplateUsed(response, "base.html")
         markup = LoginMarkup(response.content.decode())
         tokens = [attrs for attrs in markup.attributes("input")
@@ -131,10 +131,10 @@ class BoardLoginRenderingTests(TestCase):
                        for attrs in markup.attributes("input")])
         self.assertTrue(any(attrs.get("type", "submit") == "submit"
                             for attrs in markup.attributes("button")))
-        self.assertTrue(any(attrs.get("href") == self.board_url
+        self.assertTrue(any(attrs.get("href") == reverse("register")
                             for attrs in markup.attributes("a")))
         self.assertEqual(len(markup.attributes("main")), 1)
-        self.assertTrue(any("request-board" in attrs.get("class", "").split()
+        self.assertTrue(any("auth" in attrs.get("class", "").split()
                             and attrs.get("lang") == "id" for _, attrs in markup.elements))
         self.assertNotIn(SESSION_KEY, client.session)
 
@@ -191,7 +191,7 @@ class BoardLoginRenderingTests(TestCase):
         response = client.post(self.login_url, data)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "request_board/login.html")
+        self.assertTemplateUsed(response, "login.html")
         form = response.context_data["form"]
         self.assertTrue(form.is_bound)
         self.assertTrue(form.non_field_errors())
@@ -292,7 +292,7 @@ class BoardDocumentLanguageTests(TestCase):
         Request.objects.create(owner=cls.owner, title="Beras warga", food_item="Beras",
                                quantity=1, unit="kg")
         cls.board_url = reverse("request_board:request_board")
-        cls.login_url = reverse("request_board:login")
+        cls.login_url = reverse("login")
         cls.create_url = reverse("request_board:request_create")
 
     def setUp(self):
@@ -326,8 +326,9 @@ class BoardDocumentLanguageTests(TestCase):
         documents = markup.attributes("html")
         self.assertEqual(len(documents), 1)
         self.assertEqual(documents[0].get("lang"), "id")
+        root_class = "auth" if template == "login.html" else "request-board"
         roots = [attrs for _, attrs in markup.elements
-                 if "request-board" in attrs.get("class", "").split()]
+                 if root_class in attrs.get("class", "").split()]
         self.assertEqual(len(roots), 1)
         self.assertEqual(roots[0].get("lang"), "id")
 
@@ -350,7 +351,7 @@ class BoardDocumentLanguageTests(TestCase):
 
         self.assertFalse(response.context_data["form"].is_bound)
         self.assertNotIn(SESSION_KEY, self.client.session)
-        self.assert_board_document(response, "request_board/login.html")
+        self.assert_board_document(response, "login.html")
 
     def test_invalid_login_document_is_indonesian(self):
         page = self.client.get(self.login_url)
@@ -365,7 +366,7 @@ class BoardDocumentLanguageTests(TestCase):
         self.assertTrue(response.context_data["form"].is_bound)
         self.assertTrue(response.context_data["form"].non_field_errors())
         self.assertNotIn(SESSION_KEY, self.client.session)
-        self.assert_board_document(response, "request_board/login.html")
+        self.assert_board_document(response, "login.html")
 
     def test_create_get_document_is_indonesian(self):
         self.login_owner()
@@ -554,7 +555,7 @@ class BoardPaginationRenderingTests(TestCase):
             cls.records.append(item)
         cls.board_url = reverse("request_board:request_board")
         cls.create_url = reverse("request_board:request_create")
-        cls.login_url = reverse("request_board:login")
+        cls.login_url = reverse("login")
 
     def board(self, query=""):
         response = self.client.get(self.board_url + query)
@@ -1215,7 +1216,7 @@ class BoardActionRenderingTests(TestCase):
 
     def test_guest_has_login_link_and_no_mutation_forms_in_all_states(self):
         _, markup = self.board()
-        login_url = reverse("request_board:login")
+        login_url = reverse("login")
         links = [node for node in markup.select("a")
                  if urlsplit(node["attrs"].get("href", "")).path == login_url
                  and node["text"].strip()]
@@ -1328,7 +1329,7 @@ class BoardActionRenderingTests(TestCase):
         _, markup = self.board()
         url, payload = self.offer_form(markup, self.pending)
         foreign = Client(enforce_csrf_checks=True)
-        login = foreign.get(reverse("request_board:login"))
+        login = foreign.get(reverse("login"))
         tokens = [attrs["value"] for attrs in LoginMarkup(login.content.decode()).attributes("input")
                   if attrs.get("name") == "csrfmiddlewaretoken"]
         self.assertEqual(len(tokens), 1)
@@ -1360,7 +1361,7 @@ class BoardActionRenderingTests(TestCase):
                 self.client = Client(enforce_csrf_checks=True)
                 if actor is not None:
                     self.client.force_login(actor)
-                login = self.client.get(reverse("request_board:login"))
+                login = self.client.get(reverse("login"))
                 tokens = [attrs["value"] for attrs in LoginMarkup(login.content.decode()).attributes("input")
                           if attrs.get("name") == "csrfmiddlewaretoken"]
                 self.assertEqual(len(tokens), 1)
@@ -1373,7 +1374,7 @@ class BoardActionRenderingTests(TestCase):
                 self.assertEqual(self.snapshot(), before)
                 if actor is None:
                     target = urlsplit(response["Location"])
-                    self.assertEqual(target.path, reverse("request_board:login"))
+                    self.assertEqual(target.path, reverse("login"))
                     self.assertEqual(parse_qs(target.query), {"next": [url]})
                 elif item is self.fulfilled and actor != self.owner:
                     markup = self.assert_offer_prg(response, messages.ERROR, "Request sudah terpenuhi.")
@@ -1415,7 +1416,7 @@ class BoardActionRenderingTests(TestCase):
 
     def fulfill_direct_token(self, client):
         # Forbidden controls stay absent; login HTML supplies a real same-client token.
-        response = client.get(reverse("request_board:login"))
+        response = client.get(reverse("login"))
         self.assertEqual(response.status_code, 200)
         tokens = [attrs["value"] for attrs in LoginMarkup(response.content.decode()).attributes("input")
                   if attrs.get("name") == "csrfmiddlewaretoken"]
@@ -1521,7 +1522,7 @@ class BoardActionRenderingTests(TestCase):
                 self.assertEqual(self.snapshot(), before)
                 if actor is None:
                     target = urlsplit(response["Location"])
-                    self.assertEqual(target.path, reverse("request_board:login"))
+                    self.assertEqual(target.path, reverse("login"))
                     self.assertEqual(parse_qs(target.query), {"next": [url]})
                 elif actor == self.owner and item is self.pending:
                     markup = self.assert_offer_prg(response, messages.ERROR, "Request belum ditawarkan.")
@@ -1764,7 +1765,7 @@ class BoardDeleteConfirmationTests(TestCase):
                     self.assertEqual(self.snapshot(), before)
                     if actor is None:
                         target = urlsplit(response["Location"])
-                        self.assertEqual(target.path, reverse("request_board:login"))
+                        self.assertEqual(target.path, reverse("login"))
                         self.assertEqual(parse_qs(target.query), {"next": [url]})
                     else:
                         self.assertNotIn("Location", response)
@@ -2075,7 +2076,7 @@ class BoardIndonesianErrorRenderingTests(TestCase):
         cls.inactive = get_user_model().objects.create_user(
             username="d02-inactive", password=cls.password, is_active=False,
         )
-        cls.login_url = reverse("request_board:login")
+        cls.login_url = reverse("login")
         cls.create_url = reverse("request_board:request_create")
 
     def csrf_token(self, client, url):
@@ -2129,7 +2130,7 @@ class BoardIndonesianErrorRenderingTests(TestCase):
             with self.subTest(fields=names):
                 response = client.post(self.login_url, {**data, "csrfmiddlewaretoken": token})
                 self.assertEqual(response.status_code, 200)
-                self.assertTemplateUsed(response, "request_board/login.html")
+                self.assertTemplateUsed(response, "login.html")
                 form = response.context_data["form"]
                 self.assertEqual(set(form.errors), set(names))
                 for name in names:

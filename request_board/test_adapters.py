@@ -1487,6 +1487,8 @@ class HtmlAdapterFixtures:
         cls.fixed_time = datetime(2020, 1, 2, 12, tzinfo=timezone.utc)
 
     def html_url(self, name, request_id=None):
+        if name == "login":
+            return reverse("login")
         kwargs = {} if request_id is None else {"request_id": request_id}
         try:
             return reverse("request_board:" + name, kwargs=kwargs)
@@ -1946,15 +1948,15 @@ class RequestHtmlAdapterTests(HtmlAdapterFixtures, TestCase):
         from django.contrib.auth.views import LoginView
 
         url = self.html_url("login")
-        self.assertEqual(url, "/board/login/")
+        self.assertEqual(url, "/login/")
         callback = resolve(url).func
         self.assertIs(callback.view_class, LoginView)
         login_view = callback.view_class(**callback.view_initkwargs)
-        self.assertEqual(str(login_view.next_page), self.html_url("request_board"))
-        self.assertEqual(login_view.template_name, "request_board/login.html")
+        self.assertEqual(login_view.get_default_redirect_url(), self.html_url("request_board"))
+        self.assertEqual(login_view.template_name, "login.html")
         self.assertEqual(login_view.success_url_allowed_hosts, set())
-        self.assertEqual(settings.LOGIN_URL, "/accounts/login/")
-        self.assertEqual(settings.LOGIN_REDIRECT_URL, "/accounts/profile/")
+        self.assertEqual(reverse(settings.LOGIN_URL), url)
+        self.assertEqual(reverse(settings.LOGIN_REDIRECT_URL), self.html_url("request_board"))
 
 
 class RequestLoginIntegrationTests(HtmlAdapterFixtures, TestCase):
@@ -1974,7 +1976,7 @@ class RequestLoginIntegrationTests(HtmlAdapterFixtures, TestCase):
             "BACKEND": "django.template.backends.django.DjangoTemplates",
             "APP_DIRS": False,
             "OPTIONS": {"loaders": [("django.template.loaders.locmem.Loader", {
-                "request_board/login.html": "<form method='post'>{% csrf_token %}{{ form.as_p }}</form>",
+                "login.html": "<form method='post'>{% csrf_token %}{{ form.as_p }}</form>",
             })]},
         }])
         loader.enable()

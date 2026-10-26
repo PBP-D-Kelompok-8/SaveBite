@@ -26,7 +26,7 @@
           Buat Permintaan
         </a>
       {% else %}
-        <a href="{% url 'request_board:login' %}?next={% url 'request_board:request_create' %}" class="btn btn--primary">
+        <a href="{% url 'login' %}?next={% url 'request_board:request_create' %}" class="btn btn--primary">
           Masuk untuk Buat Permintaan
         </a>
       {% endif %}
@@ -67,7 +67,7 @@
             Buat Permintaan
           </a>
         {% else %}
-          <a href="{% url 'request_board:login' %}?next={% url 'request_board:request_create' %}" class="btn btn--primary">
+          <a href="{% url 'login' %}?next={% url 'request_board:request_create' %}" class="btn btn--primary">
             Masuk untuk Buat Permintaan
           </a>
         {% endif %}

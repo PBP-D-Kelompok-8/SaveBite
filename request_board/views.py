@@ -477,7 +477,7 @@ def request_board(request):
     return TemplateResponse(request, "request_board/index.html", context)
 
 
-@login_required(login_url="request_board:login")
+@login_required
 def request_create(request):
     if request.method not in ("GET", "POST"):
         return HttpResponseNotAllowed(["GET", "POST"])
@@ -492,7 +492,7 @@ def request_create(request):
     return TemplateResponse(request, "request_board/request_form.html", {"form": form})
 
 
-@login_required(login_url="request_board:login")
+@login_required
 def request_action(request, request_id: int, action: str):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
