@@ -1,0 +1,26 @@
+﻿{% load static %}
+{% comment %}
+Reusable form modal. Pass id, title, action, fields_template and open_on_load=True
+when re-rendering a form with server-side validation errors.
+{% endcomment %}
+<dialog class="modal" id="{{ id|default:'form-modal' }}"
+        aria-labelledby="{{ id|default:'form-modal' }}-title"
+        {% if open_on_load %}data-open-on-load{% endif %}>
+  <form method="post" action="{{ action|default:'' }}" class="modal__form">
+    {% csrf_token %}
+    <header class="modal__header">
+      <h2 class="modal__title" id="{{ id|default:'form-modal' }}-title" data-modal-title>{{ title|default:'Tambah Catatan' }}</h2>
+      <button type="button" class="modal__close" data-modal-close aria-label="Tutup dialog">
+        <span class="modal__close-icon" style="--icon: url('{% static 'icons/x.svg' %}')" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="modal__content">
+      {% include fields_template|default:'components/form-modal-fields-example.html' %}
+    </div>
+    <div class="modal__actions">
+      <button type="button" class="btn btn--tertiary btn--dark-green modal__cancel" data-modal-close>Batal</button>
+      {% include 'components/button.html' with label='Simpan' type='primary' submit=True extra_class='modal__submit' %}
+    </div>
+  </form>
+</dialog>
+

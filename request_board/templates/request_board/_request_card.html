@@ -1,36 +1,38 @@
 {% load request_board_extras %}
+{% load static %}
 <article class="request-board__card request-board__card--{{ item.status }}">
   <div class="request-board__card-header">
     <span class="request-board__badge request-board__badge--{{ item.status }}">
+      <picture class="request-board__status-icon">
+        {% if item.status != 'fulfilled' %}<source media="(max-width: 768px)" srcset="{% static 'request-board/' %}{{ item.status }}-mobile.svg">{% endif %}
+        <img src="{% static 'request-board/' %}{{ item.status }}.svg" alt="">
+      </picture>
       {{ item.get_status_display }}
     </span>
-    <time class="request-board__card-time" datetime="{{ item.created_at|date:'c' }}">
-      {{ item.created_at|date:"d M Y, H:i" }}
-    </time>
   </div>
 
   <h2 id="request-title-{{ item.pk }}" class="request-board__card-title">{{ item.title }}</h2>
 
   <div class="request-board__card-meta">
     <div class="request-board__meta-item">
-      <span class="request-board__meta-label">Bahan:</span>
+      <span class="request-board__meta-label">Bahan</span>
       <span class="request-board__meta-value">{{ item.food_item }}</span>
     </div>
     <div class="request-board__meta-item">
-      <span class="request-board__meta-label">Jumlah:</span>
+      <span class="request-board__meta-label">Jumlah</span>
       <span class="request-board__meta-value">{{ item.quantity }} {{ item.get_unit_display }}</span>
     </div>
     <div class="request-board__meta-item">
-      <span class="request-board__meta-label">Pemohon:</span>
+      <span class="request-board__meta-label">Pemohon</span>
       <span class="request-board__meta-value">{{ item.owner.get_username }}</span>
     </div>
     <div class="request-board__meta-item">
-      <span class="request-board__meta-label">Penawaran:</span>
+      <span class="request-board__meta-label">Penawaran</span>
       <span class="request-board__meta-value">{{ item.offer_count }} penawaran</span>
     </div>
     {% if item.location %}
       <div class="request-board__meta-item">
-        <span class="request-board__meta-label">Lokasi:</span>
+        <span class="request-board__meta-label">Lokasi</span>
         <span class="request-board__meta-value">{{ item.location }}</span>
       </div>
     {% endif %}
@@ -63,6 +65,8 @@
     {% endwith %}
   {% endif %}
 
+  <time class="request-board__card-time" datetime="{{ item.created_at|date:'c' }}">Dibuat · {{ item.created_at|date:"d M Y, H:i" }}</time>
+
   {% if user.is_authenticated and user.id != item.owner_id and item.status != "fulfilled" %}
     <div class="request-board__card-actions">
       {% if item.has_offered %}
@@ -70,34 +74,39 @@
       {% else %}
         <form method="post" action="{% url 'request_board:request_offer' item.pk %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn--primary request-board__action">Saya Punya!</button>
+          <button type="submit" class="btn btn--secondary btn--bright request-board__action">Saya Punya!</button>
         </form>
       {% endif %}
     </div>
   {% endif %}
 
-  {% if user.is_authenticated and user.id == item.owner_id and item.status == "offered" %}
+  {% if user.is_authenticated and user.id == item.owner_id %}
+  <div class="request-board__owner-actions">
+  {% if item.status == "offered" %}
     <div class="request-board__card-actions">
       <form method="post" action="{% url 'request_board:request_fulfill' item.pk %}">
         {% csrf_token %}
-        <button type="submit" class="btn btn--primary request-board__action">Tandai Terpenuhi</button>
+        <button type="submit" class="btn btn--secondary btn--bright request-board__action">Tandai Terpenuhi</button>
       </form>
     </div>
   {% endif %}
 
-  {% if user.is_authenticated and user.id == item.owner_id %}
     <details class="request-board__delete">
-      <summary class="request-board__delete-summary" id="delete-summary-{{ item.pk }}" aria-describedby="delete-warning-{{ item.pk }}">Hapus</summary>
+      <summary class="request-board__delete-summary" id="delete-summary-{{ item.pk }}" aria-describedby="delete-warning-{{ item.pk }}"><img src="{% static 'request-board/trash.svg' %}" alt="" width="24" height="24">Hapus</summary>
       <div class="request-board__delete-panel">
+        <span class="request-board__delete-icon" aria-hidden="true"><img src="{% static 'request-board/trash-large.svg' %}" alt="" width="24" height="24"></span>
         <p id="delete-warning-{{ item.pk }}" class="request-board__delete-warning">
-          Hapus <strong id="delete-target-{{ item.pk }}">{{ item.title }}</strong>? Tindakan ini tidak dapat dibatalkan.
+          Hapus <strong id="delete-target-{{ item.pk }}">{{ item.title }}</strong>? <span>Tindakan ini tidak dapat dibatalkan.</span>
         </p>
+        <div class="request-board__delete-actions">
+        <a href="{% url 'request_board:request_board' %}" class="request-board__delete-cancel">Batal</a>
         <form method="post" action="{% url 'request_board:request_delete' item.pk %}">
           {% csrf_token %}
-          <button type="submit" id="delete-confirm-{{ item.pk }}" class="btn btn--secondary request-board__action request-board__delete-confirm" aria-describedby="delete-warning-{{ item.pk }}">Ya, hapus</button>
+          <button type="submit" id="delete-confirm-{{ item.pk }}" class="btn btn--danger request-board__action request-board__delete-confirm" aria-describedby="delete-warning-{{ item.pk }}"><img src="{% static 'request-board/trash.svg' %}" alt="" width="24" height="24">Ya, hapus</button>
         </form>
-        <a href="{% url 'request_board:request_board' %}" class="request-board__delete-cancel">Batal</a>
+        </div>
       </div>
     </details>
+  </div>
   {% endif %}
 </article>

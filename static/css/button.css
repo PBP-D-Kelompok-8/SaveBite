@@ -1,95 +1,162 @@
 /* ---- BUTTON ----
-   Dari Figma: Type (primary/secondary/tertiary/quaternary)
-   x Color (dark-green/green/light-green/blue/bright)
-   x State (default/hover/disabled) x Desktop/Mobile */
+  Dari Figma: Type (primary/secondary/tertiary/quaternary)
+  x Color (dark-green/green/light-green/blue/bright)
+  x State (default/hover/disabled) x Desktop/Mobile */
 
-   :root {
-    --button-radius: 16px;
-    --gap-button: 12px;
-    --gap-header: 44px;
-  }
-  
-  .btn {
-    --overlay: linear-gradient(transparent, transparent);
-    --btn-fill: linear-gradient(transparent, transparent);
-    --btn-color: var(--accent-dark-green);
-    --btn-text: var(--ink-light);
-  
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    box-sizing: border-box;
-    padding: 8px 16px;
-    border: 0;
-    border-radius: var(--button-radius);
-    font-family: var(--font-family-main);
-    font-size: 24px;
-    font-weight: 700;
-    line-height: normal;
-    color: var(--btn-text);
-    text-decoration: none;
-    white-space: nowrap;
-    cursor: pointer;
-    background-color: transparent;
-    background-image: var(--overlay), var(--btn-fill);
-  }
-  
-  /* Warna */
-  .btn--dark-green  { --btn-color: var(--accent-dark-green); }
-  .btn--green       { --btn-color: var(--line); }
-  .btn--light-green { --btn-color: var(--accent-green); }
-  .btn--blue        { --btn-color: var(--accent-blue); }
-  .btn--bright      { --btn-color: var(--ink-light); }
-  
-  /* Tipe */
-  .btn--primary {
-    --btn-fill: linear-gradient(90deg, var(--ink-dark) 7.7%, var(--line) 51.4%, var(--accent-green) 100%);
-  }
-  .btn--secondary { --btn-fill: linear-gradient(var(--btn-color), var(--btn-color)); }
-  .btn--secondary.btn--bright { --btn-text: var(--ink-dark); }
-  .btn--tertiary,
-  .btn--quaternary { --btn-text: var(--btn-color); }
-  .btn--tertiary { box-shadow: inset 0 0 0 2px var(--btn-color); }
-  
-  /* Hover */
-  .btn--primary:hover,
-  .btn--secondary:hover {
-    --overlay: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5));
-  }
-  .btn--tertiary:hover,
-  .btn--quaternary:hover {
-    --overlay: linear-gradient(color-mix(in srgb, var(--btn-color) 15%, transparent), color-mix(in srgb, var(--btn-color) 15%, transparent));
-  }
-  
-  /* Disabled */
-  .btn[aria-disabled="true"],
-  .btn:disabled {
-    pointer-events: none;
-    cursor: not-allowed;
-  }
-  .btn--primary[aria-disabled="true"],
-  .btn--secondary[aria-disabled="true"] {
-    --overlay: linear-gradient(rgba(239, 244, 189, 0.5), rgba(239, 244, 189, 0.5));
-  }
-  .btn--tertiary[aria-disabled="true"],
-  .btn--quaternary[aria-disabled="true"] { opacity: 0.5; }
-  
-  /* Ikon (ikut warna teks lewat mask) */
-  .btn__icon {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-    background-color: currentColor;
-    -webkit-mask: var(--icon) center / contain no-repeat;
-    mask: var(--icon) center / contain no-repeat;
-  }
-  
-  .btn:focus-visible { outline: 2px solid var(--accent-green); outline-offset: 2px; }
-  
-  /* Mobile */
-  @media (max-width: 768px) {
-    :root { --button-radius: 12px; }
-    .btn { gap: 6px; font-size: 16px; }
-    .btn__icon { width: 18px; height: 18px; }
-  }
+  :root {
+  --button-radius: 16px;
+  --gap-button: 12px;
+  --gap-header: 44px;
+/* Ukuran button — mode Mobile (Desktop=False) */
+--btn-font-size: 16px;
+--btn-gap: 6px;
+--btn-radius: 12px;        /* button-radius */
+--btn-icon: 18px;
+--btn-pad-y: 8px;
+--btn-pad-x: 16px;
+--btn-icon-only-pad: 11px; /* 18 + 22 = 40px */
+
+/* Layer overlay untuk state hover / disabled */
+--overlay-dark: linear-gradient(rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.5));
+--overlay-paper: linear-gradient(rgb(239 244 189 / 0.5), rgb(239 244 189 / 0.5));
+--overlay-gray: linear-gradient(rgb(226 226 226 / 0.6), rgb(226 226 226 / 0.6));
+
+/* Gradient Primary */
+--primary-gradient: linear-gradient(90deg, #362f22 8%, #556f30 51%, #a2b448 100%);
+--primary-gradient-disabled: linear-gradient(90deg, #23361a 0%, #556f30 64%, #a2b448 100%);
+}
+
+/* Mode Desktop (Desktop=True) */
+@media (min-width: 768px) {
+:root {
+  --btn-font-size: 24px;
+  --btn-gap: 8px;
+  --btn-radius: 16px;
+  --btn-icon: 24px;
+  --btn-icon-only-pad: 14px; /* 24 + 28 = 52px */
+}
+}
+
+/* ---------- Base ---------- */
+.btn {
+/* Warna default = DarkGreen */
+--c: var(--dark-green);
+--c-hover: var(--ink-dark); /* hanya dipakai Quaternary */
+
+display: inline-flex;
+align-items: center;
+justify-content: center;
+gap: var(--btn-gap);
+padding: var(--btn-pad-y) var(--btn-pad-x);
+border: 0;
+border-radius: var(--btn-radius);
+font-family: "Poppins", system-ui, sans-serif;
+font-size: var(--btn-font-size);
+font-weight: 700;
+line-height: 1.5;
+text-decoration: none;
+white-space: nowrap;
+cursor: pointer;
+transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+/* Ikon: <span class="btn__icon" style="--icon: url('...svg')"></span>
+  Warna ikon mengikuti warna teks (currentColor) lewat CSS mask,
+  jadi satu file SVG bisa dipakai di semua varian. */
+.btn__icon {
+width: var(--btn-icon);
+height: var(--btn-icon);
+flex: none;
+}
+.btn__icon:not(svg) {
+background-color: currentColor;
+-webkit-mask: var(--icon) center / contain no-repeat;
+        mask: var(--icon) center / contain no-repeat;
+}
+svg.btn__icon { fill: currentColor; }
+
+.btn:focus-visible {
+outline: 3px solid var(--accent-blue);
+outline-offset: 2px;
+}
+
+.btn:is(:disabled, [aria-disabled="true"]) {
+cursor: not-allowed;
+}
+a.btn[aria-disabled="true"] {
+pointer-events: none;
+}
+
+/* ---------- Warna (Color) ---------- */
+.btn--dark-green  { --c: var(--dark-green);  --c-hover: var(--ink-dark); }
+.btn--green       { --c: var(--line);         --c-hover: var(--c); }
+.btn--light-green { --c: var(--accent-green); --c-hover: var(--c); }
+.btn--blue        { --c: var(--accent-blue);  --c-hover: var(--c); }
+.btn--bright      { --c: var(--ink-light);    --c-hover: var(--c); --on-c: var(--ink-dark); --tint: 60%; }
+
+/* ---------- Type: Primary (hanya DarkGreen, gradient) ---------- */
+.btn--primary {
+color: var(--ink-light);
+background: var(--primary-gradient);
+}
+.btn--primary:is(:hover, .is-hover):not(:disabled, [aria-disabled="true"]) {
+background: var(--overlay-dark), var(--primary-gradient);
+}
+.btn--primary:is(:disabled, [aria-disabled="true"]) {
+background: var(--overlay-paper), var(--primary-gradient-disabled);
+}
+
+/* ---------- Type: Secondary (solid) ---------- */
+.btn--secondary {
+color: var(--on-c, var(--ink-light));
+background: var(--c);
+}
+.btn--secondary:is(:hover, .is-hover):not(:disabled, [aria-disabled="true"]) {
+background: var(--overlay-dark), var(--c);
+}
+.btn--secondary:is(:disabled, [aria-disabled="true"]) {
+background: var(--overlay-gray), var(--c);
+}
+
+/* ---------- Type: Tertiary (outline 2px) ---------- */
+.btn--tertiary {
+color: var(--c);
+background: transparent;
+box-shadow: inset 0 0 0 2px var(--c); /* border tanpa mengubah tinggi button */
+}
+.btn--tertiary:is(:hover, .is-hover):not(:disabled, [aria-disabled="true"]) {
+background: var(--overlay-paper),
+            color-mix(in srgb, var(--c) var(--tint, 40%), transparent);
+}
+.btn--tertiary:is(:disabled, [aria-disabled="true"]) {
+background: color-mix(in srgb, var(--c) 60%, transparent);
+}
+
+/* ---------- Type: Quaternary (teks saja) ---------- */
+.btn--quaternary {
+color: var(--c);
+background: transparent;
+}
+.btn--quaternary:is(:hover, .is-hover):not(:disabled, [aria-disabled="true"]) {
+color: var(--c-hover);
+}
+.btn--quaternary:is(:disabled, [aria-disabled="true"]) {
+opacity: 0.6;
+}
+
+/* ---------- Type: Danger (merah) ---------- */
+.btn--danger {
+color: var(--ink-dark);
+background: var(--danger);
+}
+.btn--danger:is(:hover, .is-hover):not(:disabled, [aria-disabled="true"]) {
+background: var(--danger-hover);
+}
+.btn--danger:is(:disabled, [aria-disabled="true"]) {
+opacity: 0.5;
+}
+
+/* ---------- Style: Icon only (di Figma hanya ada untuk Danger) ---------- */
+.btn--icon {
+padding: var(--btn-icon-only-pad);
+}

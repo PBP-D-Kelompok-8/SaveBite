@@ -82,11 +82,12 @@
           <p class="p4 feature__text">Bagikan dan temukan resep kreasi dari pengguna lain.</p>
           {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
         </article>
-        <article class="feature feature--wide">
+        <article class="feature feature--wide feature--request-board">
           <span class="feature__icon" aria-hidden="true">🤝</span>
           <h3 class="p2 feature__title">Food Rescue Request Board</h3>
           <p class="p4 feature__text">Posting atau temukan permintaan bahan makanan dari komunitas.</p>
-          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+          {% url 'request_board:request_board' as request_board_url %}
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" href=request_board_url %}
         </article>
         <article class="feature feature--wide">
           <span class="feature__icon" aria-hidden="true">📋</span>
