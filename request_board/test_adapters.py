@@ -1945,18 +1945,17 @@ class RequestHtmlAdapterTests(HtmlAdapterFixtures, TestCase):
     def test_login_rejects_external_next(self):
         """H08/F04 config; password/CSRF integration runs in the separate class."""
         from django.conf import settings
-        from django.contrib.auth.views import LoginView
+        from main.views import login_page
 
         url = self.html_url("login")
         self.assertEqual(url, "/login/")
         callback = resolve(url).func
-        self.assertIs(callback.view_class, LoginView)
-        login_view = callback.view_class(**callback.view_initkwargs)
-        self.assertEqual(login_view.get_default_redirect_url(), self.html_url("request_board"))
-        self.assertEqual(login_view.template_name, "login.html")
-        self.assertEqual(login_view.success_url_allowed_hosts, set())
+        self.assertIs(callback, login_page)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.template_name, "login.html")
         self.assertEqual(reverse(settings.LOGIN_URL), url)
-        self.assertEqual(reverse(settings.LOGIN_REDIRECT_URL), self.html_url("request_board"))
+        self.assertEqual(reverse(settings.LOGIN_REDIRECT_URL), reverse("landing_page"))
 
 
 class RequestLoginIntegrationTests(HtmlAdapterFixtures, TestCase):
@@ -1994,18 +1993,18 @@ class RequestLoginIntegrationTests(HtmlAdapterFixtures, TestCase):
         return client
 
     def test_password_login_accepts_local_next_and_rejects_external_next(self):
-        """H08/F04: safe POST and query next, default board and session identity."""
+        """H08/F04: safe POST and query next, default landing and session identity."""
         from django.contrib.auth import SESSION_KEY
 
         url = self.html_url("login")
-        board = self.html_url("request_board")
+        landing = reverse("landing_page")
         local_next = self.html_url("request_create") + "?page=2"
-        cases = [("absent", None, board), ("local", local_next, local_next),
+        cases = [("absent", None, landing), ("local", local_next, local_next),
                  ("same_host", "http://testserver/board/", "http://testserver/board/"),
-                 ("external", "https://evil.invalid/", board),
-                 ("protocol_relative", "//evil.invalid/", board),
-                 ("backslash", "https://testserver\\@evil.invalid/", board),
-                 ("javascript", "javascript:alert(1)", board)]
+                 ("external", "https://evil.invalid/", landing),
+                 ("protocol_relative", "//evil.invalid/", landing),
+                 ("backslash", "https://testserver\\@evil.invalid/", landing),
+                 ("javascript", "javascript:alert(1)", landing)]
         from urllib.parse import urlencode
         for transport in ("post", "query"):
             for label, next_value, expected in cases:

@@ -62,7 +62,7 @@ class SaveBiteLoginIntegrationTests(TestCase):
         self.assertNotContains(response, "incorrect-private-password")
         self.assertNotIn(SESSION_KEY, self.client.session)
 
-    def test_unsafe_next_uses_board_fallback(self):
+    def test_unsafe_next_uses_landing_fallback(self):
         for destination in ("https://evil.invalid/", "//evil.invalid/"):
             with self.subTest(destination=destination):
                 client = Client()
@@ -71,7 +71,7 @@ class SaveBiteLoginIntegrationTests(TestCase):
                     "password": self.password,
                     "next": destination,
                 })
-                self.assertRedirects(response, "/board/")
+                self.assertRedirects(response, "/")
 
     def test_inactive_account_cannot_login(self):
         self.user.is_active = False

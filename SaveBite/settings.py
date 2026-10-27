@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'main.apps.MainConfig',
     'request_board.apps.RequestBoardConfig',
     'food_rescue_planner',
     'jurnal',
@@ -130,7 +131,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'request_board:request_board'
+LOGIN_REDIRECT_URL = 'landing_page'
 
 
 # Internationalization

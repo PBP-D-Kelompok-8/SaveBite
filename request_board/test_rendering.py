@@ -36,6 +36,13 @@ class LoginMarkup(HTMLParser):
         return [attrs for name, attrs in self.elements if name == tag]
 
 
+def content_inputs(response):
+    """Inspect content forms separately from the shared navbar logout form."""
+    markup = BoardMarkup(response.content.decode())
+    main, = markup.select("main")
+    return [node["attrs"] for node in markup.select("input", within=main)]
+
+
 class BoardLoginRenderingTests(TestCase):
     """T3-01: production templates, password sessions and real CSRF middleware."""
 
@@ -156,13 +163,13 @@ class BoardLoginRenderingTests(TestCase):
                     response = client.post(destination, data)
 
                     self.assertEqual(response.status_code, 302)
-                    self.assertEqual(response.headers["Location"], next_url or self.board_url)
+                    self.assertEqual(response.headers["Location"], next_url or reverse("landing_page"))
                     self.assertEqual(client.session[SESSION_KEY], str(self.user.pk))
                     board = client.get(self.board_url)
                     self.assertTrue(board.wsgi_request.user.is_authenticated)
                     self.assertEqual(board.wsgi_request.user.pk, self.user.pk)
 
-    def test_unsafe_next_falls_back_to_board_after_real_password_login(self):
+    def test_unsafe_next_falls_back_to_landing_after_real_password_login(self):
         for next_url in ("https://evil.invalid/", "//evil.invalid/",
                          "https://testserver\\@evil.invalid/", "javascript:alert(1)"):
             for transport in ("post", "query"):
@@ -179,7 +186,7 @@ class BoardLoginRenderingTests(TestCase):
                     response = client.post(destination, data)
 
                     self.assertEqual(response.status_code, 302)
-                    self.assertEqual(response.headers["Location"], self.board_url)
+                    self.assertEqual(response.headers["Location"], reverse("landing_page"))
                     self.assertEqual(client.session[SESSION_KEY], str(self.user.pk))
 
     def test_invalid_password_renders_bound_errors_and_preserves_safe_next(self):
@@ -299,7 +306,7 @@ class BoardDocumentLanguageTests(TestCase):
         self.client = Client(enforce_csrf_checks=True)
 
     def csrf_token(self, response):
-        tokens = [attrs for attrs in LoginMarkup(response.content.decode()).attributes("input")
+        tokens = [attrs for attrs in content_inputs(response)
                   if attrs.get("name") == "csrfmiddlewaretoken"]
         self.assertEqual(len(tokens), 1)
         self.assertEqual(tokens[0].get("type"), "hidden")
@@ -315,7 +322,7 @@ class BoardDocumentLanguageTests(TestCase):
             "csrfmiddlewaretoken": self.csrf_token(page),
         })
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], self.board_url)
+        self.assertEqual(response.headers["Location"], reverse("landing_page"))
         self.assertEqual(self.client.session[SESSION_KEY], str(self.owner.pk))
 
     def assert_board_document(self, response, template):
@@ -1385,7 +1392,7 @@ class BoardActionRenderingTests(TestCase):
                 if actor is not None:
                     self.client.force_login(actor)
                 login = self.client.get(reverse("login"))
-                tokens = [attrs["value"] for attrs in LoginMarkup(login.content.decode()).attributes("input")
+                tokens = [attrs["value"] for attrs in content_inputs(login)
                           if attrs.get("name") == "csrfmiddlewaretoken"]
                 self.assertEqual(len(tokens), 1)
                 url = reverse("request_board:request_offer", args=[item.pk if item else 999999])
@@ -1441,7 +1448,7 @@ class BoardActionRenderingTests(TestCase):
         # Forbidden controls stay absent; login HTML supplies a real same-client token.
         response = client.get(reverse("login"))
         self.assertEqual(response.status_code, 200)
-        tokens = [attrs["value"] for attrs in LoginMarkup(response.content.decode()).attributes("input")
+        tokens = [attrs["value"] for attrs in content_inputs(response)
                   if attrs.get("name") == "csrfmiddlewaretoken"]
         self.assertEqual(len(tokens), 1)
         self.assertIn("csrftoken", client.cookies)
@@ -1921,7 +1928,15 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                 self.assertEqual(response.context_data["owner_offer_previews"], {})
                 # Inspect all bytes: hidden DOM, attributes, comments, scripts and
                 # embedded JSON are not filtered by a visible-text parser.
-                self.assertNotIn(b"DONOR_SENTINEL_", response.content)
+                content = response.content
+                if actor in self.donors:
+                    own_navbar = (
+                        '<span class="navbar__username">'
+                        + escape(actor.username) + '</span>'
+                    ).encode()
+                    self.assertEqual(content.count(own_navbar), 1)
+                    content = content.replace(own_navbar, b"", 1)
+                self.assertNotIn(b"DONOR_SENTINEL_", content)
                 self.assert_private_fields_absent(response)
                 for item in self.items:
                     text = self.card(markup, item)["text"]

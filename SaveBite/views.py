@@ -1,18 +1,7 @@
-from django.contrib.auth.views import LoginView
 from django.shortcuts import render
 
-from SaveBite.forms import SaveBiteAuthenticationForm
+from main.views import login_page, logout_page, register_page
 
 
 def landing_page(request):
     return render(request, "index.html")
-
-
-login_page = LoginView.as_view(
-    authentication_form=SaveBiteAuthenticationForm,
-    template_name="login.html",
-)
-
-
-def register_page(request):
-    return render(request, "register.html")
