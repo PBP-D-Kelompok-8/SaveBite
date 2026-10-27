@@ -1,0 +1,70 @@
+/* Paginator component */
+:root {
+  --ds-ink-light: var(--ink-light, #fcffe6);
+  --ds-ink-dark: var(--ink-dark, #362f22);
+  --ds-accent-dark-green: var(--accent-dark-green, #23361a);
+  --ds-accent-green: var(--accent-green, #a2b448);
+  --ds-line: var(--line, #556f30);
+  --ds-accent-light-green: var(--accent-light-green, #d8e3b5);
+  --ds-warning: var(--warning, #f3e3b6);
+  --ds-danger: var(--danger, #f88);
+  --ds-button-radius: var(--button-radius, 16px);
+  --ds-card-gap: var(--gap-card, 16px);
+  --ds-button-gap: var(--gap-button, 12px);
+}
+
+.ds-pagination { font-family: "Poppins", sans-serif; }
+
+/* Paginator */
+.ds-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-button-gap);
+}
+
+.ds-pagination__item {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 52px;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid var(--ds-accent-dark-green);
+  border-radius: var(--ds-button-radius);
+  background: transparent;
+  color: var(--ds-accent-dark-green);
+  font: 700 24px/1 "Poppins", sans-serif;
+  text-align: center;
+  text-decoration: none;
+}
+
+.ds-pagination a.ds-pagination__item { cursor: pointer; }
+
+.ds-pagination__item.is-active {
+  border-color: transparent;
+  background: linear-gradient(110deg, var(--ds-ink-dark) 7.692%, var(--ds-line) 51.442%, var(--ds-accent-green) 100%);
+  color: var(--ds-ink-light);
+}
+
+.ds-pagination__item.is-disabled {
+  background: rgb(35 54 26 / 60%);
+  color: var(--ds-ink-light);
+  cursor: not-allowed;
+}
+
+.ds-pagination__arrow svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+@media (max-width: 640px) {
+  .ds-pagination { gap: 8px; }
+  .ds-pagination__item {
+    flex-basis: 40px; width: 40px; height: 40px;
+    border-radius: 12px; font-size: 16px;
+  }
+  .ds-pagination__arrow svg { width: 20px; height: 20px; }
+}

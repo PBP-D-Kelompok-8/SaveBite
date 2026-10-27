@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'main.apps.MainConfig',
     'request_board.apps.RequestBoardConfig',
     'food_rescue_planner',
     'jurnal',

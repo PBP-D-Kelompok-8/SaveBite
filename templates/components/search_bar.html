@@ -1,0 +1,21 @@
+﻿{# Usage: {% include "components/search_bar.html" with query=request.GET.q placeholder="Cari resep..." %} #}
+<form class="ds-search" method="get" role="search">
+  <label class="ds-search__label">
+    <span class="ds-search__sr-only">Cari</span>
+    <input
+      class="ds-search__input"
+      {% if search_id %}id="{{ search_id }}"{% endif %}
+      type="search"
+      name="{{ query_name|default:'q' }}"
+      value="{{ query|default:'' }}"
+      placeholder="{{ placeholder|default:'Cari [item]...' }}"
+    >
+  </label>
+  <button class="ds-search__button" type="submit">
+    <span>Cari</span>
+    <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+      <circle cx="17" cy="17" r="9" fill="none" stroke="currentColor" stroke-width="3"/>
+      <path d="m24 24 8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+  </button>
+</form>
