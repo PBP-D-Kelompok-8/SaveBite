@@ -1,44 +1,69 @@
+{% load static %}
 {% if messages %}
-  <a href="#toast-message-1"
-     id="board-feedback-anchor"
-     class="request-board__feedback-anchor"
-     tabindex="-1"
-     autofocus
-     aria-labelledby="{% for message in messages %}toast-message-{{ forloop.counter }}{% if not forloop.last %} {% endif %}{% endfor %}">
-    <div class="request-board__toasts" aria-label="Notifikasi" role="region">
+    <div class="request-board__toasts" aria-label="Notifikasi" role="region" data-toast-region>
       {% for message in messages %}
         <div id="toast-message-{{ forloop.counter }}"
              class="request-board__toast request-board__alert request-board__alert--{{ message.level_tag|default:'info' }}"
              tabindex="-1"
              {% if message.level_tag == 'error' %}role="alert" aria-live="assertive"{% else %}role="status" aria-live="polite"{% endif %}>
-          {{ message }}
+           <span class="request-board__toast-icon">
+             {% if message.level_tag == 'error' %}
+               <img src="{% static 'request-board/toast-error.svg' %}" alt="">
+             {% elif message.level_tag == 'success' %}
+               <img src="{% static 'request-board/toast-success.svg' %}" alt="">
+             {% else %}
+               <img src="{% static 'request-board/toast-warning.svg' %}" alt="">
+             {% endif %}
+           </span>
+           <span>{{ message }}</span>
+           <button type="button" class="request-board__toast-close" aria-label="Tutup notifikasi">
+             <img src="{% static 'request-board/close.svg' %}" alt="" width="24" height="24">
+           </button>
         </div>
       {% endfor %}
     </div>
-  </a>
-  <style>
-    .request-board__feedback-anchor {
-      display: block;
-      color: inherit;
-      text-decoration: none;
-    }
-    .request-board__feedback-anchor:focus-within {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-    }
-    .request-board__feedback-anchor:focus,
-    .request-board__toast:focus { outline: 3px solid var(--accent-dark-green); outline-offset: -3px; }
-  </style>
   <script>
     (function () {
-      var toast = document.querySelector('.request-board__toast');
-      if (toast) {
-        toast.focus();
-        window.addEventListener('DOMContentLoaded', function () {
-          toast.focus();
+      var region = document.querySelector('[data-toast-region]');
+      if (!region) return;
+      region.classList.add('request-board__toasts--dismissible');
+      region.querySelectorAll('.request-board__toast-close').forEach(function (button) {
+        var toast = button.closest('.request-board__toast');
+        var lifetime = toast.classList.contains('request-board__alert--success') ? 4000 : 6000;
+        var timer;
+        function dismiss() {
+          window.clearTimeout(timer);
+          var hadFocus = toast.contains(document.activeElement);
+          var adjacent = toast.nextElementSibling || toast.previousElementSibling;
+          toast.remove();
+          if (hadFocus) {
+            if (adjacent) {
+              adjacent.querySelector('button').focus({ preventScroll: true });
+            } else {
+              var main = document.querySelector('main');
+              if (main) {
+                if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
+                main.focus({ preventScroll: true });
+              }
+            }
+          }
+          if (!region.children.length) region.remove();
+        }
+        function pause() { window.clearTimeout(timer); }
+        function resume() {
+          pause();
+          if (!toast.isConnected || toast.contains(document.activeElement) || toast.matches(':hover')) return;
+          timer = window.setTimeout(dismiss, lifetime);
+        }
+        button.addEventListener('click', dismiss);
+        toast.addEventListener('mouseenter', pause);
+        toast.addEventListener('mouseleave', resume);
+        toast.addEventListener('focusin', pause);
+        toast.addEventListener('focusout', function (event) {
+          if (!toast.contains(event.relatedTarget)) resume();
         });
-      }
+        resume();
+      });
     })();
   </script>
 {% endif %}

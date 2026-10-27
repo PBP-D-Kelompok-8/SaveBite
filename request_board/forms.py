@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm
 
 from request_board.models import Request
 
@@ -47,15 +46,3 @@ class RequestForm(forms.ModelForm):
             "description",
             "location",
         ]
-
-
-class BoardAuthenticationForm(AuthenticationForm):
-    error_messages = {
-        "invalid_login": "Nama pengguna atau kata sandi tidak benar. Periksa kembali keduanya.",
-        "inactive": "Akun ini tidak aktif.",
-    }
-
-    def __init__(self, request=None, *args, **kwargs):
-        super().__init__(request, *args, **kwargs)
-        for field in self.fields.values():
-            field.error_messages.update(BOARD_FIELD_ERRORS)
