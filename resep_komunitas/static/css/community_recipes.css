@@ -6,21 +6,13 @@
 }
 
 .recipes-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
     margin-bottom: 24px;
 }
 
-.recipes-header h1 {
-    margin: 0 0 8px;
-    color: var(--accent-dark-green);
+.recipes-header div{
+    gap: 0px;
 }
 
-.recipes-header p {
-    margin: 0;
-}
 
 .recipes-eyebrow {
     color: var(--line);
@@ -92,27 +84,46 @@
     gap: 16px;
 }
 
+/* ========================================
+   RECIPE CARD
+======================================== */
+
 .recipe-card {
-    min-width: 0;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
-    background: var(--ink-light);
-    border-radius: 18px;
-    box-shadow: 0 2px 8px rgb(35 54 26 / 8%);
+
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+
+    border-radius: 16px;
+    background-color: var(--ink-light);
 }
 
+
+/* ========================================
+   IMAGE
+======================================== */
+
 .recipe-card__image-link {
+    position: relative;
+
     display: block;
-    aspect-ratio: 1.5 / 1;
-    background: #a91919;
+    width: 100%;
+    aspect-ratio: 1.6 / 1;
+
     overflow: hidden;
+    flex-shrink: 0;
+
+    background-color: var(--accent-green);
 }
 
 .recipe-card__image {
     display: block;
+
     width: 100%;
     height: 100%;
+
     object-fit: cover;
 }
 
@@ -120,58 +131,184 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--accent-dark-green);
+
     color: var(--ink-light);
-    font-weight: 700;
 }
+
+
+/* ========================================
+   STAR COUNT BADGE
+======================================== */
+
+.recipe-card__star-count {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    padding: 5px 9px;
+    border-radius: 999px;
+
+    background-color: var(--ink-light);
+    color: var(--ink-dark);
+}
+
+.recipe-card__star-count-icon {
+    display: block;
+
+    width: 17px;
+    height: 17px;
+
+    flex-shrink: 0;
+
+    background-color: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
+}
+
+
+/* ========================================
+   CARD CONTENT
+======================================== */
 
 .recipe-card__content {
     display: flex;
     flex-direction: column;
+
     flex: 1;
-    padding: 12px;
-    gap: 8px;
+    min-width: 0;
+
+    padding: 16px 13px 12px;
 }
 
 .recipe-card__title {
-    margin: 0;
+    margin: 0 0 5px;
+
     color: var(--ink-dark);
-    font-size: 18px;
-    line-height: 1.3;
     overflow-wrap: anywhere;
 }
+
+
+/* ========================================
+   METADATA
+======================================== */
 
 .recipe-card__meta {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
-    font-size: 11px;
-    color: var(--ink-dark);
+
+    gap: 5px 10px;
+
+    margin-bottom: 8px;
 }
 
-.recipe-card__description {
+.recipe-card__meta p {
     margin: 0;
-    font-size: 12px;
-    line-height: 1.6;
     overflow-wrap: anywhere;
 }
 
-.recipe-card__actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: auto;
-    padding-top: 4px;
+
+/* ========================================
+   DESCRIPTION
+======================================== */
+
+.recipe-card__description {
+    display: -webkit-box;
+
+    margin: 0 0 12px;
+
+    overflow: hidden;
+    overflow-wrap: anywhere;
+
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
 }
 
-.recipe-card__actions .btn {
-    min-width: 0;
+
+/* ========================================
+   ACTIONS
+======================================== */
+
+.recipe-card__actions {
+    display: flex;
+    align-items: stretch;
+
+    gap: 8px;
+
+    margin-top: auto;
+}
+
+/* Tombol Lihat Detail memenuhi sisa ruang */
+.recipe-card__actions > a:first-child {
     flex: 1;
-    padding: 7px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    text-align: center;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+/* Tombol ikon */
+.recipe-card__actions > a:not(:first-child),
+.recipe-card__icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 44px;
+    min-width: 44px;
+    height: 43px;
+
+    padding: 0;
+    flex-shrink: 0;
+}
+
+/* Ikon edit dan delete dari button component */
+.recipe-card__actions > a:not(:first-child) .btn__icon,
+.recipe-card__icon-button .btn__icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Form star tidak boleh mengambil seluruh lebar */
+.recipe-card__star-form {
+    display: flex;
+    flex-shrink: 0;
+}
+
+/* Ikon star */
+.recipe-card__star-form .btn__icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Status loading */
+.recipe-card__star-form button:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 480px) {
+    .recipe-card__content {
+        padding: 13px 10px 10px;
+    }
+
+    .recipe-card__actions {
+        gap: 6px;
+    }
+
+    .recipe-card__actions > a:not(:first-child),
+    .recipe-card__icon-button {
+        width: 38px;
+        min-width: 38px;
+        height: 40px;
+    }
 }
 
 /* Empty state */

@@ -11,12 +11,16 @@
 <link rel="stylesheet" href="{% static 'css/footer.css' %}">
 {% endblock %}
 
+{% block extra_js %}
+<script src="{% static 'js/resep_komunitas.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
 <section class="recipes-page">
     <header class="recipes-header">
         <div>
-            <h1 class="h3">Jelajahi Resep</h1>
-            <p>Ubah bahan yang tersisa jadi hidangan istimewa.</p>
+            <h2>Jelajahi Resep</h2>
+            <h6>Ubah bahan yang tersisa jadi hidangan istimewa.</h6>
         </div>
 
         {% if user.is_authenticated %}
@@ -61,7 +65,7 @@
     {% if recipes %}
         <div class="recipes-grid">
             {% for recipe in recipes %}
-                {% include 'resep_komunitas/recipe_card.html' with recipe=recipe %}
+                {% include 'recipe_card.html' with recipe=recipe %}
             {% endfor %}
         </div>
     {% else %}
