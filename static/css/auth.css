@@ -59,3 +59,18 @@ body:has(.auth) > main { flex: 1; }
   .auth__form > .input:has(+ .auth__actions) .input__help { margin-bottom: -1px; }
   .auth__switch { font-size: 16px; }    /* .p4 */
 }
+
+
+/* Feedback pesan untuk halaman autentikasi */
+.auth__message {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.auth__message--success { color: var(--dark-green); background: #ddebc0; }
+.auth__message--error { color: #712b13; background: #f5d9d2; }
+.auth__message--warning { color: #633806; background: #f6eac4; }
+.auth__message--info { color: var(--dark-green); background: #e4edf0; }
