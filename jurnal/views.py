@@ -4,10 +4,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods, require_POST
 
+from .decorators import limit_food_log_writes, require_food_log_owner
 from .forms import FoodLogFilterForm, FoodLogForm
 from .models import FoodLog
 
@@ -108,10 +110,9 @@ def food_log_list(request):
 
 
 @login_required(login_url="login")
+@require_POST
+@limit_food_log_writes
 def food_log_create(request):
-    if request.method != "POST":
-        return redirect("jurnal:index")
-
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     form = FoodLogForm(request.POST)
     if form.is_valid():
@@ -142,8 +143,10 @@ def food_log_create(request):
 
 
 @login_required(login_url="login")
-def food_log_update(request, pk):
-    food_log = get_object_or_404(FoodLog, pk=pk, user=request.user)
+@require_http_methods(["GET", "POST"])
+@limit_food_log_writes
+@require_food_log_owner
+def food_log_update(request, pk, *, food_log):
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     if request.method == "POST":
@@ -175,8 +178,10 @@ def food_log_update(request, pk):
 
 
 @login_required(login_url="login")
-def food_log_delete(request, pk):
-    food_log = get_object_or_404(FoodLog, pk=pk, user=request.user)
+@require_http_methods(["GET", "POST"])
+@limit_food_log_writes
+@require_food_log_owner
+def food_log_delete(request, pk, *, food_log):
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     if request.method == "POST":

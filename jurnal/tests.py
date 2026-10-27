@@ -2,11 +2,13 @@ from datetime import timedelta
 from types import SimpleNamespace
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from .decorators import FOOD_LOG_WRITE_CACHE_KEY
 from .forms import FoodLogForm
 from .models import FoodLog
 from .services import sync_log_from_rescue_plan
@@ -503,3 +505,84 @@ class FoodLogAjaxCrudTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["ok"])
         self.assertFalse(FoodLog.objects.filter(pk=log.pk).exists())
+
+class FoodLogWriteRateLimitTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = get_user_model().objects.create_user(
+            username="rate-limit-user",
+            password="test-password",
+        )
+        self.client.force_login(self.user)
+        self.create_url = reverse("jurnal:create")
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_write_endpoint_returns_429_after_per_user_limit(self):
+        for index in range(20):
+            response = self.client.post(
+                self.create_url,
+                {
+                    "food_name": f"Log {index}",
+                    "quantity": "1",
+                    "unit": "pcs",
+                    "status": "terselamatkan",
+                    "notes": "",
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+
+        self.assertEqual(cache.get(f"jurnal:food-log-write:{self.user.pk}"), 20)
+        response = self.client.post(
+            self.create_url,
+            {
+                "food_name": "Log kelebihan",
+                "quantity": "1",
+                "unit": "pcs",
+                "status": "terselamatkan",
+                "notes": "",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response["Retry-After"], "60")
+        self.assertFalse(FoodLog.objects.filter(food_name="Log kelebihan").exists())
+
+    def test_rate_limit_also_protects_update_and_delete(self):
+        log = FoodLog.objects.create(
+            user=self.user,
+            food_name="Tersimpan",
+            quantity=1,
+            unit="pcs",
+            status="terselamatkan",
+        )
+        key = FOOD_LOG_WRITE_CACHE_KEY.format(user_id=self.user.pk)
+        update_url = reverse("jurnal:update", args=[log.pk])
+        delete_url = reverse("jurnal:delete", args=[log.pk])
+        form_data = {
+            "food_name": "Diubah",
+            "quantity": "2",
+            "unit": "pcs",
+            "status": "terbuang",
+            "notes": "",
+        }
+
+        cache.set(key, 20, timeout=60)
+        update_response = self.client.post(
+            update_url,
+            form_data,
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(update_response.status_code, 429)
+        log.refresh_from_db()
+        self.assertEqual(log.food_name, "Tersimpan")
+
+        cache.set(key, 20, timeout=60)
+        delete_response = self.client.post(
+            delete_url,
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(delete_response.status_code, 429)
+        self.assertTrue(FoodLog.objects.filter(pk=log.pk).exists())

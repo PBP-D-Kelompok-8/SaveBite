@@ -95,6 +95,8 @@
         if (payload.form_html && modal) {
           modal.querySelector(".modal__content").innerHTML = payload.form_html;
           modal.querySelector(".input__field")?.focus();
+        } else {
+          announce(payload.message || "Catatan gagal disimpan.", true);
         }
         return;
       }
@@ -130,7 +132,10 @@
         credentials: "same-origin",
       });
       const payload = await readJsonResponse(response);
-      if (!response.ok || !payload.ok) throw new Error("Penghapusan gagal.");
+      if (!response.ok || !payload.ok) {
+        announce(payload.message || "Catatan gagal dihapus.", true);
+        return;
+      }
 
       form.closest("dialog")?.close();
       latestListRequest += 1;
