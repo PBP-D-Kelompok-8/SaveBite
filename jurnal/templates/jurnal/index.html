@@ -30,10 +30,21 @@
   <p class="food-journal__intro">Riwayat makanan yang gagal/berhasil diselamatkan</p>
 
   <form class="food-journal__search" method="get" action="{% url 'jurnal:index' %}">
-    <input class="food-journal__search-input" type="search" name="q" value="{{ search_query }}" placeholder="Cari log makanan..." aria-label="Cari log makanan">
-    {% include 'components/button.html' with label='Cari' type='secondary' color='dark-green' icon_right='icons/bx-search-alt.svg' submit=True %}
+    <div class="food-journal__filter-row">
+      <div class="food-journal__filter-search">{{ filter_form.query }}</div>
+      {{ filter_form.status }}
+      <label class="food-journal__date-filter">Dari {{ filter_form.date_from }}</label>
+      <label class="food-journal__date-filter">Sampai {{ filter_form.date_to }}</label>
+      {% include 'components/button.html' with label='Terapkan' type='secondary' color='dark-green' icon_right='icons/bx-search-alt.svg' submit=True %}
+      <a class="btn btn--tertiary btn--dark-green food-journal__clear-filters" href="{% url 'jurnal:index' %}">Reset</a>
+    </div>
+    {% if filter_form.errors %}
+      <div class="food-journal__filter-errors" role="alert">
+        {% for field in filter_form %}{% for error in field.errors %}<p>{{ error }}</p>{% endfor %}{% endfor %}
+        {% for error in filter_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+      </div>
+    {% endif %}
   </form>
-
   {% if food_logs %}
     <div class="food-journal__log-list card-list">
       {% for log in food_logs %}
@@ -43,8 +54,8 @@
       {% endfor %}
     </div>
   {% else %}
-    <p class="food-journal__empty">Belum ada catatan.</p>
-    <p class="food-journal__intro food-journal__empty-hint">Mulai catat makanan yang kamu selamatkan atau terbuang untuk melihat progresmu!</p>
+    <p class="food-journal__empty">{% if filters_invalid %}Filter tidak valid. Periksa kembali status dan rentang tanggal.{% elif filters_applied %}Tidak ada catatan yang cocok dengan filter.{% else %}Belum ada catatan.{% endif %}</p>
+    <p class="food-journal__intro food-journal__empty-hint">{% if filters_applied %}Coba ubah filter atau pilih Reset untuk melihat semua catatan.{% else %}Mulai catat makanan yang kamu selamatkan atau terbuang untuk melihat progresmu!{% endif %}</p>
   {% endif %}
 </section>
 </section>

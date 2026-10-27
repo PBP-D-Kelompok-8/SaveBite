@@ -1,9 +1,13 @@
-﻿from types import SimpleNamespace
+from datetime import timedelta
+from types import SimpleNamespace
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
+from .forms import FoodLogForm
 from .models import FoodLog
 from .services import sync_log_from_rescue_plan
 
@@ -201,6 +205,48 @@ class FoodLogUpdateTests(TestCase):
         self.assertEqual(other_log.food_name, "Milik pengguna lain")
 
 
+    def test_ajax_update_returns_updated_card_and_summary(self):
+        response = self.client.post(
+            self.update_url,
+            {
+                "food_name": "Bayam tumis",
+                "quantity": "3",
+                "unit": "gr",
+                "status": "terbuang",
+                "notes": "Sudah dimasak",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertIn("Bayam tumis", payload["card_html"])
+        self.assertIn("summary_html", payload)
+        self.assertIn("0 terselamatkan · 1 terbuang · 1 total", payload["summary_html"])
+        self.food_log.refresh_from_db()
+        self.assertEqual(self.food_log.status, "terbuang")
+
+    def test_ajax_update_rejects_invalid_data_and_preserves_record(self):
+        response = self.client.post(
+            self.update_url,
+            {
+                "food_name": "Bayam tumis",
+                "quantity": "0",
+                "unit": "gr",
+                "status": "terbuang",
+                "notes": "Invalid",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+        self.assertIn("quantity", response.json()["form_html"])
+        self.food_log.refresh_from_db()
+        self.assertEqual(self.food_log.food_name, "Bayam")
+        self.assertEqual(self.food_log.quantity, 1)
+
 class FoodLogDeleteTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
@@ -251,3 +297,120 @@ class FoodLogDeleteTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertTrue(FoodLog.objects.filter(pk=other_log.pk).exists())
 
+
+class FoodLogFilteringTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="filter-user",
+            password="test-password",
+        )
+        self.other_user = get_user_model().objects.create_user(
+            username="filter-other",
+            password="test-password",
+        )
+        self.client.force_login(self.user)
+        self.today = timezone.localdate()
+        self.saved_log = FoodLog.objects.create(
+            user=self.user,
+            food_name="Nasi sisa",
+            quantity=2,
+            unit="pcs",
+            status="terselamatkan",
+            notes="Dibuat untuk makan malam",
+        )
+        self.wasted_log = FoodLog.objects.create(
+            user=self.user,
+            food_name="Sup basi",
+            quantity=1,
+            unit="porsi",
+            status="terbuang",
+            notes="Ditemukan di kulkas",
+        )
+        FoodLog.objects.create(
+            user=self.other_user,
+            food_name="Nasi rahasia",
+            quantity=1,
+            unit="pcs",
+            status="terselamatkan",
+        )
+
+    def test_combines_search_status_and_inclusive_date_range(self):
+        response = self.client.get(
+            reverse("jurnal:index"),
+            {
+                "query": "nasi",
+                "status": "terselamatkan",
+                "date_from": self.today.isoformat(),
+                "date_to": self.today.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([log.pk for log in response.context["food_logs"]], [self.saved_log.pk])
+        self.assertContains(response, "Nasi sisa")
+        self.assertNotContains(response, "Sup basi")
+        self.assertNotContains(response, "Nasi rahasia")
+
+    def test_search_checks_notes_as_well_as_food_name(self):
+        response = self.client.get(reverse("jurnal:index"), {"query": "kulkas"})
+
+        self.assertEqual([log.pk for log in response.context["food_logs"]], [self.wasted_log.pk])
+
+    def test_invalid_reversed_date_range_shows_error_without_crashing(self):
+        response = self.client.get(
+            reverse("jurnal:index"),
+            {
+                "date_from": (self.today + timedelta(days=1)).isoformat(),
+                "date_to": self.today.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["filters_invalid"])
+        self.assertTrue(response.context["filter_form"].errors["date_to"])
+        self.assertEqual(len(response.context["food_logs"]), 2)
+
+    def test_invalid_status_is_rejected_as_a_filter_value(self):
+        response = self.client.get(reverse("jurnal:index"), {"status": "made-up"})
+
+        self.assertTrue(response.context["filters_invalid"])
+        self.assertTrue(response.context["filter_form"].errors["status"])
+        self.assertEqual(len(response.context["food_logs"]), 2)
+
+class FoodLogModelValidationTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="model-validation-user",
+            password="test-password",
+        )
+
+    def test_form_rejects_unknown_status_and_unit(self):
+        form = FoodLogForm(data={
+            "food_name": "Makanan",
+            "quantity": "1",
+            "unit": "unknown",
+            "status": "unknown",
+            "notes": "",
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("unit", form.errors)
+        self.assertIn("status", form.errors)
+
+    def test_database_rejects_unknown_status(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                FoodLog.objects.create(
+                    user=self.user,
+                    food_name="Status invalid",
+                    status="unknown",
+                )
+
+    def test_database_rejects_unknown_unit(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                FoodLog.objects.create(
+                    user=self.user,
+                    food_name="Satuan invalid",
+                    unit="unknown",
+                )

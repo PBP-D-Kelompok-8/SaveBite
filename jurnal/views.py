@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from .forms import FoodLogForm
+from .forms import FoodLogFilterForm, FoodLogForm
 from .models import FoodLog
 
 
@@ -52,23 +52,34 @@ def _prepare_food_log_card(log):
     return log
 
 
-def _food_logs_for_user(user, query=""):
+def _food_logs_for_user(user, filters=None):
+    """Return only this user's logs, applying each validated filter together."""
     logs = FoodLog.objects.filter(user=user)
-    if query:
-        logs = logs.filter(Q(food_name__icontains=query) | Q(notes__icontains=query))
+    if filters:
+        query = filters.get("query", "").strip()
+        if query:
+            logs = logs.filter(Q(food_name__icontains=query) | Q(notes__icontains=query))
+        if filters.get("status"):
+            logs = logs.filter(status=filters["status"])
+        if filters.get("date_from"):
+            logs = logs.filter(completed_at__date__gte=filters["date_from"])
+        if filters.get("date_to"):
+            logs = logs.filter(completed_at__date__lte=filters["date_to"])
     return [_prepare_food_log_card(log) for log in logs]
-
 
 @login_required(login_url="login")
 def food_log_list(request):
-    query = request.GET.get("q", "").strip()
+    filter_form = FoodLogFilterForm(request.GET or None)
+    filters = filter_form.cleaned_data if filter_form.is_valid() else {}
     return render(
         request,
         "jurnal/index.html",
         {
-            "food_logs": _food_logs_for_user(request.user, query),
+            "food_logs": _food_logs_for_user(request.user, filters),
             "form": FoodLogForm(),
-            "search_query": query,
+            "filter_form": filter_form,
+            "filters_invalid": bool(request.GET and not filter_form.is_valid()),
+            "filters_applied": bool(request.GET),
             **_food_log_summary(request.user),
         },
     )
@@ -93,7 +104,9 @@ def food_log_create(request):
         {
             "food_logs": _food_logs_for_user(request.user),
             "form": form,
-            "search_query": "",
+            "filter_form": FoodLogFilterForm(),
+            "filters_invalid": False,
+            "filters_applied": False,
             **_food_log_summary(request.user),
         },
         status=400,
