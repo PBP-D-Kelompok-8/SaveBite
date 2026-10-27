@@ -1,0 +1,10 @@
+{% if food_logs %}
+  <div class="food-journal__log-list card-list">
+    {% for log in food_logs %}
+      {% include 'jurnal/foodlog_card.html' with log=log %}
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="food-journal__empty">{% if filters_invalid %}Filter tidak valid. Periksa kembali status dan rentang tanggal.{% elif filters_applied %}Tidak ada catatan yang cocok dengan filter.{% else %}Belum ada catatan.{% endif %}</p>
+  <p class="food-journal__intro food-journal__empty-hint">{% if filters_applied %}Coba ubah filter atau pilih Reset untuk melihat semua catatan.{% else %}Mulai catat makanan yang kamu selamatkan atau terbuang untuk melihat progresmu!{% endif %}</p>
+{% endif %}

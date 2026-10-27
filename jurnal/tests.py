@@ -221,7 +221,7 @@ class FoodLogUpdateTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertTrue(payload["ok"])
-        self.assertIn("Bayam tumis", payload["card_html"])
+        self.assertIn("Bayam tumis", payload["list_html"])
         self.assertIn("summary_html", payload)
         self.assertIn("0 terselamatkan · 1 terbuang · 1 total", payload["summary_html"])
         self.food_log.refresh_from_db()
@@ -414,3 +414,92 @@ class FoodLogModelValidationTests(TestCase):
                     food_name="Satuan invalid",
                     unit="unknown",
                 )
+
+class FoodLogAjaxCrudTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="ajax-journal-user",
+            password="test-password",
+        )
+        self.client.force_login(self.user)
+        self.create_url = reverse("jurnal:create")
+        self.index_url = reverse("jurnal:index")
+        self.form_data = {
+            "food_name": "Nasi sisa",
+            "quantity": "2",
+            "unit": "pcs",
+            "status": "terselamatkan",
+            "notes": "Untuk makan malam",
+        }
+
+    def test_ajax_create_returns_json_and_saves_entry(self):
+        response = self.client.post(
+            self.create_url,
+            self.form_data,
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.json()["message"], "Catatan makanan berhasil ditambahkan.")
+        self.assertIn("Nasi sisa", response.json()["list_html"])
+        self.assertIn("1 total", response.json()["summary_html"])
+        self.assertTrue(FoodLog.objects.filter(user=self.user, food_name="Nasi sisa").exists())
+
+    def test_ajax_create_returns_validation_errors_without_saving(self):
+        response = self.client.post(
+            self.create_url,
+            {**self.form_data, "quantity": "0"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+        self.assertIn("quantity", response.json()["form_html"])
+        self.assertEqual(FoodLog.objects.count(), 0)
+
+    def test_ajax_list_returns_filtered_results_and_summary(self):
+        FoodLog.objects.create(
+            user=self.user,
+            food_name="Nasi sisa",
+            quantity=1,
+            unit="pcs",
+            status="terselamatkan",
+        )
+        FoodLog.objects.create(
+            user=self.user,
+            food_name="Sup basi",
+            quantity=1,
+            unit="porsi",
+            status="terbuang",
+        )
+
+        response = self.client.get(
+            self.index_url,
+            {"status": "terselamatkan"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertIn("Nasi sisa", response.json()["list_html"])
+        self.assertNotIn("Sup basi", response.json()["list_html"])
+        self.assertIn("2 total", response.json()["summary_html"])
+
+    def test_ajax_delete_returns_json_and_removes_entry(self):
+        log = FoodLog.objects.create(
+            user=self.user,
+            food_name="Sup basi",
+            quantity=1,
+            unit="porsi",
+            status="terbuang",
+        )
+
+        response = self.client.post(
+            reverse("jurnal:delete", args=[log.pk]),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertFalse(FoodLog.objects.filter(pk=log.pk).exists())

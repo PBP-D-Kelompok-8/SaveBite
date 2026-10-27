@@ -67,22 +67,44 @@ def _food_logs_for_user(user, filters=None):
             logs = logs.filter(completed_at__date__lte=filters["date_to"])
     return [_prepare_food_log_card(log) for log in logs]
 
+
+def _journal_context(request, form=None):
+    filter_form = FoodLogFilterForm(request.GET or None)
+    filters_valid = filter_form.is_valid()
+    filters = filter_form.cleaned_data if filters_valid else {}
+    return {
+        "food_logs": _food_logs_for_user(request.user, filters),
+        "form": form if form is not None else FoodLogForm(),
+        "filter_form": filter_form,
+        "filters_invalid": bool(request.GET and not filters_valid),
+        "filters_applied": any(value.strip() for value in request.GET.values()),
+        **_food_log_summary(request.user),
+    }
+
+
+def _ajax_journal_response(request, message=None):
+    """Return fresh list and summary markup for a single AJAX round trip."""
+    context = _journal_context(request)
+    payload = {
+        "ok": True,
+        "list_html": render_to_string(
+            "jurnal/foodlog_list.html", context, request=request
+        ),
+        "summary_html": render_to_string(
+            "jurnal/foodlog_summary.html", context, request=request
+        ),
+    }
+    if message:
+        payload["message"] = message
+    return JsonResponse(payload)
+
+
 @login_required(login_url="login")
 def food_log_list(request):
-    filter_form = FoodLogFilterForm(request.GET or None)
-    filters = filter_form.cleaned_data if filter_form.is_valid() else {}
-    return render(
-        request,
-        "jurnal/index.html",
-        {
-            "food_logs": _food_logs_for_user(request.user, filters),
-            "form": FoodLogForm(),
-            "filter_form": filter_form,
-            "filters_invalid": bool(request.GET and not filter_form.is_valid()),
-            "filters_applied": bool(request.GET),
-            **_food_log_summary(request.user),
-        },
-    )
+    context = _journal_context(request)
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return _ajax_journal_response(request)
+    return render(request, "jurnal/index.html", context)
 
 
 @login_required(login_url="login")
@@ -90,25 +112,31 @@ def food_log_create(request):
     if request.method != "POST":
         return redirect("jurnal:index")
 
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     form = FoodLogForm(request.POST)
     if form.is_valid():
         food_log = form.save(commit=False)
         food_log.user = request.user
         food_log.save()
+        if is_ajax:
+            return _ajax_journal_response(
+                request, "Catatan makanan berhasil ditambahkan."
+            )
         messages.success(request, "Catatan makanan berhasil ditambahkan.")
         return redirect("jurnal:index")
+
+    if is_ajax:
+        return JsonResponse({
+            "ok": False,
+            "form_html": render_to_string(
+                "jurnal/foodlog_form_fields.html", {"form": form}, request=request
+            ),
+        }, status=400)
 
     return render(
         request,
         "jurnal/index.html",
-        {
-            "food_logs": _food_logs_for_user(request.user),
-            "form": form,
-            "filter_form": FoodLogFilterForm(),
-            "filters_invalid": False,
-            "filters_applied": False,
-            **_food_log_summary(request.user),
-        },
+        _journal_context(request, form=form),
         status=400,
     )
 
@@ -121,25 +149,18 @@ def food_log_update(request, pk):
     if request.method == "POST":
         form = FoodLogForm(request.POST, instance=food_log)
         if form.is_valid():
-            food_log = form.save()
+            form.save()
             if is_ajax:
-                _prepare_food_log_card(food_log)
-                return JsonResponse({
-                    "ok": True,
-                    "card_html": render_to_string(
-                        "jurnal/foodlog_card.html", {"log": food_log}
-                    ),
-                    "summary_html": render_to_string(
-                        "jurnal/foodlog_summary.html", _food_log_summary(request.user)
-                    ),
-                })
+                return _ajax_journal_response(
+                    request, "Catatan makanan berhasil diperbarui."
+                )
             messages.success(request, "Catatan makanan berhasil diperbarui.")
             return redirect("jurnal:index")
         if is_ajax:
             return JsonResponse({
                 "ok": False,
                 "form_html": render_to_string(
-                    "jurnal/foodlog_form_fields.html", {"form": form}
+                    "jurnal/foodlog_form_fields.html", {"form": form}, request=request
                 ),
             }, status=400)
     else:
@@ -156,9 +177,14 @@ def food_log_update(request, pk):
 @login_required(login_url="login")
 def food_log_delete(request, pk):
     food_log = get_object_or_404(FoodLog, pk=pk, user=request.user)
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     if request.method == "POST":
         food_log.delete()
+        if is_ajax:
+            return _ajax_journal_response(
+                request, "Catatan makanan berhasil dihapus."
+            )
         messages.success(request, "Catatan makanan berhasil dihapus.")
         return redirect("jurnal:index")
 

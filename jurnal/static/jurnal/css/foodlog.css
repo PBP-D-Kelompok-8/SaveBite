@@ -436,3 +436,24 @@
   .food-journal__filter-search, .food-journal__filter-row > .btn { grid-column: 1 / -1; }
   .food-journal__date-filter { grid-row: auto; flex-direction: column; align-items: stretch; }
 }
+/* Feedback and responsive AJAX filtering */
+.food-journal__results { transition: opacity 160ms ease; }
+.food-journal__results[aria-busy="true"] { opacity: 0.55; pointer-events: none; }
+.food-journal__live-message { min-height: 0; margin: 0; color: var(--dark-green); font-size: 13px; }
+.food-journal__live-message:empty { display: none; }
+.food-journal__live-message--error { color: #ad0003; }
+.food-journal__log-list .food-journal__card-item { min-width: 0; }
+.food-journal__filter-row .btn { min-height: 36px; white-space: nowrap; }
+@media (max-width: 900px) {
+  .food-journal__filter-row { grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr) minmax(135px, 1fr); }
+  .food-journal__filter-search { grid-column: span 2; }
+}
+@media (max-width: 560px) {
+  .food-journal__header { flex-direction: column; align-items: stretch; gap: 12px; }
+  .food-journal__header > div:last-child { align-self: flex-start; }
+  .food-journal__filter-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .food-journal__filter-search { grid-column: 1 / -1; }
+  .food-journal__filter-control[name="status"] { grid-column: 1 / -1; }
+  .food-journal__date-filter { grid-row: auto; flex-direction: column; align-items: stretch; }
+  .food-journal__filter-row .btn { justify-self: stretch; }
+}
