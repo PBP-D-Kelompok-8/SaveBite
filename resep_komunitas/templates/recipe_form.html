@@ -1,0 +1,97 @@
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ recipe.title }} | SaveBite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/button.css' %}">
+<link rel="stylesheet" href="{% static 'css/community_recipes.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'resep_komunitas/resep_komunitas.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<article class="recipe-detail">
+    <div class="recipe-detail__hero">
+        {% if recipe.image_url %}
+            <img src="{{ recipe.image_url }}" alt="Foto {{ recipe.title }}">
+        {% else %}
+            <div class="recipe-detail__placeholder">SaveBite</div>
+        {% endif %}
+
+        <a class="recipe-detail__back" href="{% url 'resep_komunitas:recipe_list' %}">
+            &#8249; Kembali
+        </a>
+    </div>
+
+    <div class="recipe-detail__body">
+        <header class="recipe-detail__header">
+            <div>
+                <h1 class="h3">{{ recipe.title }}</h1>
+                <p class="recipe-detail__meta">
+                    &#128100; {{ recipe.author.username }}
+                    &nbsp; | &nbsp;
+                    <span id="star-count">&#9734; {{ recipe.star_count }}</span>
+                </p>
+            </div>
+
+            {% if user.is_authenticated and user.pk != recipe.author_id %}
+                <form
+                    method="post"
+                    action="{% url 'resep_komunitas:recipe_toggle_star' recipe.pk %}"
+                    class="star-form"
+                    data-star-form
+                >
+                    {% csrf_token %}
+                    <button
+                        type="submit"
+                        class="btn btn--secondary btn--dark-green"
+                        id="star-button"
+                    >
+                        {% if is_starred %}Tersimpan &#9733;{% else %}Simpan Menu &#9733;{% endif %}
+                    </button>
+                </form>
+            {% elif not user.is_authenticated %}
+                <p class="recipe-detail__login-note">
+                    Login untuk menyimpan resep.
+                </p>
+            {% endif %}
+        </header>
+
+        <section class="recipe-detail__section">
+            <h2 class="h4">Deskripsi</h2>
+            <p>{{ recipe.description|linebreaksbr }}</p>
+            <p class="recipe-detail__ingredient">
+                <strong>Bahan utama:</strong> {{ recipe.main_ingred }}
+            </p>
+        </section>
+
+        <section class="recipe-detail__section">
+            <h2 class="h4">Alat &amp; Bahan</h2>
+            <p class="recipe-preformatted">{{ recipe.ingredients }}</p>
+        </section>
+
+        <section class="recipe-detail__section">
+            <h2 class="h4">Langkah-langkah</h2>
+            <p class="recipe-preformatted">{{ recipe.steps }}</p>
+        </section>
+
+        <p class="recipe-detail__edited">
+            Terakhir diedit: {{ recipe.last_edited|date:"d M Y, H:i" }}
+        </p>
+
+        {% if user.is_authenticated and user.pk == recipe.author_id %}
+            <div class="recipe-detail__owner-actions">
+                {% url 'resep_komunitas:recipe_update' recipe.pk as edit_url %}
+                {% include 'components/button.html' with label="Edit Resep" type="secondary" color="blue" href=edit_url %}
+
+                {% url 'resep_komunitas:recipe_delete' recipe.pk as delete_url %}
+                {% include 'components/button.html' with label="Hapus Resep" type="tertiary" color="dark-green" href=delete_url %}
+            </div>
+        {% endif %}
+    </div>
+</article>
+{% endblock %}

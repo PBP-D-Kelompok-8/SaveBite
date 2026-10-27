@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .models import CommunityRecipe
+from .forms import CommunityRecipeForm
 
 
 def recipe_list(request):
@@ -95,7 +96,7 @@ def recipe_delete(request, pk):
     # Penghapusan dilakukan setelah form konfirmasi dikirim dengan POST.
     if request.method == "POST":
         recipe.delete()
-        return redirect("community_recipes:recipe_list")
+        return redirect("resep_komunitas:recipe_list")
 
     return render(
         request,
@@ -167,3 +168,126 @@ def recipe_toggle_star(request, pk):
         "community_recipes:recipe_detail",
         pk=pk,
     )
+
+@login_required
+def recipe_create(request):
+    """
+    Menangani pembuatan resep baru.
+
+    GET:
+        Menampilkan form kosong.
+
+    POST:
+        Memvalidasi input, mengisi author dari user yang login,
+        menyimpan resep, lalu mengarahkan user ke halaman detail.
+    """
+
+    if request.method == "POST":
+        # request.POST berisi data yang dikirim melalui form.
+        form = CommunityRecipeForm(request.POST)
+
+        if form.is_valid():
+            # commit=False membuat objek model tanpa langsung
+            # menyimpannya ke database.
+            recipe = form.save(commit=False)
+
+            # Author ditentukan oleh server, bukan input dari form.
+            recipe.author = request.user
+            recipe.save()
+
+            return redirect(
+                "community_recipes:recipe_detail",
+                pk=recipe.pk,
+            )
+    else:
+        # Request GET pertama kali menampilkan form kosong.
+        form = CommunityRecipeForm()
+
+    return render(
+        request,
+        "recipe_form.html",
+        {
+            "form": form,
+            "is_edit": False,
+        },
+    )
+
+
+@login_required
+def recipe_update(request, pk):
+    """
+    Mengedit resep milik user yang sedang login.
+
+    Filter author=request.user menjadi pemeriksaan kepemilikan.
+    User lain yang mencoba mengakses resep ini akan menerima 404.
+    """
+
+    recipe = get_object_or_404(
+        CommunityRecipe,
+        pk=pk,
+        author=request.user,
+    )
+
+    if request.method == "POST":
+        # instance=recipe berarti form mengedit objek yang sudah ada,
+        # bukan membuat resep baru.
+        form = CommunityRecipeForm(
+            request.POST,
+            instance=recipe,
+        )
+
+        if form.is_valid():
+            form.save()
+
+            # last_edited diperbarui otomatis oleh auto_now=True.
+            return redirect(
+                "community_recipes:recipe_detail",
+                pk=recipe.pk,
+            )
+    else:
+        # Isi form dengan data resep yang sudah tersimpan.
+        form = CommunityRecipeForm(instance=recipe)
+
+    return render(
+        request,
+        "recipe_form.html",
+        {
+            "form": form,
+            "is_edit": True,
+            "recipe": recipe,
+        },
+    )
+
+
+def recipe_detail(request, pk):
+    """
+    Menampilkan detail satu resep berdasarkan primary key (pk).
+
+    Jika resep tidak ditemukan, Django mengembalikan HTTP 404.
+    is_starred digunakan template untuk menentukan teks tombol star.
+    """
+
+    recipe = get_object_or_404(
+        CommunityRecipe.objects.select_related(
+            "author"
+        ).prefetch_related("starred_by"),
+        pk=pk,
+    )
+
+    # User anonim tidak memiliki status star.
+    # Untuk user login, periksa apakah relasi star sudah ada.
+    is_starred = (
+        request.user.is_authenticated
+        and recipe.starred_by.filter(pk=request.user.pk).exists()
+    )
+
+    return render(
+        request,
+        "recipe_detail.html",
+        {
+            "recipe": recipe,
+            "is_starred": is_starred,
+        },
+    )
+
+
