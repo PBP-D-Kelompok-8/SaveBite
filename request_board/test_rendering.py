@@ -408,14 +408,14 @@ class DocumentLanguageControlTests(TestCase):
         self.assertEqual(len(documents), 1)
         self.assertEqual(documents[0].get("lang"), expected)
 
-    def test_base_without_override_defaults_to_english(self):
+    def test_base_without_override_defaults_to_indonesian(self):
         response = self.client.get(reverse("landing_page"))
         self.assertEqual(response.status_code, 200)
         template = get_template("base.html")
 
         html = template.render({}, request=response.wsgi_request)
 
-        self.assert_document_language(html, "en")
+        self.assert_document_language(html, "id")
 
     def test_landing_document_remains_indonesian(self):
         response = self.client.get(reverse("landing_page"))
