@@ -18,14 +18,12 @@
 {% block content %}
 <section class="recipes-page">
     <header class="recipes-header">
-        <div>
-            <h2>Jelajahi Resep</h2>
-            <h6>Ubah bahan yang tersisa jadi hidangan istimewa.</h6>
-        </div>
-
+        <h2 class="h2">Jelajahi Resep</h2>
+        <h6 class="h6">Ubah bahan yang tersisa jadi hidangan istimewa.</h6>
+        
         {% if user.is_authenticated %}
             {% url 'resep_komunitas:recipe_create' as create_url %}
-            {% include 'components/button.html' with label="Bagikan Resep" type="primary" color="dark-green" href=create_url %}
+            {% include 'components/button.html' with label="Bagikan Resep" type="primary" color="dark-green" href=create_url icon_right="icons/upload.svg" %}
         {% endif %}
     </header>
 
@@ -39,7 +37,7 @@
         >
         <input type="hidden" name="filter" value="{{ filter_type }}">
         <button class="btn btn--secondary btn--dark-green" type="submit">
-            Cari &#9906;
+            Cari
         </button>
     </form>
 
@@ -54,11 +52,12 @@
                 class="recipe-filter {% if filter_type == 'mine' %}is-active{% endif %}"
                 href="{% url 'resep_komunitas:recipe_list' %}?filter=mine"
             >Resep Anda</a>
-
+<!--             
             <a
                 class="recipe-filter {% if filter_type == 'saved' %}is-active{% endif %}"
                 href="{% url 'resep_komunitas:recipe_list' %}?filter=saved"
             >Tersimpan</a>
+             -->
         {% endif %}
     </nav>
 
@@ -70,9 +69,57 @@
         </div>
     {% else %}
         <div class="recipes-empty">
-            <h2 class="h4">Belum ada resep yang ditemukan</h2>
-            <p>Coba kata kunci lain atau bagikan resep pertamamu.</p>
+            <h4 class="h4">Belum ada resep yang ditemukan</h4>
+            <p class="p3">Coba kata kunci lain atau bagikan resep pertamamu</p>
         </div>
     {% endif %}
 </section>
+
+<div
+    class="delete-modal"
+    id="delete-modal"
+    aria-hidden="true"
+>
+    <div class="delete-modal__overlay" data-close-delete-modal></div>
+
+    <section
+        class="delete-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-modal-title"
+        aria-describedby="delete-modal-description"
+    >
+        <p class="recipes-eyebrow">KONFIRMASI</p>
+
+        <h2 id="delete-modal-title">Hapus Resep?</h2>
+
+        <p id="delete-modal-description">
+            Kamu yakin ingin menghapus resep
+            <strong id="delete-recipe-title"></strong>?
+            Tindakan ini tidak dapat dibatalkan.
+        </p>
+
+        <div class="delete-modal__actions">
+            <button
+                type="button"
+                class="btn btn--tertiary btn--dark-green"
+                data-close-delete-modal
+            >
+                Batal
+            </button>
+
+            <form id="delete-recipe-form" method="post">
+                {% csrf_token %}
+
+                <button
+                    type="submit"
+                    class="btn btn--primary btn--dark-green"
+                >
+                    Ya, Hapus
+                </button>
+            </form>
+        </div>
+    </section>
+</div>
+
 {% endblock %}

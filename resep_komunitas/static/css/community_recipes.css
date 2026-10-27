@@ -5,28 +5,37 @@
     margin: 42px auto 64px;
 }
 
+.recipes-header h2 {
+    margin: 0  !important;
+}
+
+.recipes-header h6 {
+    margin: 4 0 0 0  !important;
+    padding: 0 !important;
+}
+
 .recipes-header {
-    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
 }
 
-.recipes-header div{
-    gap: 0px;
-}
 
-
-.recipes-eyebrow {
+/* .recipes-eyebrow {
     color: var(--line);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 2px;
     margin-bottom: 12px;
-}
+} */
 
 /* Search and filters */
 .recipes-search {
     display: flex;
     gap: 12px;
     margin-bottom: 14px;
+    margin-top: 24px;
 }
 
 .recipes-search input {
@@ -200,16 +209,32 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-
-    gap: 5px 10px;
-
+    gap: 8px;
     margin-bottom: 8px;
 }
 
-.recipe-card__meta p {
+.recipe-card__meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.recipe-card__meta-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.recipe-card__meta-item p {
     margin: 0;
     overflow-wrap: anywhere;
 }
+
+
+
 
 
 /* ========================================
@@ -226,6 +251,8 @@
 
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+
+    opacity: 0.6;
 }
 
 
@@ -317,22 +344,90 @@
     border-radius: var(--card-radius);
     text-align: center;
     background: var(--ink-light);
+    gap: 0;
 }
 
-.recipes-empty h2 {
+.recipes-empty h4, p{
+    margin: 4px;
+}
+
+/* ========================================
+   Delete confirmation modal
+======================================== */
+
+.delete-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.delete-modal.is-open {
+    display: flex;
+}
+
+.delete-modal__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 55%);
+}
+
+.delete-modal__dialog {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 440px);
+    padding: 32px;
+    border-radius: 20px;
+    background: var(--paper);
     color: var(--accent-dark-green);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 20%);
+}
+
+.delete-modal__dialog h2 {
+    margin: 0 0 12px;
+}
+
+.delete-modal__dialog p {
+    margin-bottom: 20px;
+}
+
+.delete-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+}
+
+.delete-modal__actions form {
+    margin: 0;
+}
+
+body.delete-modal-open {
+    overflow: hidden;
+}
+
+@media (max-width: 480px) {
+    .delete-modal__dialog {
+        padding: 24px;
+    }
+
+    .delete-modal__actions {
+        flex-wrap: wrap;
+    }
 }
 
 /* Detail page */
 .recipe-detail {
-    background: var(--ink-light);
+    background: var(--paper);
 }
 
 .recipe-detail__hero {
     height: clamp(220px, 30vw, 380px);
     position: relative;
     overflow: hidden;
-    background: #a91919;
 }
 
 .recipe-detail__hero > img {
@@ -349,8 +444,6 @@
     height: 100%;
     color: var(--ink-light);
     background: var(--accent-dark-green);
-    font-size: 28px;
-    font-weight: 700;
 }
 
 .recipe-detail__back {
@@ -362,8 +455,8 @@
     background: var(--ink-light);
     color: var(--ink-dark);
     text-decoration: none;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 24px;
+    font-weight: 700;
 }
 
 .recipe-detail__body {
@@ -387,11 +480,40 @@
     margin: 0 0 8px;
 }
 
-.recipe-detail__meta,
+/* .recipe-detail__meta,
 .recipe-detail__login-note,
 .recipe-detail__edited {
     font-size: 12px;
+} */
+
+
+.recipe-detail__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
 }
+
+.recipe-detail__meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.recipe-detail__meta-icon {
+    display: block;
+    height: 28px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.recipe-detail__meta-item p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
 
 .recipe-detail__section {
     margin-bottom: 28px;

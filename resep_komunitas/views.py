@@ -135,7 +135,7 @@ def recipe_toggle_star(request, pk):
             )
 
         return redirect(
-            "community_recipes:recipe_detail",
+            "resep_komunitas:recipe_detail",
             pk=pk,
         )
 
@@ -165,7 +165,7 @@ def recipe_toggle_star(request, pk):
 
     # Fallback untuk request POST biasa tanpa AJAX.
     return redirect(
-        "community_recipes:recipe_detail",
+        "resep_komunitas:recipe_detail",
         pk=pk,
     )
 
@@ -196,7 +196,7 @@ def recipe_create(request):
             recipe.save()
 
             return redirect(
-                "community_recipes:recipe_detail",
+                "resep_komunitas:recipe_detail",
                 pk=recipe.pk,
             )
     else:
@@ -241,7 +241,7 @@ def recipe_update(request, pk):
 
             # last_edited diperbarui otomatis oleh auto_now=True.
             return redirect(
-                "community_recipes:recipe_detail",
+                "resep_komunitas:recipe_detail",
                 pk=recipe.pk,
             )
     else:

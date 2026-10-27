@@ -1,9 +1,9 @@
-{% load static %}
+<!-- {% load static %}
 {% if user.is_authenticated and user in recipe.starred_by.all %}
     {% static 'icons/star-filled.svg' as star_icon %}
 {% else %}
     {% static 'icons/star-outline.svg' as star_icon %}
-{% endif %}
+{% endif %} -->
 
 <article class="recipe-card">
 
@@ -27,7 +27,7 @@
         {% endif %}
 
         <!-- Jumlah star -->
-        <div class="recipe-card__star-count">
+        <!-- <div class="recipe-card__star-count">
             <span
                 class="recipe-card__star-count-icon"
                 style="--icon: url('{% static 'icons/star-filled.svg' %}')"
@@ -38,7 +38,7 @@
                 class="p4"
                 data-star-count="{{ recipe.pk }}"
             >{{ recipe.star_count }}</span>
-        </div>
+        </div> -->
     </a>
 
     <!-- Konten resep -->
@@ -50,9 +50,29 @@
 
         <!-- Author dan bahan utama -->
         <div class="recipe-card__meta">
-            <p class="p4">{{ recipe.author.username }}</p>
-            <p class="p4">{{ recipe.main_ingred }}</p>
+            <div class="recipe-card__meta-item">
+                <img
+                    class="recipe-card__meta-icon"
+                    src="{% static 'icons/user_dark.svg' %}"
+                    alt=""
+                    aria-hidden="true"
+                >
+                <p class="p4">{{ recipe.author.username }}</p>
+            </div>
+
+            <span class="recipe-card__meta-divider" aria-hidden="true">|</span>
+
+            <div class="recipe-card__meta-item">
+                <img
+                    class="recipe-card__meta-icon"
+                    src="{% static 'icons/groceries_dark.svg' %}"
+                    alt=""
+                    aria-hidden="true"
+                >
+                <p class="p4">{{ recipe.main_ingred }}</p>
+            </div>
         </div>
+
 
         <!-- Deskripsi -->
         <p class="p4 recipe-card__description">
@@ -64,50 +84,43 @@
 
             <!-- Lihat Detail -->
             {% url 'resep_komunitas:recipe_detail' recipe.pk as detail_url %}
-
-            {% include 'components/button.html' with
-                label="Lihat Detail"
-                type="primary"
-                color="dark-green"
-                href=detail_url
-            %}
+            {% include 'components/button.html' with label="Lihat Detail" type="primary" color="dark-green" href=detail_url icon_left="icons/book-open.svg" %}
 
             {% if user.is_authenticated and user.pk == recipe.author_id %}
 
                 <!-- Edit: menuju halaman edit -->
                 {% url 'resep_komunitas:recipe_update' recipe.pk as edit_url %}
-
-                {% include 'components/button.html' with
-                    label=""
-                    type="secondary"
-                    color="blue"
-                    href=edit_url
-                    icon_right="icons/edit.svg"
-                %}
+                {% include 'components/button.html' with label=" " type="secondary" color="blue" href=edit_url icon_right="icons/edit.svg" %}
 
                 <!-- Delete: menuju halaman konfirmasi -->
-                {% url 'resep_komunitas:recipe_delete' recipe.pk as delete_url %}
-
-                {% include 'components/button.html' with
-                    label=""
-                    type="secondary"
-                    color="blue"
-                    href=delete_url
-                    icon_right="icons/delete.svg"
-                %}
+                <button
+                    type="button"
+                    class="btn btn--secondary btn--blue recipe-card__icon-button"
+                    data-delete-modal
+                    data-delete-url="{% url 'resep_komunitas:recipe_delete' recipe.pk %}"
+                    data-recipe-title="{{ recipe.title }}"
+                    aria-label="Hapus resep {{ recipe.title }}"
+                >
+                    <span
+                        class="btn__icon"
+                        style="--icon: url('{% static 'icons/trash.svg' %}')"
+                        aria-hidden="true"
+                    ></span>
+                </button>
 
             {% elif user.is_authenticated %}
 
                 <!-- Status star awal -->
-                {% if user in recipe.starred_by.all %}
+
+                <!-- {% if user in recipe.starred_by.all %}
                     {% static 'icons/star-filled.svg' as star_icon %}
                 {% else %}
                     {% static 'icons/star-outline.svg' as star_icon %}
-                {% endif %}
+                {% endif %} -->
 
                 <!-- Form star untuk AJAX -->
                 
-                <form
+                <!-- <form
                     class="recipe-card__star-form"
                     data-star-card-form
                     action="{% url 'resep_komunitas:recipe_toggle_star' recipe.pk %}"
@@ -130,7 +143,7 @@
                             aria-hidden="true"
                         ></span>
                     </button>
-                </form>
+                </form> -->
 
             {% endif %}
 
