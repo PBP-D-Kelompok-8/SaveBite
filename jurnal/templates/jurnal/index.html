@@ -1,64 +1,64 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Jurnal Jejak Makanan | SaveBite{% endblock %}
+{% block title %}Jurnal | SaveBite{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/input.css' %}">
-<link rel="stylesheet" href="{% static 'jurnal/foodlog.css' %}">
+<link rel="stylesheet" href="/static/jurnal/css/foodlog.css">
+
+
 {% endblock %}
 
 {% block content %}
 <section class="food-journal">
   <header class="food-journal__header">
-    <p class="food-journal__eyebrow">SaveBite</p>
-    <h1 class="food-journal__title">Jurnal Jejak Makanan</h1>
-    <p class="food-journal__intro">Catat makanan yang berhasil diselamatkan atau terbuang.</p>
+    <div>
+      <h1 class="food-journal__title">Jurnal Jejak Makanan</h1>
+      <p class="food-journal__intro">Persentase makanan yang sudah diselamatkan sejauh ini.</p>
+    </div>
+
+    <!-- Wrapper div ini yang dibaca oleh form-modal.js -->
+    <div data-modal-open="#create-log-modal" data-title="Tambah Catatan Makanan">
+      {% include "components/button.html" with label="Tambah Catatan" type="primary" color="green" icon_left="icons/x.svg" extra_class="food-journal__add-button" %}
+    </div>
   </header>
 
-  {% if messages %}
-    {% for message in messages %}
-      <p class="food-journal__message food-journal__message--{{ message.tags }}" role="status">{{ message }}</p>
-    {% endfor %}
+  {% include 'jurnal/foodlog_summary.html' %}
+<section class="food-journal__logs">
+  <h2 class="food-journal__section-title">Daftar Log Makanan</h2>
+  <p class="food-journal__intro">Riwayat makanan yang gagal/berhasil diselamatkan</p>
+
+  <form class="food-journal__search" method="get" action="{% url 'jurnal:index' %}">
+    <input class="food-journal__search-input" type="search" name="q" value="{{ search_query }}" placeholder="Cari log makanan..." aria-label="Cari log makanan">
+    {% include 'components/button.html' with label='Cari' type='secondary' color='dark-green' icon_right='icons/bx-search-alt.svg' submit=True %}
+  </form>
+
+  {% if food_logs %}
+    <div class="food-journal__log-list card-list">
+      {% for log in food_logs %}
+
+        {% include 'jurnal/foodlog_card.html' with log=log %}
+
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="food-journal__empty">Belum ada catatan.</p>
+    <p class="food-journal__intro food-journal__empty-hint">Mulai catat makanan yang kamu selamatkan atau terbuang untuk melihat progresmu!</p>
   {% endif %}
-
-  <div class="food-journal__layout">
-    <section class="food-journal__form-panel" aria-labelledby="food-log-form-title">
-      <h2 id="food-log-form-title" class="food-journal__section-title">Tambah Catatan</h2>
-      <p class="food-journal__hint">Isi detail makanan yang ingin kamu catat.</p>
-
-      <form method="post" action="{% url 'jurnal:create' %}" class="food-log-form">
-        {% csrf_token %}
-        {% include 'jurnal/foodlog_form_fields.html' %}
-        <button type="submit" class="btn btn--primary food-log-form__submit">Simpan Catatan</button>
-      </form>
-    </section>
-
-    <section class="food-journal__logs" aria-labelledby="food-log-list-title">
-      <h2 id="food-log-list-title" class="food-journal__section-title">Daftar Log Makanan</h2>
-      {% if food_logs %}
-        <div class="food-journal__log-list">
-          {% for log in food_logs %}
-            <article class="food-journal__log-card">
-              <div class="food-journal__log-heading">
-                <h3>{{ log.food_name }}</h3>
-                <span class="food-journal__status food-journal__status--{{ log.status }}">{{ log.get_status_display }}</span>
-              </div>
-              <p>{{ log.quantity }} {{ log.get_unit_display }}</p>
-              {% if log.notes %}<p class="food-journal__log-notes">{{ log.notes }}</p>{% endif %}
-              <time datetime="{{ log.completed_at|date:'c' }}">{{ log.completed_at|date:'j M Y, H:i' }}</time>
-              <div class="food-journal__log-actions">
-                <a class="btn btn--tertiary btn--bright" href="{% url 'jurnal:update' log.pk %}">Edit</a>
-                <a class="btn btn--danger" href="{% url 'jurnal:delete' log.pk %}">Hapus</a>
-              </div>
-            </article>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="food-journal__empty">Belum ada catatan. Tambahkan catatan pertamamu lewat formulir.</p>
-      {% endif %}
-    </section>
-  </div>
 </section>
+</section>
+
+
+
+{% url 'jurnal:create' as create_url %}
+{% include "components/form-modal.html" with id="create-log-modal" title="Tambah Catatan Makanan" action=create_url fields_template="jurnal/foodlog_form_fields.html" open_on_load=form.errors %}
+{% include "components/delete-confirm.html" with id="food-log-delete-confirm" %}
 {% endblock %}
 
+
+
+
+{% block extra_js %}
+<script src="/static/jurnal/js/foodlog.js" defer></script>
+{% endblock %}

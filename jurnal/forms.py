@@ -1,10 +1,23 @@
-﻿from django import forms
+from django import forms
 
 from .models import FoodLog
 
 
 class FoodLogForm(forms.ModelForm):
     """Form for creating and editing a user's food journal entry."""
+
+    quantity = forms.IntegerField(
+        label="Jumlah",
+        min_value=1,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "input__field",
+                "min": 1,
+                "step": 1,
+                "placeholder": "Masukkan jumlah",
+            }
+        ),
+    )
 
     class Meta:
         model = FoodLog
@@ -22,14 +35,6 @@ class FoodLogForm(forms.ModelForm):
                     "class": "input__field",
                     "placeholder": "Masukkan nama makanan",
                     "autocomplete": "off",
-                }
-            ),
-            "quantity": forms.NumberInput(
-                attrs={
-                    "class": "input__field",
-                    "min": 1,
-                    "step": 1,
-                    "placeholder": "Masukkan jumlah",
                 }
             ),
             "unit": forms.Select(
