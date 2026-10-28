@@ -53,6 +53,8 @@ def recipe_list(request):
             # melalui filter ini.
             recipes = recipes.none()
 
+    recipes= recipes.order_by("title")
+
     # Render HTML jika request dari HTMX
     if request.headers.get("HX-Request") == "true":
         return render(
@@ -105,71 +107,6 @@ def recipe_delete(request, pk):
         "recipe_confirm_delete.html",
         {"recipe": recipe},
     )
-
-
-# @login_required
-# @require_POST
-# def recipe_toggle_star(request, pk):
-#     """
-#     Menambah atau membatalkan star pada sebuah resep.
-
-#     Hanya menerima POST dan membutuhkan user yang login.
-
-#     Jika request berasal dari AJAX:
-#         Mengembalikan JSON berisi status star dan jumlah star terbaru.
-
-#     Jika request biasa:
-#         Mengarahkan user kembali ke halaman detail resep.
-
-#     Pemilik resep tidak boleh memberi star pada resepnya sendiri.
-#     """
-
-#     recipe = get_object_or_404(CommunityRecipe, pk=pk)
-
-#     # Cegah author memberi star pada resepnya sendiri.
-#     if recipe.author_id == request.user.pk:
-#         message = "Kamu tidak bisa memberi star pada resep sendiri."
-
-#         if request.headers.get("x-requested-with") == "XMLHttpRequest":
-#             return JsonResponse(
-#                 {"error": message},
-#                 status=400,
-#             )
-
-#         return redirect(
-#             "resep_komunitas:recipe_detail",
-#             pk=pk,
-#         )
-
-#     # Cari apakah user sudah memberi star sebelumnya.
-#     relation = recipe.starred_by.filter(pk=request.user.pk)
-
-#     if relation.exists():
-#         # Jika sudah ada, hapus relasinya: star dibatalkan.
-#         relation.delete()
-#         is_starred = False
-#     else:
-#         # Jika belum ada, tambahkan relasi star.
-#         recipe.starred_by.add(request.user)
-#         is_starred = True
-
-#     # Hitung ulang jumlah star setelah perubahan.
-#     star_count = recipe.starred_by.count()
-
-#     # XMLHttpRequest menandakan request AJAX dari JavaScript.
-#     # JSON dipakai agar halaman dapat memperbarui tombol dan jumlah
-#     # star tanpa reload seluruh halaman.
-#     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-#         return JsonResponse({
-#             "is_starred": is_starred,
-#             "star_count": star_count,
-#         })
-
-#     # Fallback untuk request POST biasa tanpa AJAX.
-#     return redirect(
-#         "resep_komunitas:recipe_detail",
-#         pk=pk,
-#     )
 
 
 @login_required
@@ -267,31 +204,48 @@ def recipe_detail(request, pk):
     Menampilkan detail satu resep berdasarkan primary key (pk).
 
     Jika resep tidak ditemukan, Django mengembalikan HTTP 404.
-    is_starred digunakan template untuk menentukan teks tombol star.
     """
 
     recipe = get_object_or_404(
         CommunityRecipe.objects.select_related(
             "author"
-        )
-        # .prefetch_related("starred_by")
-        ,pk=pk,
+        ),pk=pk,
     )
-
-    # User anonim tidak memiliki status star.
-    # Untuk user login, periksa apakah relasi star sudah ada.
-    # is_starred = (
-    #     request.user.is_authenticated
-    #     and recipe.starred_by.filter(pk=request.user.pk).exists()
-    # )
 
     return render(
         request,
         "recipe_detail.html",
         {
             "recipe": recipe,
-            # "is_starred": is_starred,
         },
     )
 
 
+def get_recipes_json(request):
+    query = request.GET.get("q", "").strip()
+
+    recipes = CommunityRecipe.objects.select_related("author").all()
+
+    if query:
+            recipes = recipes.filter(
+                Q(title__icontains=query)
+                | Q(main_ingred__icontains=query)
+            )
+
+    data = []
+
+    for recipe in recipes:
+        data.append({
+            "pk": str(recipe.id),
+            "fields": {
+                "title": recipe.title,
+                "main_ingred": recipe.main_ingred,
+                "image_url": recipe.image_url,
+                "description": recipe.description,
+                "ingredients": recipe.ingredients,
+                "steps": recipe.steps,
+                "author": recipe.author.username,
+            },
+        })
+
+    return JsonResponse(data, safe=False)
