@@ -1,4 +1,4 @@
-"""
+﻿"""
 URL configuration for main_project project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
@@ -26,7 +26,9 @@ urlpatterns = [
     path('', include('request_board.urls')),
     path('food-rescue-planner/', include('food_rescue_planner.urls')),
     path('logout/', logout_page, name='logout'),
+    path('jurnal/', include('jurnal.urls')),
     path('login/', login_page, name='login'),
     path('register/', register_page, name='register'),
     path('resep-komunitas/', include('resep_komunitas.urls')),
 ]
+

@@ -33,7 +33,15 @@ class FoodLog(models.Model):
             models.CheckConstraint(
                 condition=models.Q(quantity__gte=1),
                 name="foodlog_quantity_gte_1",
-            )
+            ),
+            models.CheckConstraint(
+                condition=models.Q(status__in=["terselamatkan", "terbuang"]),
+                name="foodlog_status_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(unit__in=["kg", "gr", "pcs", "porsi", "liter"]),
+                name="foodlog_unit_valid",
+            ),
         ]
 
     def __str__(self):

@@ -1,0 +1,27 @@
+<section class="food-journal__summary" aria-label="Ringkasan jejak makanan">
+  <div class="food-journal__legend" aria-label="Status makanan">
+    <div class="food-journal__legend-item">
+      <span class="food-journal__legend-swatch food-journal__legend-swatch--saved" aria-hidden="true"></span>
+      <span>Terselamatkan</span>
+    </div>
+    <div class="food-journal__legend-item">
+      <span class="food-journal__legend-swatch food-journal__legend-swatch--wasted" aria-hidden="true"></span>
+      <span>Terbuang</span>
+    </div>
+  </div>
+
+  <div class="food-journal__chart-area">
+    <div class="food-journal__donut{% if not total_count %} food-journal__donut--empty{% endif %}"
+         role="img"
+         aria-label="{% if total_count %}{{ saved_percentage }} persen terselamatkan dan {{ wasted_percentage }} persen terbuang{% else %}Belum ada data{% endif %}"
+         style="--discarded-angle: {{ discarded_angle }}deg; --chart-start-angle: {{ chart_start_angle }}deg;">
+      {% if total_count %}
+        <span class="food-journal__chart-pill food-journal__chart-pill--wasted">{{ wasted_percentage }}%</span>
+        <span class="food-journal__chart-pill food-journal__chart-pill--saved">{{ saved_percentage }}%</span>
+      {% else %}
+        <span class="food-journal__empty-chart-label">Belum<br>ada data</span>
+      {% endif %}
+    </div>
+    <p class="food-journal__chart-total">{{ saved_count }} terselamatkan · {{ wasted_count }} terbuang · {{ total_count }} total</p>
+  </div>
+</section>
