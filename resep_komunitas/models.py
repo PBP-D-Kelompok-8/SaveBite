@@ -29,19 +29,10 @@ class CommunityRecipe(models.Model):
     steps = models.TextField(
         help_text="Tulis langkah memasak secara berurutan.",
     )
-    starred_by = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        blank=True,
-        related_name="starred_community_recipes",
-    )
     last_edited = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-last_edited"]
 
-    def __str__(self):
+    def __str__(self): 
         return self.title
-
-    @property
-    def star_count(self):
-        return self.starred_by.count()
