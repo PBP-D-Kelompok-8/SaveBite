@@ -51,7 +51,7 @@
       </div>
     {% endif %}
 
-    <form method="post" action="{% url 'request_board:request_create' %}" class="request-board__form tw:flex tw:flex-col tw:gap-6" novalidate>
+    <form method="post" action="{% url 'request_board:request_create' %}" class="request-board__form tw:flex tw:flex-col tw:gap-6" data-board-create novalidate>
       {% csrf_token %}
 
       <div class="request-board__form-group">
@@ -146,3 +146,4 @@
   </div>
 </div>
 {% endblock %}
+{% block extra_js %}<script src="{% static 'js/request-board.js' %}" defer></script>{% endblock %}

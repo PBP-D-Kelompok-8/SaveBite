@@ -25,7 +25,7 @@
   <div class="request-board__empty-state">
     <h2 class="request-board__empty-title">Tidak Ada Hasil</h2>
     <p class="request-board__empty-text">Tidak ada permintaan yang cocok. Coba ubah atau reset filter.</p>
-    <a href="{% url 'request_board:request_board' %}" class="btn btn--tertiary btn--dark-green tw:min-h-11 tw:rounded-xl! tw:text-base! tw:min-[769px]:min-h-[52px] tw:min-[769px]:rounded-button! tw:min-[769px]:text-2xl!">Reset Filter</a>
+    <a href="{% url 'request_board:request_board' %}" data-board-reset class="btn btn--tertiary btn--dark-green tw:min-h-11 tw:rounded-xl! tw:text-base! tw:min-[769px]:min-h-[52px] tw:min-[769px]:rounded-button! tw:min-[769px]:text-2xl!">Reset Filter</a>
   </div>
 {% else %}
   <div class="request-board__empty-state">

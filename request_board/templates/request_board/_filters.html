@@ -8,7 +8,7 @@
     <div class="tw:h-1 tw:w-10 tw:self-center tw:rounded-xs tw:bg-line tw:min-[769px]:hidden" aria-hidden="true"></div>
     <div class="tw:flex tw:items-center tw:gap-3">
       <h2 id="board-filter-title" class="tw:m-0! tw:flex-1 tw:text-2xl! tw:leading-normal! tw:text-dark-green">Filter permintaan</h2>
-      <a href="{% url 'request_board:request_board' %}" class="btn btn--tertiary btn--dark-green tw:min-h-[52px] tw:rounded-button! tw:text-2xl! tw:max-[769px]:hidden!">Reset</a>
+      <a href="{% url 'request_board:request_board' %}" data-board-reset class="btn btn--tertiary btn--dark-green tw:min-h-[52px] tw:rounded-button! tw:text-2xl! tw:max-[769px]:hidden!">Reset</a>
       <button type="button" class="tw:inline-flex tw:size-11 tw:flex-none tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-xl tw:border-0 tw:bg-transparent tw:p-2.5 tw:text-ink-dark tw:hover:bg-paper tw:[&[hidden]]:hidden" aria-label="Tutup filter" data-filter-close hidden><img src="{% static 'request-board/filter-close.svg' %}" alt="" width="24" height="24"></button>
     </div>
     <p class="tw:m-0! tw:text-sm! tw:leading-normal tw:min-[769px]:hidden">Temukan permintaan yang bisa kamu bantu.</p>
@@ -17,7 +17,7 @@
       {% include 'request_board/_filter_field.html' with field=filter_form.location dropdown=True %}
       {% include 'request_board/_filter_field.html' with field=filter_form.sort dropdown=True %}
       <div class="tw:flex tw:items-center tw:gap-3">
-        <a href="{% url 'request_board:request_board' %}" class="btn btn--tertiary btn--dark-green tw:min-h-11 tw:min-w-[100px] tw:rounded-xl! tw:text-base! tw:min-[769px]:hidden!">Reset</a>
+        <a href="{% url 'request_board:request_board' %}" data-board-reset class="btn btn--tertiary btn--dark-green tw:min-h-11 tw:min-w-[100px] tw:rounded-xl! tw:text-base! tw:min-[769px]:hidden!">Reset</a>
         <button type="submit" class="btn btn--secondary btn--dark-green tw:min-h-11 tw:flex-1 tw:rounded-xl! tw:px-4! tw:py-2! tw:text-base! tw:min-[769px]:min-h-[52px] tw:min-[769px]:rounded-button! tw:min-[769px]:text-2xl!">Terapkan</button>
       </div>
     </div>

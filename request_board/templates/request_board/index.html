@@ -38,7 +38,7 @@
   </header>
 
   {% if show_filters %}{% include 'request_board/_filters.html' %}{% endif %}
-  {% if page_obj is not None %}{% include 'request_board/_board_results.html' %}{% endif %}
+  <div data-board-results>{% if page_obj is not None %}{% include 'request_board/_board_results.html' %}{% endif %}</div>
 </div>
 {% endblock %}
 

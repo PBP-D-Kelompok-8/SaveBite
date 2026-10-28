@@ -30,6 +30,9 @@ class BoardFilterBrowserTests(TestCase):
         initial = self.client.get(board_url).content.decode()
         filtered = self.client.get(board_url, {"status": "pending", "location": "Beji, Depok",
                                               "sort": "oldest"}).content.decode()
+        initial_partial = self.client.get(board_url, HTTP_X_REQUESTED_WITH="XMLHttpRequest").content.decode()
+        filtered_partial = self.client.get(board_url, {"status": "pending", "location": "Beji, Depok",
+                                                       "sort": "oldest"}, HTTP_X_REQUESTED_WITH="XMLHttpRequest").content.decode()
         errors = []
 
         def serve(route):
@@ -42,7 +45,8 @@ class BoardFilterBrowserTests(TestCase):
                     route.fulfill(status=404, body="Missing static file")
             else:
                 query = parse_qs(url.query)
-                body = filtered if query.get("location") == ["Beji, Depok"] else initial
+                ajax = route.request.headers.get('x-requested-with') == 'XMLHttpRequest'
+                body = (filtered_partial if ajax else filtered) if query.get("location") == ["Beji, Depok"] else (initial_partial if ajax else initial)
                 route.fulfill(body=body, content_type="text/html; charset=utf-8")
 
         with sync_playwright() as playwright:
@@ -84,18 +88,19 @@ class BoardFilterBrowserTests(TestCase):
                         page.locator('#id_status').select_option('pending')
                         page.locator('#id_location').select_option('Beji, Depok')
                         page.locator('#id_sort').select_option('oldest')
-                        with page.expect_navigation():
-                            page.get_by_role('button', name='Terapkan').click()
+                        page.evaluate('window.filterMarker = 42')
+                        page.get_by_role('button', name='Terapkan').click()
+                        expect(page.locator('.request-board__card-title')).to_have_text(['Beras untuk berbagi'])
                         query = parse_qs(urlsplit(page.url).query)
                         self.assertEqual(query['status'], ['pending'])
                         self.assertEqual(query['location'], ['Beji, Depok'])
                         self.assertEqual(query['sort'], ['oldest'])
-                        expect(page.locator('.request-board__card-title')).to_have_text(['Beras untuk berbagi'])
+                        self.assertEqual(page.evaluate('window.filterMarker'), 42)
                         if width <= 768:
                             page.locator('[data-filter-open]').click()
-                        with page.expect_navigation():
-                            page.get_by_role('link', name='Reset', exact=True).filter(visible=True).click()
+                        page.get_by_role('link', name='Reset', exact=True).filter(visible=True).click()
                         expect(page.locator('.request-board__card-title')).to_have_count(2)
+                        self.assertEqual(page.evaluate('window.filterMarker'), 42)
                         page.close()
                 self.assertEqual(errors, [])
             finally:

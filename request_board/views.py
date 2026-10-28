@@ -1,6 +1,7 @@
 import json
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
+from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -16,6 +17,8 @@ from django.http import (
 )
 from django.template.response import TemplateResponse
 from django.urls import reverse
+from django.contrib.auth.views import redirect_to_login
+from django.views.decorators.vary import vary_on_headers
 
 from request_board.forms import BoardFilterForm, RequestForm
 from request_board.models import Request, RequestOffer
@@ -32,6 +35,25 @@ from request_board.services import (
 
 ALLOWED_CREATE_FIELDS = frozenset(RequestForm.Meta.fields)
 TEXT_FIELDS = tuple(field for field in RequestForm.Meta.fields if field != "quantity")
+
+
+def _is_ajax(request):
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+def _board_login_required(view):
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated and _is_ajax(request):
+            next_url = request.get_full_path() if view.__name__ == "request_create" else reverse("request_board:request_board")
+            login_url = redirect_to_login(next_url).url
+            return JsonResponse({"ok": False, "message": "Silakan masuk kembali.", "login_url": login_url}, status=401)
+        return login_required(view)(request, *args, **kwargs)
+    return wrapped
+
+
+def _ajax_result(message, redirect_url, status=200):
+    return JsonResponse({"ok": status < 400, "message": message, "redirect_url": redirect_url}, status=status)
 
 
 class JsonParseError(Exception):
@@ -457,6 +479,7 @@ def api_request_delete(request, request_id: int) -> HttpResponse:
     return HttpResponse(status=204)
 
 
+@vary_on_headers("X-Requested-With")
 def request_board(request):
     """Tampilkan board publik dan ringkasan penawar khusus pemilik."""
     if request.method != "GET":
@@ -502,7 +525,8 @@ def request_board(request):
         "filter_status_label": dict(Request.STATUS_CHOICES).get(filter_form.cleaned_data["status"], "Semua status"),
         "filter_sort_label": "Terlama" if filter_form.cleaned_data["sort"] == "oldest" else "Terbaru",
     }
-    return TemplateResponse(request, "request_board/index.html", context)
+    template = "request_board/_board_results.html" if _is_ajax(request) else "request_board/index.html"
+    return TemplateResponse(request, template, context)
 
 
 @login_required
@@ -530,26 +554,34 @@ def request_offers(request, request_id: int):
     return TemplateResponse(request, "request_board/request_offers.html", {"item": item, "page_obj": page})
 
 
-@login_required
+@_board_login_required
 def request_select_offer(request, request_id: int, offer_id: int):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
     try:
         select_request_offer(actor=request.user, request_id=request_id, offer_id=offer_id)
     except (Request.DoesNotExist, RequestOffer.DoesNotExist):
+        if _is_ajax(request):
+            return _ajax_result("Permintaan atau penawaran tidak ditemukan.", "", 404)
         return HttpResponseNotFound("Permintaan atau penawaran tidak ditemukan.")
     except PermissionDenied as exc:
+        if _is_ajax(request):
+            return _ajax_result(str(exc), "", 403)
         return HttpResponseForbidden(str(exc))
     except ValidationError as exc:
         if exc.code != "request_fulfilled":
             raise
+        if _is_ajax(request):
+            return _ajax_result(str(exc.message), "", 409)
         messages.error(request, str(exc.message))
     else:
+        if _is_ajax(request):
+            return _ajax_result("Penawar berhasil dipilih.", reverse("request_board:request_offers", args=[request_id]))
         messages.success(request, "Penawar berhasil dipilih.")
     return HttpResponseRedirect(reverse("request_board:request_offers", args=[request_id]))
 
 
-@login_required
+@_board_login_required
 def request_create(request):
     if request.method not in ("GET", "POST"):
         return HttpResponseNotAllowed(["GET", "POST"])
@@ -558,13 +590,18 @@ def request_create(request):
     form = RequestForm(data=form_data)
     if request.method == "POST" and form.is_valid():
         create_request(actor=request.user, data=request.POST)
+        if _is_ajax(request):
+            return _ajax_result("Permintaan bantuan makanan berhasil dibuat.", reverse("request_board:request_board"))
         messages.success(request, "Permintaan bantuan makanan berhasil dibuat.")
         return HttpResponseRedirect(reverse("request_board:request_board"))
+
+    if request.method == "POST" and _is_ajax(request):
+        return JsonResponse({"ok": False, "fields": {name: list(errors) for name, errors in form.errors.items()}}, status=400)
 
     return TemplateResponse(request, "request_board/request_form.html", {"form": form})
 
 
-@login_required
+@_board_login_required
 def request_action(request, request_id: int, action: str):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -580,8 +617,12 @@ def request_action(request, request_id: int, action: str):
         else:
             return HttpResponseNotFound("Aksi tidak valid.")
     except Request.DoesNotExist:
+        if _is_ajax(request):
+            return _ajax_result("Permintaan makanan tidak ditemukan.", "", 404)
         return HttpResponseNotFound("Permintaan makanan tidak ditemukan.")
     except PermissionDenied as exc:
+        if _is_ajax(request):
+            return _ajax_result(str(exc) or "Izin ditolak.", "", 403)
         return HttpResponseForbidden(str(exc) or "Izin ditolak.")
     except ValidationError as exc:
         expected_conflicts = {
@@ -591,10 +632,14 @@ def request_action(request, request_id: int, action: str):
         expected_code = expected_conflicts.get(action)
         if expected_code is None or getattr(exc, "code", None) not in expected_code:
             raise
+        if _is_ajax(request):
+            return _ajax_result(str(exc.message), "", 409)
         messages.error(request, str(exc.message))
         return HttpResponseRedirect(board_url)
 
     if action == "offer":
+        if _is_ajax(request):
+            return _ajax_result("Penawaran bantuan makanan berhasil dikirim." if created else "Anda sudah mengirimkan penawaran sebelumnya.", board_url)
         if created:
             messages.success(request, "Penawaran bantuan makanan berhasil dikirim.")
         else:
@@ -603,7 +648,11 @@ def request_action(request, request_id: int, action: str):
                 "Anda sudah mengirimkan penawaran untuk permintaan ini sebelumnya.",
             )
     elif action == "fulfill":
+        if _is_ajax(request):
+            return _ajax_result("Permintaan makanan berhasil diselesaikan.", board_url)
         messages.success(request, "Permintaan makanan berhasil diselesaikan.")
     else:
+        if _is_ajax(request):
+            return _ajax_result("Permintaan makanan berhasil dihapus.", board_url)
         messages.success(request, "Permintaan makanan berhasil dihapus.")
     return HttpResponseRedirect(board_url)
