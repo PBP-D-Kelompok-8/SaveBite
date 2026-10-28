@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'request_board.apps.RequestBoardConfig',
     'food_rescue_planner',
     'jurnal',
+    "resep_komunitas.apps.ResepKomunitasConfig",
 ]
 
 MIDDLEWARE = [
