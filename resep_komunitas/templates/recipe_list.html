@@ -35,6 +35,13 @@
             value="{{ query }}"
             placeholder="Cari resep..."
             aria-label="Cari berdasarkan judul atau bahan utama"
+            
+            hx-get="{% url 'resep_komunitas:recipe_list' %}"
+            hx-trigger="input changed delay:300ms, search"
+            hx-target="#recipes-grid-cards"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-include="closest form"
         >
         <input type="hidden" name="filter" value="{{ filter_type }}">
         <button class="btn btn--secondary btn--dark-green" type="submit">

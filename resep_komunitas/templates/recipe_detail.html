@@ -42,52 +42,9 @@
                         >
                         <p class="p2">{{ recipe.author.username }}</p>
                     </div>
-<!-- 
-                    <span class="p2" aria-hidden="true">|</span>
-
-                    <div class="recipe-detail__meta-item">
-                        <img
-                            class="recipe-detail__meta-icon"
-                            src="{% static 'icons/star-filled-dark.svg' %}"
-                            alt=""
-                            aria-hidden="true"
-                        >
-                        <p class="p2">{{ recipe.star_count }}</p>
-                    </div>
--->
-
-
                 </div>
-                <!-- 
-                <p class="recipe-detail__meta p2">
-                    &#128100; {{ recipe.author.username }}
-                    &nbsp; | &nbsp;
-                    <span id="star-count">&#9734; {{ recipe.star_count }}</span>
-                </p> 
-                -->
             </div>
 
-            <!-- 
-            {% if user.is_authenticated and user.pk != recipe.author_id %}
-            -->
-            <!-- 
-                <form
-                    method="post"
-                    class="star-form"
-                    data-star-form
-                >
-                    {% csrf_token %}
-                    <button
-                        type="submit"
-                        class="btn btn--secondary btn--dark-green"
-                        id="star-button"
-                    >
-                        {% if is_starred %}Tersimpan &#9733;{% else %}Simpan Menu &#9733;{% endif %}
-                    </button>
-                </form> 
-            -->
-
-            <!-- {% endif %} -->
         </header>
 
         <section class="recipe-detail__section">
@@ -116,10 +73,6 @@
             <div class="recipe-detail__owner-actions">
                 {% url 'resep_komunitas:recipe_update' recipe.pk as edit_url %}
                 {% include 'components/button.html' with label="Edit Resep" type="secondary" color="blue" href=edit_url %}
-
-                 
-                <!-- {% url 'resep_komunitas:recipe_delete' recipe.pk as delete_url %}
-                {% include 'components/button.html' with label="Hapus Resep" type="tertiary" color="dark-green" href=delete_url %} -->
 
                 <button
                     type="button"
