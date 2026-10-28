@@ -1,0 +1,139 @@
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ recipe.title }} | SaveBite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/community_recipes.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/resep_komunitas.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<article class="recipe-detail">
+    <div class="recipe-detail__hero">
+        {% if recipe.image_url %}
+            <img src="{{ recipe.image_url }}" alt="Foto {{ recipe.title }}">
+        {% else %}
+            <div class="recipe-detail__placeholder">SaveBite</div>
+        {% endif %}
+
+        <a class="recipe-detail__back" href="{% url 'resep_komunitas:recipe_list' %}">
+            &#8249; Kembali
+        </a>
+    </div>
+
+    <div class="recipe-detail__body">
+        <header class="recipe-detail__header">
+            
+
+            <div>
+                <h1 class="h1">{{ recipe.title }}</h1>
+                <div class="recipe-card__meta">
+                    <div class="recipe-detail__meta-item">
+                        <img
+                            class="recipe-detail__meta-icon"
+                            src="{% static 'icons/user_dark.svg' %}"
+                            alt=""
+                            aria-hidden="true"
+                        >
+                        <p class="p2">{{ recipe.author.username }}</p>
+                    </div>
+                </div>
+            </div>
+
+        </header>
+
+        <section class="recipe-detail__section">
+            <h3 class="h3">Deskripsi</h3>
+            <p class="p2">{{ recipe.description|linebreaksbr }}</p>
+            <p class="p2 recipe-detail__ingredient">
+                <strong>Bahan utama:</strong> {{ recipe.main_ingred }}
+            </p>
+        </section>
+
+        <section class="recipe-detail__section">
+            <h3 class="h3">Alat &amp; Bahan</h3>
+            <p class="p2 recipe-preformatted">{{ recipe.ingredients }}</p>
+        </section>
+
+        <section class="recipe-detail__section">
+            <h3 class="h3">Langkah-langkah</h3>
+            <p class="p2 recipe-preformatted">{{ recipe.steps }}</p>
+        </section>
+
+        <p class="recipe-detail__edited p3">
+            Terakhir diedit: {{ recipe.last_edited|date:"d M Y, H:i" }}
+        </p>
+
+        {% if user.is_authenticated and user.pk == recipe.author_id %}
+            <div class="recipe-detail__owner-actions">
+                {% url 'resep_komunitas:recipe_update' recipe.pk as edit_url %}
+                {% include 'components/button.html' with label="Edit Resep" type="secondary" color="blue" href=edit_url %}
+
+                <button
+                    type="button"
+                    class="btn btn--tertiary btn--dark-green"
+                    data-delete-modal
+                    data-delete-url="{% url 'resep_komunitas:recipe_delete' recipe.pk %}"
+                    data-recipe-title="{{ recipe.title }}"
+                >
+                    Hapus Resep
+                </button>
+            
+            </div>
+        {% endif %}
+    </div>
+</article>
+
+<div
+    class="delete-modal"
+    id="delete-modal"
+    aria-hidden="true"
+>
+    <div class="delete-modal__overlay" data-close-delete-modal></div>
+
+    <section
+        class="delete-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-modal-title"
+        aria-describedby="delete-modal-description"
+    >
+        <p class="recipes-eyebrow">KONFIRMASI</p>
+
+        <h2 id="delete-modal-title">Hapus Resep?</h2>
+
+        <p id="delete-modal-description">
+            Kamu yakin ingin menghapus resep
+            <strong id="delete-recipe-title"></strong>?
+            Tindakan ini tidak dapat dibatalkan.
+        </p>
+
+        <div class="delete-modal__actions">
+            <button
+                type="button"
+                class="btn btn--tertiary btn--dark-green"
+                data-close-delete-modal
+            >
+                Batal
+            </button>
+
+            <form id="delete-recipe-form" method="post">
+                {% csrf_token %}
+
+                <button
+                    type="submit"
+                    class="btn btn--primary btn--dark-green"
+                >
+                    Ya, Hapus
+                </button>
+            </form>
+        </div>
+    </section>
+</div>
+
+{% endblock %}
