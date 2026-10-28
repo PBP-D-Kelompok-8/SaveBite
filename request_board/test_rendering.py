@@ -574,7 +574,7 @@ class BoardPaginationRenderingTests(TestCase):
     def test_twenty_then_one_rendered_items_follow_timestamp_and_id_order(self):
         expected = ["Posting urutan 00"] + [f"Posting urutan {index:02d}" for index in range(19, 0, -1)]
         for query, titles in (("", expected), ("?page=2", ["Posting urutan 20"]),
-                              ("?page=001&status=fulfilled&sort=id", expected)):
+                              ("?page=001&sort=id", expected)):
             with self.subTest(query=query):
                 response, markup = self.board(query)
                 self.assertEqual(response.context_data["page_obj"].paginator.count, 21)

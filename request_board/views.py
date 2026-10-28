@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -16,7 +17,7 @@ from django.http import (
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
-from request_board.forms import RequestForm
+from request_board.forms import BoardFilterForm, RequestForm
 from request_board.models import Request, RequestOffer
 from request_board.services import (
     create_request,
@@ -278,8 +279,17 @@ def _handle_list_requests(request) -> JsonResponse:
 
     page_value = page_param_list[0] if page_param_list else None
 
+    filter_form = BoardFilterForm(request.GET)
+    if not filter_form.is_valid():
+        return json_error(
+            code="validation_error", message="Filter tidak valid.", status=400,
+            fields={name: list(errors) for name, errors in filter_form.errors.items()},
+        )
+    if filter_form.cleaned_data["mine"] and not request.user.is_authenticated:
+        return json_error(code="authentication_required", message="Silakan masuk untuk melihat permintaan Anda.", status=401)
+
     try:
-        page = get_board_page(actor=request.user, page_value=page_value)
+        page = get_board_page(actor=request.user, page_value=page_value, filters=filter_form.cleaned_data)
     except PageNotAnInteger:
         return json_error(
             code="invalid_page",
@@ -458,8 +468,15 @@ def request_board(request):
 
     page_value = page_param_list[0] if page_param_list else None
 
+    filter_form = BoardFilterForm(request.GET)
+    if not filter_form.is_valid():
+        return TemplateResponse(request, "request_board/index.html", {"filter_form": filter_form}, status=400)
+    if filter_form.cleaned_data["mine"] and not request.user.is_authenticated:
+        filter_form.add_error("mine", "Silakan masuk untuk melihat permintaan Anda.")
+        return TemplateResponse(request, "request_board/index.html", {"filter_form": filter_form}, status=401)
+
     try:
-        page_obj = get_board_page(actor=request.user, page_value=page_value)
+        page_obj = get_board_page(actor=request.user, page_value=page_value, filters=filter_form.cleaned_data)
     except EmptyPage:
         return HttpResponse("Halaman yang diminta tidak ditemukan.", status=404)
     except InvalidPage:
@@ -474,6 +491,12 @@ def request_board(request):
     context = {
         "page_obj": page_obj,
         "owner_offer_previews": owner_offer_previews,
+        "filter_form": filter_form,
+        "filter_query": urlencode({
+            key: ("on" if key == "mine" else value)
+            for key, value in filter_form.cleaned_data.items() if value
+        }),
+        "filters_active": any(filter_form.cleaned_data.values()),
     }
     return TemplateResponse(request, "request_board/index.html", context)
 

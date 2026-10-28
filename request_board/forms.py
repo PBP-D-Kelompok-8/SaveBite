@@ -18,6 +18,19 @@ BOARD_FIELD_ERRORS = {
 }
 
 
+class BoardFilterForm(forms.Form):
+    q = forms.CharField(label="Cari judul, bahan, atau lokasi", max_length=120, required=False)
+    status = forms.ChoiceField(
+        label="Status", choices=[("", "Semua status"), *Request.STATUS_CHOICES], required=False,
+    )
+    mine = forms.BooleanField(label="Permintaan saya", required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.error_messages.update(BOARD_FIELD_ERRORS)
+
+
 class RequestForm(forms.ModelForm):
     quantity = forms.DecimalField(
         max_digits=8,

@@ -161,7 +161,7 @@ class RequestListAdapterTests(TestCase):
         self.assert_pagination(first, page=1, total_items=21)
         self.assert_pagination(second, page=2, total_items=21)
         ignored = self.assert_list_response(client.get(url, {
-            "owner": self.outsider.pk, "status": "fulfilled", "search": "absent",
+            "owner": self.outsider.pk, "search": "absent",
             "sort": "id", "order_by": "id", "page_size": "1",
         }))
         self.assertEqual(ignored, first)

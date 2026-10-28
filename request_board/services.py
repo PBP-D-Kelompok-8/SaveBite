@@ -7,6 +7,7 @@ from django.db.models import (
     Exists,
     OuterRef,
     Prefetch,
+    Q,
     Value,
     prefetch_related_objects,
 )
@@ -136,9 +137,21 @@ def _requests_for_display(actor):
     )
 
 
-def get_board_page(*, actor=None, page_value: str | int | None = None):
+def get_board_page(*, actor=None, page_value: str | int | None = None, filters=None):
     """Ambil satu halaman board dengan urutan terbaru yang stabil."""
-    queryset = _requests_for_display(actor).order_by("-created_at", "-id")
+    filters = filters or {}
+    queryset = _requests_for_display(actor)
+    if filters.get("q"):
+        term = filters["q"]
+        queryset = queryset.filter(
+            Q(title__icontains=term) | Q(food_item__icontains=term) | Q(location__icontains=term)
+        )
+    if filters.get("status"):
+        queryset = queryset.filter(status=filters["status"])
+    if filters.get("mine"):
+        _require_saved_user(actor)
+        queryset = queryset.filter(owner=actor)
+    queryset = queryset.order_by("-created_at", "-id")
     paginator = Paginator(queryset, PAGE_SIZE)
 
     if page_value is None:
