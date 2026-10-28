@@ -156,3 +156,53 @@ class BoardFilterTests(TestCase):
     def test_default_service_signature_remains_compatible(self):
         expected = self.item()
         self.assertEqual(list(get_board_page()), [expected])
+
+    def test_location_combines_with_status_in_html_and_api(self):
+        expected = self.item(location="Beji, Depok", status="offered")
+        self.item(location="Beji, Depok", status="pending")
+        self.item(location="Kukusan, Depok", status="offered")
+        self.assert_matches({"location": "beji, depok", "status": "offered"}, {expected.pk})
+
+    def test_oldest_sort_is_applied_before_pagination_in_html_and_api(self):
+        items = [self.item(location="Beji, Depok") for _ in range(21)]
+        for url in (self.board, self.api):
+            response = self.client.get(url, {"location": "Beji, Depok", "sort": "oldest", "page": 2})
+            self.assertEqual(response.status_code, 200)
+            ids = ([item.pk for item in response.context["page_obj"]] if url == self.board
+                   else [item["id"] for item in response.json()["data"]])
+            self.assertEqual(ids, [items[-1].pk])
+
+    def test_invalid_sort_and_oversized_location_are_rejected(self):
+        for params, field in (({"sort": "random"}, "sort"), ({"location": "x" * 121}, "location")):
+            for url in (self.board, self.api):
+                response = self.client.get(url, params)
+                self.assertEqual(response.status_code, 400)
+                errors = (response.context["filter_form"].errors if url == self.board
+                          else response.json()["error"]["fields"])
+                self.assertIn(field, errors)
+
+    def test_empty_board_hides_filters_but_filtered_empty_result_keeps_reset(self):
+        response = self.client.get(self.board)
+        self.assertContains(response, "Belum Ada Permintaan")
+        self.assertNotContains(response, 'aria-label="Filter permintaan"')
+        self.item()
+        response = self.client.get(self.board, {"status": "fulfilled"})
+        self.assertContains(response, 'aria-label="Filter permintaan"')
+        self.assertContains(response, "Reset Filter")
+
+    def test_location_options_come_from_all_requests_and_survive_filtering(self):
+        self.item(location="Beji, Depok", status="pending")
+        self.item(location="Kukusan, Depok", status="offered")
+        self.item(location="")
+        response = self.client.get(self.board, {"status": "pending"})
+        choices = list(response.context["filter_form"].fields["location"].widget.choices)
+        self.assertEqual(choices, [("", "Semua lokasi"), ("Beji, Depok", "Beji, Depok"),
+                                   ("Kukusan, Depok", "Kukusan, Depok")])
+
+    def test_pagination_preserves_location_and_sort(self):
+        for _ in range(21):
+            self.item(location="Beji & Kukusan")
+        response = self.client.get(self.board, {"location": "Beji & Kukusan", "sort": "oldest"})
+        markup = FilterMarkup(response.content.decode())
+        links = [parse_qs(urlsplit(link.get("href", "")).query) for link in markup.links]
+        self.assertIn({"location": ["Beji & Kukusan"], "sort": ["oldest"], "page": ["2"]}, links)

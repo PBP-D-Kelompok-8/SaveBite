@@ -1,0 +1,38 @@
+{% load static %}
+<div class="request-board__filter-toolbar tw:mb-6 tw:flex tw:items-center tw:gap-3 tw:[&[hidden]]:hidden" hidden>
+  <p class="tw:m-0! tw:min-w-0 tw:flex-1 tw:text-sm! tw:wrap-anywhere">{{ filter_status_label|default:'Semua status' }} · {{ filter_sort_label|default:'Terbaru' }}{% if filter_form.location.value %}<span class="tw:block">{{ filter_form.location.value }}</span>{% endif %}</p>
+  <button type="button" class="btn btn--tertiary btn--dark-green tw:min-h-11 tw:flex-none tw:text-base!" aria-haspopup="dialog" aria-controls="board-filter-dialog" aria-expanded="false" data-filter-open>Filter{% if filters_active %}<span class="tw:size-2 tw:rounded-full tw:bg-current" aria-label="aktif"></span>{% endif %}</button>
+</div>
+<div data-filter-slot>
+  <form method="get" action="{% url 'request_board:request_board' %}" class="request-board__filters tw:m-0 tw:mb-6 tw:flex tw:flex-col tw:gap-6 tw:rounded-3xl tw:border tw:border-line tw:bg-ink-light tw:p-5 tw:min-[769px]:mb-11 tw:min-[769px]:gap-5 tw:min-[769px]:rounded-card tw:min-[769px]:p-6 tw:in-[dialog]:m-0 tw:in-[dialog]:rounded-b-none tw:in-[dialog]:border-0 tw:in-[dialog]:pt-4 tw:in-[dialog]:pb-[max(32px,env(safe-area-inset-bottom))]" aria-label="Filter permintaan" data-filter-form>
+    <div class="tw:h-1 tw:w-10 tw:self-center tw:rounded-xs tw:bg-line tw:min-[769px]:hidden" aria-hidden="true"></div>
+    <div class="tw:flex tw:items-center tw:gap-3">
+      <h2 id="board-filter-title" class="tw:m-0! tw:flex-1 tw:text-2xl! tw:leading-normal! tw:text-dark-green">Filter permintaan</h2>
+      <a href="{% url 'request_board:request_board' %}" class="btn btn--tertiary btn--dark-green tw:min-h-[52px] tw:rounded-button! tw:text-2xl! tw:max-[769px]:hidden!">Reset</a>
+      <button type="button" class="tw:inline-flex tw:size-11 tw:flex-none tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-xl tw:border-0 tw:bg-transparent tw:p-2.5 tw:text-ink-dark tw:hover:bg-paper tw:[&[hidden]]:hidden" aria-label="Tutup filter" data-filter-close hidden><img src="{% static 'request-board/filter-close.svg' %}" alt="" width="24" height="24"></button>
+    </div>
+    <p class="tw:m-0! tw:text-sm! tw:leading-normal tw:min-[769px]:hidden">Temukan permintaan yang bisa kamu bantu.</p>
+    <div class="tw:grid tw:grid-cols-1 tw:items-end tw:gap-6 tw:min-[769px]:grid-cols-2 tw:min-[769px]:gap-5 tw:min-[1101px]:grid-cols-[repeat(3,minmax(0,1fr))_minmax(150px,.855fr)]">
+      {% include 'request_board/_filter_field.html' with field=filter_form.status dropdown=True %}
+      {% include 'request_board/_filter_field.html' with field=filter_form.location dropdown=True %}
+      {% include 'request_board/_filter_field.html' with field=filter_form.sort dropdown=True %}
+      <div class="tw:flex tw:items-center tw:gap-3">
+        <a href="{% url 'request_board:request_board' %}" class="btn btn--tertiary btn--dark-green tw:min-h-11 tw:min-w-[100px] tw:rounded-xl! tw:text-base! tw:min-[769px]:hidden!">Reset</a>
+        <button type="submit" class="btn btn--secondary btn--dark-green tw:min-h-11 tw:flex-1 tw:rounded-xl! tw:px-4! tw:py-2! tw:text-base! tw:min-[769px]:min-h-[52px] tw:min-[769px]:rounded-button! tw:min-[769px]:text-2xl!">Terapkan</button>
+      </div>
+    </div>
+    <details class="tw:text-sm"{% if filter_form.q.value or filter_form.mine.value or filter_form.q.errors or filter_form.mine.errors %} open{% endif %}>
+      <summary class="tw:min-h-11 tw:w-fit tw:cursor-pointer tw:py-2.5 tw:font-semibold tw:text-dark-green tw:min-[769px]:min-h-6 tw:min-[769px]:py-0">Filter lainnya{% if filter_form.q.value or filter_form.mine.value %} · aktif{% endif %}</summary>
+      <div class="tw:flex tw:flex-col tw:items-stretch tw:gap-5 tw:pt-4 tw:min-[769px]:flex-row tw:min-[769px]:items-end">
+        {% include 'request_board/_filter_field.html' with field=filter_form.q dropdown=False %}
+        {% if user.is_authenticated or filter_form.mine.value or filter_form.mine.errors %}
+          <div>
+            <label class="tw:inline-flex tw:min-h-12 tw:cursor-pointer tw:items-center tw:gap-2 tw:text-base tw:font-semibold tw:leading-normal tw:[&_input]:m-0 tw:[&_input]:size-5 tw:[&_input]:accent-dark-green tw:[&_input:focus-visible]:outline-3 tw:[&_input:focus-visible]:outline-offset-3 tw:[&_input:focus-visible]:outline-accent-green" for="{{ filter_form.mine.id_for_label }}">{{ filter_form.mine }} {{ filter_form.mine.label }}</label>
+            {{ filter_form.mine.errors }}
+          </div>
+        {% endif %}
+      </div>
+    </details>
+  </form>
+</div>
+<dialog id="board-filter-dialog" class="tw:inset-x-0 tw:top-auto tw:bottom-0 tw:mx-auto tw:my-0 tw:box-border tw:max-h-[calc(100dvh-24px)] tw:w-full tw:max-w-[560px] tw:overscroll-contain tw:overflow-y-auto tw:rounded-t-3xl tw:border-0 tw:bg-ink-light tw:p-0 tw:font-main tw:text-ink-dark tw:backdrop:bg-dark-green/55" aria-labelledby="board-filter-title"></dialog>

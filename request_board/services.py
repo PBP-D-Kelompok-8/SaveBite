@@ -148,10 +148,13 @@ def get_board_page(*, actor=None, page_value: str | int | None = None, filters=N
         )
     if filters.get("status"):
         queryset = queryset.filter(status=filters["status"])
+    if filters.get("location"):
+        queryset = queryset.filter(location__iexact=filters["location"])
     if filters.get("mine"):
         _require_saved_user(actor)
         queryset = queryset.filter(owner=actor)
-    queryset = queryset.order_by("-created_at", "-id")
+    ordering = ("created_at", "id") if filters.get("sort") == "oldest" else ("-created_at", "-id")
+    queryset = queryset.order_by(*ordering)
     paginator = Paginator(queryset, PAGE_SIZE)
 
     if page_value is None:

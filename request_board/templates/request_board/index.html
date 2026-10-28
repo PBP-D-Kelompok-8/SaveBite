@@ -37,24 +37,7 @@
     </div>
   </header>
 
-  <form method="get" action="{% url 'request_board:request_board' %}" class="tw:mb-6 tw:flex tw:flex-wrap tw:items-start tw:gap-4" aria-label="Filter permintaan">
-    <div class="request-board__form-group">
-      <label class="request-board__label" for="{{ filter_form.q.id_for_label }}">{{ filter_form.q.label }}</label>
-      {{ filter_form.q }}
-      {{ filter_form.q.errors }}
-    </div>
-    <div class="request-board__form-group">
-      <label class="request-board__label" for="{{ filter_form.status.id_for_label }}">{{ filter_form.status.label }}</label>
-      {{ filter_form.status }}
-      {{ filter_form.status.errors }}
-    </div>
-    <div>
-      <label class="request-board__label" for="{{ filter_form.mine.id_for_label }}">{{ filter_form.mine }} {{ filter_form.mine.label }}</label>
-      {{ filter_form.mine.errors }}
-    </div>
-    <button type="submit" class="btn btn--secondary">Cari</button>
-    <a href="{% url 'request_board:request_board' %}" class="btn btn--tertiary btn--dark-green">Reset filter</a>
-  </form>
+  {% if show_filters %}{% include 'request_board/_filters.html' %}{% endif %}
   {% if page_obj is not None %}{% include 'request_board/_board_results.html' %}{% endif %}
 </div>
 {% endblock %}

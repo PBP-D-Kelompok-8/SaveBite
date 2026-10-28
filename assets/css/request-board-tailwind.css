@@ -2,5 +2,18 @@
 @import "tailwindcss/theme.css" layer(theme) prefix(tw);
 @import "tailwindcss/utilities.css" layer(utilities) source(none) prefix(tw);
 
+/* Map utilities to the existing design-system tokens. */
+@theme inline {
+  --color-ink-light: var(--ink-light);
+  --color-ink-dark: var(--ink-dark);
+  --color-dark-green: var(--accent-dark-green);
+  --color-line: var(--line);
+  --color-paper: var(--paper);
+  --color-accent-green: var(--accent-green);
+  --radius-card: var(--card-radius);
+  --radius-button: var(--button-radius);
+  --font-main: var(--font-family-main);
+}
+
 @source "../../request_board/templates";
 @source "../../static/js/request-board.js";

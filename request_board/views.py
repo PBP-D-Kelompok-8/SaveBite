@@ -469,11 +469,12 @@ def request_board(request):
     page_value = page_param_list[0] if page_param_list else None
 
     filter_form = BoardFilterForm(request.GET)
+    filter_form.populate_locations()
     if not filter_form.is_valid():
-        return TemplateResponse(request, "request_board/index.html", {"filter_form": filter_form}, status=400)
+        return TemplateResponse(request, "request_board/index.html", {"filter_form": filter_form, "show_filters": True}, status=400)
     if filter_form.cleaned_data["mine"] and not request.user.is_authenticated:
         filter_form.add_error("mine", "Silakan masuk untuk melihat permintaan Anda.")
-        return TemplateResponse(request, "request_board/index.html", {"filter_form": filter_form}, status=401)
+        return TemplateResponse(request, "request_board/index.html", {"filter_form": filter_form, "show_filters": True}, status=401)
 
     try:
         page_obj = get_board_page(actor=request.user, page_value=page_value, filters=filter_form.cleaned_data)
@@ -496,7 +497,10 @@ def request_board(request):
             key: ("on" if key == "mine" else value)
             for key, value in filter_form.cleaned_data.items() if value
         }),
-        "filters_active": any(filter_form.cleaned_data.values()),
+        "filters_active": any(filter_form.cleaned_data.get(key) for key in ("q", "status", "location", "mine")),
+        "show_filters": bool(page_obj.paginator.count) or Request.objects.exists(),
+        "filter_status_label": dict(Request.STATUS_CHOICES).get(filter_form.cleaned_data["status"], "Semua status"),
+        "filter_sort_label": "Terlama" if filter_form.cleaned_data["sort"] == "oldest" else "Terbaru",
     }
     return TemplateResponse(request, "request_board/index.html", context)
 
