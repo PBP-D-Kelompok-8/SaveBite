@@ -1,153 +1,100 @@
-<!-- {% load static %}
-{% if user.is_authenticated and user in recipe.starred_by.all %}
-    {% static 'icons/star-filled.svg' as star_icon %}
-{% else %}
-    {% static 'icons/star-outline.svg' as star_icon %}
-{% endif %} -->
+{% load static %}
 
-<article class="recipe-card">
-
-    <!-- Gambar resep -->
-    <a
-        class="recipe-card__image-link"
-        href="{% url 'resep_komunitas:recipe_detail' recipe.pk %}"
-        aria-label="Lihat {{ recipe.title }}"
-    >
-        {% if recipe.image_url %}
-            <img
-                class="recipe-card__image"
-                src="{{ recipe.image_url }}"
-                alt="Foto {{ recipe.title }}"
-                loading="lazy"
+<div class="recipes-grid">
+    {% for recipe in recipes %}
+        <article class="recipe-card">
+            <!-- Gambar resep -->
+            <a
+                class="recipe-card__image-link"
+                href="{% url 'resep_komunitas:recipe_detail' recipe.pk %}"
+                aria-label="Lihat {{ recipe.title }}"
             >
-        {% else %}
-            <div class="recipe-card__image recipe-card__image--placeholder">
-                <span>SaveBite</span>
-            </div>
-        {% endif %}
-
-        <!-- Jumlah star -->
-        <!-- <div class="recipe-card__star-count">
-            <span
-                class="recipe-card__star-count-icon"
-                style="--icon: url('{% static 'icons/star-filled.svg' %}')"
-                aria-hidden="true"
-            ></span>
-
-            <span
-                class="p4"
-                data-star-count="{{ recipe.pk }}"
-            >{{ recipe.star_count }}</span>
-        </div> -->
-    </a>
-
-    <!-- Konten resep -->
-    <div class="recipe-card__content">
-
-        <h4 class="h4 recipe-card__title">
-            {{ recipe.title }}
-        </h4>
-
-        <!-- Author dan bahan utama -->
-        <div class="recipe-card__meta">
-            <div class="recipe-card__meta-item">
-                <img
-                    class="recipe-card__meta-icon"
-                    src="{% static 'icons/user_dark.svg' %}"
-                    alt=""
-                    aria-hidden="true"
-                >
-                <p class="p4">{{ recipe.author.username }}</p>
-            </div>
-
-            <span class="recipe-card__meta-divider" aria-hidden="true">|</span>
-
-            <div class="recipe-card__meta-item">
-                <img
-                    class="recipe-card__meta-icon"
-                    src="{% static 'icons/groceries_dark.svg' %}"
-                    alt=""
-                    aria-hidden="true"
-                >
-                <p class="p4">{{ recipe.main_ingred }}</p>
-            </div>
-        </div>
-
-
-        <!-- Deskripsi -->
-        <p class="p4 recipe-card__description">
-            {{ recipe.description }}
-        </p>
-
-        <!-- Tombol aksi -->
-        <div class="recipe-card__actions">
-
-            <!-- Lihat Detail -->
-            {% url 'resep_komunitas:recipe_detail' recipe.pk as detail_url %}
-            {% include 'components/button.html' with label="Lihat Detail" type="primary" color="dark-green" href=detail_url icon_left="icons/book-open.svg" %}
-
-            {% if user.is_authenticated and user.pk == recipe.author_id %}
-
-                <!-- Edit: menuju halaman edit -->
-                {% url 'resep_komunitas:recipe_update' recipe.pk as edit_url %}
-                {% include 'components/button.html' with label=" " type="secondary" color="blue" href=edit_url icon_right="icons/edit.svg" %}
-
-                <!-- Delete: menuju halaman konfirmasi -->
-                <button
-                    type="button"
-                    class="btn btn--secondary btn--blue recipe-card__icon-button"
-                    data-delete-modal
-                    data-delete-url="{% url 'resep_komunitas:recipe_delete' recipe.pk %}"
-                    data-recipe-title="{{ recipe.title }}"
-                    aria-label="Hapus resep {{ recipe.title }}"
-                >
-                    <span
-                        class="btn__icon"
-                        style="--icon: url('{% static 'icons/trash.svg' %}')"
-                        aria-hidden="true"
-                    ></span>
-                </button>
-
-            {% elif user.is_authenticated %}
-
-                <!-- Status star awal -->
-
-                <!-- {% if user in recipe.starred_by.all %}
-                    {% static 'icons/star-filled.svg' as star_icon %}
-                {% else %}
-                    {% static 'icons/star-outline.svg' as star_icon %}
-                {% endif %} -->
-
-                <!-- Form star untuk AJAX -->
-                
-                <!-- <form
-                    class="recipe-card__star-form"
-                    data-star-card-form
-                    action="{% url 'resep_komunitas:recipe_toggle_star' recipe.pk %}"
-                    method="POST"
-                >
-                    {% csrf_token %}
-
-                    <button
-                        type="submit"
-                        class="btn btn--secondary btn--blue recipe-card__icon-button"
-                        aria-label="{% if user in recipe.starred_by.all %}Batalkan star{% else %}Beri star{% endif %}"
-                        aria-pressed="{% if user in recipe.starred_by.all %}true{% else %}false{% endif %}"
-                        data-star-filled="{% static 'icons/star-filled.svg' %}"
-                        data-star-outline="{% static 'icons/star-outline.svg' %}"
+                {% if recipe.image_url %}
+                    <img
+                        class="recipe-card__image"
+                        src="{{ recipe.image_url }}"
+                        alt="Foto {{ recipe.title }}"
+                        loading="lazy"
                     >
-                        <span
-                            class="btn__icon"
-                            data-star-icon
-                            style="--icon: url('{{ star_icon }}')"
+                {% else %}
+                    <div class="recipe-card__image recipe-card__image--placeholder">
+                        <span>SaveBite</span>
+                    </div>
+                {% endif %}
+            </a>
+
+            <!-- Konten resep -->
+            <div class="recipe-card__content">
+
+                <h4 class="h4 recipe-card__title">
+                    {{ recipe.title }}
+                </h4>
+
+                <!-- Author dan bahan utama -->
+                <div class="recipe-card__meta">
+                    <div class="recipe-card__meta-item">
+                        <img
+                            class="recipe-card__meta-icon"
+                            src="{% static 'icons/user_dark.svg' %}"
+                            alt=""
                             aria-hidden="true"
-                        ></span>
-                    </button>
-                </form> -->
+                        >
+                        <p class="p4">{{ recipe.author.username }}</p>
+                    </div>
 
-            {% endif %}
+                    <span class="recipe-card__meta-divider" aria-hidden="true">|</span>
 
-        </div>
-    </div>
+                    <div class="recipe-card__meta-item">
+                        <img
+                            class="recipe-card__meta-icon"
+                            src="{% static 'icons/groceries_dark.svg' %}"
+                            alt=""
+                            aria-hidden="true"
+                        >
+                        <p class="p4">{{ recipe.main_ingred }}</p>
+                    </div>
+                </div>
 
-</article>
+
+                <!-- Deskripsi -->
+                <p class="p4 recipe-card__description">
+                    {{ recipe.description }}
+                </p>
+
+                <!-- Tombol aksi -->
+                <div class="recipe-card__actions">
+
+                    <!-- Lihat Detail -->
+                    {% url 'resep_komunitas:recipe_detail' recipe.pk as detail_url %}
+                    {% include 'components/button.html' with label="Lihat Detail" type="primary" color="dark-green" href=detail_url icon_left="icons/book-open.svg" %}
+
+                    {% if user.is_authenticated and user.pk == recipe.author_id %}
+
+                        <!-- Edit: menuju halaman edit -->
+                        {% url 'resep_komunitas:recipe_update' recipe.pk as edit_url %}
+                        {% include 'components/button.html' with label=" " type="secondary" color="blue" href=edit_url icon_right="icons/edit.svg" %}
+
+                        <!-- Delete: menuju halaman konfirmasi -->
+                        <button
+                            type="button"
+                            class="btn btn--secondary btn--blue recipe-card__icon-button"
+                            data-delete-modal
+                            data-delete-url="{% url 'resep_komunitas:recipe_delete' recipe.pk %}"
+                            data-recipe-title="{{ recipe.title }}"
+                            aria-label="Hapus resep {{ recipe.title }}"
+                        >
+                            <span
+                                class="btn__icon"
+                                style="--icon: url('{% static 'icons/trash.svg' %}')"
+                                aria-hidden="true"
+                            ></span>
+                        </button>
+
+                    {% endif %}
+
+                </div>
+            </div>
+
+        </article>
+    {% endfor %}
+</div>

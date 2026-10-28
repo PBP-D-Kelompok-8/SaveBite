@@ -53,22 +53,26 @@
                             aria-hidden="true"
                         >
                         <p class="p2">{{ recipe.star_count }}</p>
-                    </div> -->
+                    </div>
+-->
 
 
                 </div>
-                <!-- <p class="recipe-detail__meta p2">
+                <!-- 
+                <p class="recipe-detail__meta p2">
                     &#128100; {{ recipe.author.username }}
                     &nbsp; | &nbsp;
                     <span id="star-count">&#9734; {{ recipe.star_count }}</span>
-                </p> -->
+                </p> 
+                -->
             </div>
 
+            <!-- 
             {% if user.is_authenticated and user.pk != recipe.author_id %}
-                
-                <!-- <form
+            -->
+            <!-- 
+                <form
                     method="post"
-                    action="{% url 'resep_komunitas:recipe_toggle_star' recipe.pk %}"
                     class="star-form"
                     data-star-form
                 >
@@ -80,9 +84,10 @@
                     >
                         {% if is_starred %}Tersimpan &#9733;{% else %}Simpan Menu &#9733;{% endif %}
                     </button>
-                </form> -->
+                </form> 
+            -->
 
-            {% endif %}
+            <!-- {% endif %} -->
         </header>
 
         <section class="recipe-detail__section">

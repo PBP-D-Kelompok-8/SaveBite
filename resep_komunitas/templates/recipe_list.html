@@ -13,6 +13,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/resep_komunitas.js' %}" defer></script>
+<script src="https://unpkg.com/htmx.org@2.0.4"></script>
 {% endblock %}
 
 {% block content %}
@@ -41,38 +42,38 @@
         </button>
     </form>
 
-    <nav class="recipes-filters" aria-label="Filter resep">
-        <a
-            class="recipe-filter {% if filter_type == 'all' %}is-active{% endif %}"
-            href="{% url 'resep_komunitas:recipe_list' %}?filter=all"
-        >Semua</a>
+    <div id="recipes-grid-cards">
+        <nav class="recipes-filters" aria-label="Filter resep">
+            <a
+                class="recipe-filter {% if filter_type == 'all' %}is-active{% endif %}"
+                href="{% url 'resep_komunitas:recipe_list' %}?filter=all"
+                hx-get="{% url 'resep_komunitas:recipe_list' %}?filter=all"
+                hx-target="#recipes-grid-cards"
+                hx-swap="innerHTML"
+                hx-push-url="true"
+            >Semua</a>
 
-        {% if user.is_authenticated %}
-            <a
-                class="recipe-filter {% if filter_type == 'mine' %}is-active{% endif %}"
-                href="{% url 'resep_komunitas:recipe_list' %}?filter=mine"
-            >Resep Anda</a>
-<!--             
-            <a
-                class="recipe-filter {% if filter_type == 'saved' %}is-active{% endif %}"
-                href="{% url 'resep_komunitas:recipe_list' %}?filter=saved"
-            >Tersimpan</a>
-             -->
+            {% if user.is_authenticated %}
+                <a
+                    class="recipe-filter {% if filter_type == 'mine' %}is-active{% endif %}"
+                    href="{% url 'resep_komunitas:recipe_list' %}?filter=mine"
+                    hx-get="{% url 'resep_komunitas:recipe_list' %}?filter=mine"
+                    hx-target="#recipes-grid-cards"
+                    hx-swap="innerHTML"
+                    hx-push-url="true"
+                >Resep Anda</a>
+            {% endif %}
+        </nav>
+
+        {% if recipes %}
+            {% include 'recipe_card.html' with recipes=recipes %}
+        {% else %}
+            <div class="recipes-empty">
+                <h4 class="h4">Belum ada resep yang ditemukan</h4>
+                <p class="p3">Coba kata kunci lain atau bagikan resep pertamamu</p>
+            </div>
         {% endif %}
-    </nav>
-
-    {% if recipes %}
-        <div class="recipes-grid">
-            {% for recipe in recipes %}
-                {% include 'recipe_card.html' with recipe=recipe %}
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="recipes-empty">
-            <h4 class="h4">Belum ada resep yang ditemukan</h4>
-            <p class="p3">Coba kata kunci lain atau bagikan resep pertamamu</p>
-        </div>
-    {% endif %}
+    </div>
 </section>
 
 <div

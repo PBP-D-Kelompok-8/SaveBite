@@ -17,11 +17,10 @@ def recipe_list(request):
     - Menampilkan semua resep secara default.
     - Mencari resep berdasarkan judul atau bahan utama.
     - Memfilter resep milik user yang sedang login.
-    - Memfilter resep yang sudah di-star oleh user.
 
     Parameter GET:
     - q: kata kunci pencarian.
-    - filter: all, mine, atau saved.
+    - filter: all, mine.
 
     Data yang dikirim ke template:
     - recipes: daftar resep yang cocok.
@@ -31,9 +30,7 @@ def recipe_list(request):
 
     # Ambil resep beserta author untuk mengurangi query database
     # saat template mengakses recipe.author.
-    recipes = CommunityRecipe.objects.select_related(
-        "author"
-    ).prefetch_related("starred_by")
+    recipes = CommunityRecipe.objects.select_related("author")
 
     # GET digunakan untuk pencarian karena pencarian tidak mengubah data.
     query = request.GET.get("q", "").strip()
@@ -56,12 +53,17 @@ def recipe_list(request):
             # melalui filter ini.
             recipes = recipes.none()
 
-    # Filter resep yang telah disimpan melalui fitur star.
-    elif filter_type == "saved":
-        if request.user.is_authenticated:
-            recipes = recipes.filter(starred_by=request.user)
-        else:
-            recipes = recipes.none()
+    # Render HTML jika request dari HTMX
+    if request.headers.get("HX-Request") == "true":
+        return render(
+            request,
+            "recipe_cards.html",
+            {
+                "recipes": recipes,
+                "query": query,
+                "filter_type": filter_type,
+            },
+        )
 
     # Render menggabungkan template HTML dengan data dari database.
     return render(
@@ -105,69 +107,70 @@ def recipe_delete(request, pk):
     )
 
 
-@login_required
-@require_POST
-def recipe_toggle_star(request, pk):
-    """
-    Menambah atau membatalkan star pada sebuah resep.
+# @login_required
+# @require_POST
+# def recipe_toggle_star(request, pk):
+#     """
+#     Menambah atau membatalkan star pada sebuah resep.
 
-    Hanya menerima POST dan membutuhkan user yang login.
+#     Hanya menerima POST dan membutuhkan user yang login.
 
-    Jika request berasal dari AJAX:
-        Mengembalikan JSON berisi status star dan jumlah star terbaru.
+#     Jika request berasal dari AJAX:
+#         Mengembalikan JSON berisi status star dan jumlah star terbaru.
 
-    Jika request biasa:
-        Mengarahkan user kembali ke halaman detail resep.
+#     Jika request biasa:
+#         Mengarahkan user kembali ke halaman detail resep.
 
-    Pemilik resep tidak boleh memberi star pada resepnya sendiri.
-    """
+#     Pemilik resep tidak boleh memberi star pada resepnya sendiri.
+#     """
 
-    recipe = get_object_or_404(CommunityRecipe, pk=pk)
+#     recipe = get_object_or_404(CommunityRecipe, pk=pk)
 
-    # Cegah author memberi star pada resepnya sendiri.
-    if recipe.author_id == request.user.pk:
-        message = "Kamu tidak bisa memberi star pada resep sendiri."
+#     # Cegah author memberi star pada resepnya sendiri.
+#     if recipe.author_id == request.user.pk:
+#         message = "Kamu tidak bisa memberi star pada resep sendiri."
 
-        if request.headers.get("x-requested-with") == "XMLHttpRequest":
-            return JsonResponse(
-                {"error": message},
-                status=400,
-            )
+#         if request.headers.get("x-requested-with") == "XMLHttpRequest":
+#             return JsonResponse(
+#                 {"error": message},
+#                 status=400,
+#             )
 
-        return redirect(
-            "resep_komunitas:recipe_detail",
-            pk=pk,
-        )
+#         return redirect(
+#             "resep_komunitas:recipe_detail",
+#             pk=pk,
+#         )
 
-    # Cari apakah user sudah memberi star sebelumnya.
-    relation = recipe.starred_by.filter(pk=request.user.pk)
+#     # Cari apakah user sudah memberi star sebelumnya.
+#     relation = recipe.starred_by.filter(pk=request.user.pk)
 
-    if relation.exists():
-        # Jika sudah ada, hapus relasinya: star dibatalkan.
-        relation.delete()
-        is_starred = False
-    else:
-        # Jika belum ada, tambahkan relasi star.
-        recipe.starred_by.add(request.user)
-        is_starred = True
+#     if relation.exists():
+#         # Jika sudah ada, hapus relasinya: star dibatalkan.
+#         relation.delete()
+#         is_starred = False
+#     else:
+#         # Jika belum ada, tambahkan relasi star.
+#         recipe.starred_by.add(request.user)
+#         is_starred = True
 
-    # Hitung ulang jumlah star setelah perubahan.
-    star_count = recipe.starred_by.count()
+#     # Hitung ulang jumlah star setelah perubahan.
+#     star_count = recipe.starred_by.count()
 
-    # XMLHttpRequest menandakan request AJAX dari JavaScript.
-    # JSON dipakai agar halaman dapat memperbarui tombol dan jumlah
-    # star tanpa reload seluruh halaman.
-    if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse({
-            "is_starred": is_starred,
-            "star_count": star_count,
-        })
+#     # XMLHttpRequest menandakan request AJAX dari JavaScript.
+#     # JSON dipakai agar halaman dapat memperbarui tombol dan jumlah
+#     # star tanpa reload seluruh halaman.
+#     if request.headers.get("x-requested-with") == "XMLHttpRequest":
+#         return JsonResponse({
+#             "is_starred": is_starred,
+#             "star_count": star_count,
+#         })
 
-    # Fallback untuk request POST biasa tanpa AJAX.
-    return redirect(
-        "resep_komunitas:recipe_detail",
-        pk=pk,
-    )
+#     # Fallback untuk request POST biasa tanpa AJAX.
+#     return redirect(
+#         "resep_komunitas:recipe_detail",
+#         pk=pk,
+#     )
+
 
 @login_required
 def recipe_create(request):
@@ -270,23 +273,24 @@ def recipe_detail(request, pk):
     recipe = get_object_or_404(
         CommunityRecipe.objects.select_related(
             "author"
-        ).prefetch_related("starred_by"),
-        pk=pk,
+        )
+        # .prefetch_related("starred_by")
+        ,pk=pk,
     )
 
     # User anonim tidak memiliki status star.
     # Untuk user login, periksa apakah relasi star sudah ada.
-    is_starred = (
-        request.user.is_authenticated
-        and recipe.starred_by.filter(pk=request.user.pk).exists()
-    )
+    # is_starred = (
+    #     request.user.is_authenticated
+    #     and recipe.starred_by.filter(pk=request.user.pk).exists()
+    # )
 
     return render(
         request,
         "recipe_detail.html",
         {
             "recipe": recipe,
-            "is_starred": is_starred,
+            # "is_starred": is_starred,
         },
     )
 
