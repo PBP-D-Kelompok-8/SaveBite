@@ -36,6 +36,13 @@ class LoginMarkup(HTMLParser):
         return [attrs for name, attrs in self.elements if name == tag]
 
 
+def content_inputs(response):
+    """Inspect content forms separately from the shared navbar logout form."""
+    markup = BoardMarkup(response.content.decode())
+    main, = markup.select("main")
+    return [node["attrs"] for node in markup.select("input", within=main)]
+
+
 class BoardLoginRenderingTests(TestCase):
     """T3-01: production templates, password sessions and real CSRF middleware."""
 
@@ -45,7 +52,7 @@ class BoardLoginRenderingTests(TestCase):
         cls.user = get_user_model().objects.create_user(
             username="board-login-reader", password=cls.password,
         )
-        cls.login_url = reverse("request_board:login")
+        cls.login_url = reverse("login")
         cls.board_url = reverse("request_board:request_board")
         cls.create_url = reverse("request_board:request_create")
 
@@ -57,7 +64,7 @@ class BoardLoginRenderingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsInstance(response, TemplateResponse)
         self.assertTrue(response.is_rendered)
-        self.assertTemplateUsed(response, "request_board/login.html")
+        self.assertTemplateUsed(response, "login.html")
         self.assertTemplateUsed(response, "base.html")
         markup = LoginMarkup(response.content.decode())
         tokens = [attrs for attrs in markup.attributes("input")
@@ -131,10 +138,10 @@ class BoardLoginRenderingTests(TestCase):
                        for attrs in markup.attributes("input")])
         self.assertTrue(any(attrs.get("type", "submit") == "submit"
                             for attrs in markup.attributes("button")))
-        self.assertTrue(any(attrs.get("href") == self.board_url
+        self.assertTrue(any(attrs.get("href") == reverse("register")
                             for attrs in markup.attributes("a")))
         self.assertEqual(len(markup.attributes("main")), 1)
-        self.assertTrue(any("request-board" in attrs.get("class", "").split()
+        self.assertTrue(any("auth" in attrs.get("class", "").split()
                             and attrs.get("lang") == "id" for _, attrs in markup.elements))
         self.assertNotIn(SESSION_KEY, client.session)
 
@@ -156,13 +163,13 @@ class BoardLoginRenderingTests(TestCase):
                     response = client.post(destination, data)
 
                     self.assertEqual(response.status_code, 302)
-                    self.assertEqual(response.headers["Location"], next_url or self.board_url)
+                    self.assertEqual(response.headers["Location"], next_url or reverse("landing_page"))
                     self.assertEqual(client.session[SESSION_KEY], str(self.user.pk))
                     board = client.get(self.board_url)
                     self.assertTrue(board.wsgi_request.user.is_authenticated)
                     self.assertEqual(board.wsgi_request.user.pk, self.user.pk)
 
-    def test_unsafe_next_falls_back_to_board_after_real_password_login(self):
+    def test_unsafe_next_falls_back_to_landing_after_real_password_login(self):
         for next_url in ("https://evil.invalid/", "//evil.invalid/",
                          "https://testserver\\@evil.invalid/", "javascript:alert(1)"):
             for transport in ("post", "query"):
@@ -179,7 +186,7 @@ class BoardLoginRenderingTests(TestCase):
                     response = client.post(destination, data)
 
                     self.assertEqual(response.status_code, 302)
-                    self.assertEqual(response.headers["Location"], self.board_url)
+                    self.assertEqual(response.headers["Location"], reverse("landing_page"))
                     self.assertEqual(client.session[SESSION_KEY], str(self.user.pk))
 
     def test_invalid_password_renders_bound_errors_and_preserves_safe_next(self):
@@ -191,7 +198,7 @@ class BoardLoginRenderingTests(TestCase):
         response = client.post(self.login_url, data)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "request_board/login.html")
+        self.assertTemplateUsed(response, "login.html")
         form = response.context_data["form"]
         self.assertTrue(form.is_bound)
         self.assertTrue(form.non_field_errors())
@@ -292,14 +299,14 @@ class BoardDocumentLanguageTests(TestCase):
         Request.objects.create(owner=cls.owner, title="Beras warga", food_item="Beras",
                                quantity=1, unit="kg")
         cls.board_url = reverse("request_board:request_board")
-        cls.login_url = reverse("request_board:login")
+        cls.login_url = reverse("login")
         cls.create_url = reverse("request_board:request_create")
 
     def setUp(self):
         self.client = Client(enforce_csrf_checks=True)
 
     def csrf_token(self, response):
-        tokens = [attrs for attrs in LoginMarkup(response.content.decode()).attributes("input")
+        tokens = [attrs for attrs in content_inputs(response)
                   if attrs.get("name") == "csrfmiddlewaretoken"]
         self.assertEqual(len(tokens), 1)
         self.assertEqual(tokens[0].get("type"), "hidden")
@@ -315,7 +322,7 @@ class BoardDocumentLanguageTests(TestCase):
             "csrfmiddlewaretoken": self.csrf_token(page),
         })
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["Location"], self.board_url)
+        self.assertEqual(response.headers["Location"], reverse("landing_page"))
         self.assertEqual(self.client.session[SESSION_KEY], str(self.owner.pk))
 
     def assert_board_document(self, response, template):
@@ -326,8 +333,9 @@ class BoardDocumentLanguageTests(TestCase):
         documents = markup.attributes("html")
         self.assertEqual(len(documents), 1)
         self.assertEqual(documents[0].get("lang"), "id")
+        root_class = "auth" if template == "login.html" else "request-board"
         roots = [attrs for _, attrs in markup.elements
-                 if "request-board" in attrs.get("class", "").split()]
+                 if root_class in attrs.get("class", "").split()]
         self.assertEqual(len(roots), 1)
         self.assertEqual(roots[0].get("lang"), "id")
 
@@ -350,7 +358,7 @@ class BoardDocumentLanguageTests(TestCase):
 
         self.assertFalse(response.context_data["form"].is_bound)
         self.assertNotIn(SESSION_KEY, self.client.session)
-        self.assert_board_document(response, "request_board/login.html")
+        self.assert_board_document(response, "login.html")
 
     def test_invalid_login_document_is_indonesian(self):
         page = self.client.get(self.login_url)
@@ -365,7 +373,7 @@ class BoardDocumentLanguageTests(TestCase):
         self.assertTrue(response.context_data["form"].is_bound)
         self.assertTrue(response.context_data["form"].non_field_errors())
         self.assertNotIn(SESSION_KEY, self.client.session)
-        self.assert_board_document(response, "request_board/login.html")
+        self.assert_board_document(response, "login.html")
 
     def test_create_get_document_is_indonesian(self):
         self.login_owner()
@@ -400,14 +408,14 @@ class DocumentLanguageControlTests(TestCase):
         self.assertEqual(len(documents), 1)
         self.assertEqual(documents[0].get("lang"), expected)
 
-    def test_base_without_override_defaults_to_english(self):
+    def test_base_without_override_defaults_to_indonesian(self):
         response = self.client.get(reverse("landing_page"))
         self.assertEqual(response.status_code, 200)
         template = get_template("base.html")
 
         html = template.render({}, request=response.wsgi_request)
 
-        self.assert_document_language(html, "en")
+        self.assert_document_language(html, "id")
 
     def test_landing_document_remains_indonesian(self):
         response = self.client.get(reverse("landing_page"))
@@ -554,7 +562,7 @@ class BoardPaginationRenderingTests(TestCase):
             cls.records.append(item)
         cls.board_url = reverse("request_board:request_board")
         cls.create_url = reverse("request_board:request_create")
-        cls.login_url = reverse("request_board:login")
+        cls.login_url = reverse("login")
 
     def board(self, query=""):
         response = self.client.get(self.board_url + query)
@@ -977,7 +985,13 @@ class ToastNotificationRenderingTests(TestCase):
                             if any(parent is area for parent in node["parents"])]]:
             self.assertNotIn("autofocus", node["attrs"])
             self.assertNotIn("hidden", node["attrs"])
-            self.assertNotEqual(node["attrs"].get("aria-hidden"), "true")
+            if node["tag"] == "svg":
+                # The close icon is decorative; its button supplies the accessible name.
+                self.assertTrue(any(parent["tag"] == "button"
+                                    and parent["attrs"].get("aria-label") == "Tutup notifikasi"
+                                    for parent in node["parents"]))
+            else:
+                self.assertNotEqual(node["attrs"].get("aria-hidden"), "true")
         return area
 
     def test_success_info_error_are_escaped_once_in_shared_toast_on_board_and_create(self):
@@ -997,6 +1011,23 @@ class ToastNotificationRenderingTests(TestCase):
                     markup, feedback = self.assert_message_rendered_once(response, markup, text, level)
                     self.assertFalse(any("onerror" in node["attrs"] for node in markup.nodes))
                     self.assert_toast_area(markup, feedback)
+
+    def test_each_notification_has_a_labelled_non_submit_close_button(self):
+        for url in (self.board_url, self.create_url):
+            with self.subTest(url=url):
+                seed, _ = self.create_form()
+                self.queue_messages(seed, [(messages.SUCCESS, "Berhasil disimpan."),
+                                           (messages.ERROR, "Periksa kembali isian.")])
+                markup = BoardMarkup(self.client.get(url).content.decode())
+                notifications = [node for node in markup.nodes
+                                 if "request-board__toast" in node["attrs"].get("class", "").split()]
+                self.assertEqual(len(notifications), 2)
+                for notification in notifications:
+                    buttons = markup.select("button", within=notification)
+                    self.assertEqual(len(buttons), 1)
+                    self.assertEqual(buttons[0]["attrs"].get("type"), "button")
+                    self.assertEqual(buttons[0]["attrs"].get("aria-label"), "Tutup notifikasi")
+                    self.assertFalse(any(parent["tag"] == "a" for parent in buttons[0]["parents"]))
 
     def test_queued_messages_share_one_area_and_are_consumed_after_first_render(self):
         entries = [(messages.SUCCESS, "Penyimpanan uji berhasil."),
@@ -1215,7 +1246,7 @@ class BoardActionRenderingTests(TestCase):
 
     def test_guest_has_login_link_and_no_mutation_forms_in_all_states(self):
         _, markup = self.board()
-        login_url = reverse("request_board:login")
+        login_url = reverse("login")
         links = [node for node in markup.select("a")
                  if urlsplit(node["attrs"].get("href", "")).path == login_url
                  and node["text"].strip()]
@@ -1328,7 +1359,7 @@ class BoardActionRenderingTests(TestCase):
         _, markup = self.board()
         url, payload = self.offer_form(markup, self.pending)
         foreign = Client(enforce_csrf_checks=True)
-        login = foreign.get(reverse("request_board:login"))
+        login = foreign.get(reverse("login"))
         tokens = [attrs["value"] for attrs in LoginMarkup(login.content.decode()).attributes("input")
                   if attrs.get("name") == "csrfmiddlewaretoken"]
         self.assertEqual(len(tokens), 1)
@@ -1360,8 +1391,8 @@ class BoardActionRenderingTests(TestCase):
                 self.client = Client(enforce_csrf_checks=True)
                 if actor is not None:
                     self.client.force_login(actor)
-                login = self.client.get(reverse("request_board:login"))
-                tokens = [attrs["value"] for attrs in LoginMarkup(login.content.decode()).attributes("input")
+                login = self.client.get(reverse("login"))
+                tokens = [attrs["value"] for attrs in content_inputs(login)
                           if attrs.get("name") == "csrfmiddlewaretoken"]
                 self.assertEqual(len(tokens), 1)
                 url = reverse("request_board:request_offer", args=[item.pk if item else 999999])
@@ -1373,7 +1404,7 @@ class BoardActionRenderingTests(TestCase):
                 self.assertEqual(self.snapshot(), before)
                 if actor is None:
                     target = urlsplit(response["Location"])
-                    self.assertEqual(target.path, reverse("request_board:login"))
+                    self.assertEqual(target.path, reverse("login"))
                     self.assertEqual(parse_qs(target.query), {"next": [url]})
                 elif item is self.fulfilled and actor != self.owner:
                     markup = self.assert_offer_prg(response, messages.ERROR, "Request sudah terpenuhi.")
@@ -1415,9 +1446,9 @@ class BoardActionRenderingTests(TestCase):
 
     def fulfill_direct_token(self, client):
         # Forbidden controls stay absent; login HTML supplies a real same-client token.
-        response = client.get(reverse("request_board:login"))
+        response = client.get(reverse("login"))
         self.assertEqual(response.status_code, 200)
-        tokens = [attrs["value"] for attrs in LoginMarkup(response.content.decode()).attributes("input")
+        tokens = [attrs["value"] for attrs in content_inputs(response)
                   if attrs.get("name") == "csrfmiddlewaretoken"]
         self.assertEqual(len(tokens), 1)
         self.assertIn("csrftoken", client.cookies)
@@ -1521,7 +1552,7 @@ class BoardActionRenderingTests(TestCase):
                 self.assertEqual(self.snapshot(), before)
                 if actor is None:
                     target = urlsplit(response["Location"])
-                    self.assertEqual(target.path, reverse("request_board:login"))
+                    self.assertEqual(target.path, reverse("login"))
                     self.assertEqual(parse_qs(target.query), {"next": [url]})
                 elif actor == self.owner and item is self.pending:
                     markup = self.assert_offer_prg(response, messages.ERROR, "Request belum ditawarkan.")
@@ -1764,7 +1795,7 @@ class BoardDeleteConfirmationTests(TestCase):
                     self.assertEqual(self.snapshot(), before)
                     if actor is None:
                         target = urlsplit(response["Location"])
-                        self.assertEqual(target.path, reverse("request_board:login"))
+                        self.assertEqual(target.path, reverse("login"))
                         self.assertEqual(parse_qs(target.query), {"next": [url]})
                     else:
                         self.assertNotIn("Location", response)
@@ -1897,7 +1928,15 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                 self.assertEqual(response.context_data["owner_offer_previews"], {})
                 # Inspect all bytes: hidden DOM, attributes, comments, scripts and
                 # embedded JSON are not filtered by a visible-text parser.
-                self.assertNotIn(b"DONOR_SENTINEL_", response.content)
+                content = response.content
+                if actor in self.donors:
+                    own_navbar = (
+                        '<span class="navbar__username">'
+                        + escape(actor.username) + '</span>'
+                    ).encode()
+                    self.assertEqual(content.count(own_navbar), 1)
+                    content = content.replace(own_navbar, b"", 1)
+                self.assertNotIn(b"DONOR_SENTINEL_", content)
                 self.assert_private_fields_absent(response)
                 for item in self.items:
                     text = self.card(markup, item)["text"]
@@ -1948,7 +1987,7 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                 times = markup.select("time", within=card)
                 self.assertEqual(len(times), 21)
                 self.assertEqual([parse_datetime(node["attrs"].get("datetime", ""))
-                                  for node in times[1:]],
+                      for node in times if "request-board__donor-time" in node["attrs"].get("class", "").split()],
                                  [timestamp for timestamp, _, _ in self.expected(item)])
                 self.assertTrue(all(node["text"].strip() for node in times))
 
@@ -2075,7 +2114,7 @@ class BoardIndonesianErrorRenderingTests(TestCase):
         cls.inactive = get_user_model().objects.create_user(
             username="d02-inactive", password=cls.password, is_active=False,
         )
-        cls.login_url = reverse("request_board:login")
+        cls.login_url = reverse("login")
         cls.create_url = reverse("request_board:request_create")
 
     def csrf_token(self, client, url):
@@ -2129,7 +2168,7 @@ class BoardIndonesianErrorRenderingTests(TestCase):
             with self.subTest(fields=names):
                 response = client.post(self.login_url, {**data, "csrfmiddlewaretoken": token})
                 self.assertEqual(response.status_code, 200)
-                self.assertTemplateUsed(response, "request_board/login.html")
+                self.assertTemplateUsed(response, "login.html")
                 form = response.context_data["form"]
                 self.assertEqual(set(form.errors), set(names))
                 for name in names:

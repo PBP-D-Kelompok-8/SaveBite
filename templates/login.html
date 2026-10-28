@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block html_lang %}id{% endblock %}
+
 {% block title %}Login | SaveBite{% endblock %}
 
 {% block extra_css %}
@@ -8,7 +10,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="auth">
+<section class="auth" lang="id">
   <h1 class="auth__title">Selamat Datang Kembali!</h1>
   <p class="auth__subtitle">Masuk ke akun SaveBite mu</p>
 

@@ -30,7 +30,7 @@
 
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 
     <!-- Navbar Reusable -->
     {% include 'components/navbar.html' %}
@@ -47,4 +47,3 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
-

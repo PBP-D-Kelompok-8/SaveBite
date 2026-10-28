@@ -1,16 +1,19 @@
 from django.contrib import messages
 from django.contrib.auth import login, logout
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import redirect, render
+from django.template.response import TemplateResponse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
+
+from SaveBite.forms import SaveBiteAuthenticationForm
 
 
 def login_page(request):
     next_url = request.POST.get("next") or request.GET.get("next", "")
 
     if request.method == "POST":
-        form = AuthenticationForm(request, data=request.POST)
+        form = SaveBiteAuthenticationForm(request, data=request.POST)
         if form.is_valid():
             login(request, form.get_user())
 
@@ -23,9 +26,9 @@ def login_page(request):
 
             return redirect("landing_page")
     else:
-        form = AuthenticationForm(request)
+        form = SaveBiteAuthenticationForm(request)
 
-    return render(request, "login.html", {"form": form, "next": next_url})
+    return TemplateResponse(request, "login.html", {"form": form, "next": next_url})
 
 
 def register_page(request):

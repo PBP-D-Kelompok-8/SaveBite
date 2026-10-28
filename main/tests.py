@@ -103,9 +103,10 @@ class AuthenticationTests(TestCase):
         )
         self.assertNotIn("_auth_user_id", self.client.session)
 
-    def test_navbar_keeps_board_login_and_shows_logout_when_signed_in(self):
+    def test_navbar_uses_main_login_and_shows_logout_when_signed_in(self):
         response = self.client.get(reverse("landing_page"))
-        self.assertContains(response, 'href="/board/login/"')
+        self.assertContains(response, 'href="/login/"')
+        self.assertNotContains(response, 'href="/board/login/"')
         self.assertContains(response, 'href="/register/"')
         self.assertNotContains(response, "Logout")
 

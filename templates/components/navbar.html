@@ -26,7 +26,7 @@
             {% include 'components/button.html' with label="Logout" type="secondary" color="blue" submit=True only %}
           </form>
         {% else %}
-          {% url 'request_board:login' as navbar_login_url %}
+          {% url 'login' as navbar_login_url %}
           {% url 'register' as register_url %}
           {% include 'components/button.html' with label="Login" type="secondary" color="blue" href=navbar_login_url %}
           {% include 'components/button.html' with label="Daftar" type="tertiary" color="bright" href=register_url %}

@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block html_lang %}id{% endblock %}
+{% block body_class %}request-board-page{% endblock %}
 
 {% block title %}Buat Permintaan — Food Rescue Request Board | SaveBite{% endblock %}
 
@@ -19,8 +20,9 @@
   <div class="request-board__form-card">
     <header class="request-board__form-header">
       <h1 class="request-board__title">Buat Permintaan Bantuan Makanan</h1>
-      <p class="request-board__subtitle">Isi formulir berikut dengan rincian bahan makanan yang Anda butuhkan agar donatur dapat membantu.</p>
+      <p class="request-board__subtitle">Isi rincian bahan makanan yang Anda butuhkan agar donatur dapat membantu.</p>
     </header>
+    <p class="request-board__form-hint">* Wajib diisi</p>
 
     {% if form.errors %}
       <div class="request-board__alert request-board__alert--error request-board__error-summary" role="alert" aria-labelledby="error-summary-title">
@@ -56,6 +58,7 @@
           Judul Permintaan <span class="request-board__required">*</span>
         </label>
         {{ form.title }}
+        <p class="request-board__field-hint">Maksimal 120 karakter.</p>
         {% if form.title.errors %}
           <div class="request-board__field-errors">
             {{ form.title.errors }}
@@ -68,6 +71,7 @@
           Bahan Makanan <span class="request-board__required">*</span>
         </label>
         {{ form.food_item }}
+        <p class="request-board__field-hint">Maksimal 120 karakter.</p>
         {% if form.food_item.errors %}
           <div class="request-board__field-errors">
             {{ form.food_item.errors }}
@@ -81,6 +85,7 @@
             Jumlah <span class="request-board__required">*</span>
           </label>
           {{ form.quantity }}
+          <p class="request-board__field-hint">Minimal 0,01; maksimal 2 angka desimal.</p>
           {% if form.quantity.errors %}
             <div class="request-board__field-errors">
               {{ form.quantity.errors }}
@@ -106,6 +111,7 @@
           Deskripsi <span class="request-board__optional">(opsional)</span>
         </label>
         <textarea name="description" id="{{ form.description.id_for_label }}" maxlength="1000"{% if form.description.errors %} aria-invalid="true" aria-describedby="{{ form.description.auto_id }}_error"{% endif %}>{{ form.description.value|default_if_none:"" }}</textarea>
+        <p class="request-board__field-hint">Maksimal 1.000 karakter.</p>
         {% if form.description.errors %}
           <div class="request-board__field-errors">
             {{ form.description.errors }}
@@ -118,6 +124,7 @@
           Lokasi <span class="request-board__optional">(opsional)</span>
         </label>
         {{ form.location }}
+        <p class="request-board__field-hint">Maksimal 120 karakter. Jangan cantumkan kontak pribadi.</p>
         {% if form.location.errors %}
           <div class="request-board__field-errors">
             {{ form.location.errors }}
@@ -127,9 +134,10 @@
 
       <div class="request-board__form-actions">
         <button type="submit" class="btn btn--primary">
+          <img src="{% static 'request-board/save.svg' %}" alt="" width="18" height="18">
           Simpan Permintaan
         </button>
-        <a href="{% url 'request_board:request_board' %}" class="btn btn--secondary btn--dark-green">
+        <a href="{% url 'request_board:request_board' %}" class="btn btn--tertiary btn--dark-green">
           Batal
         </a>
       </div>
