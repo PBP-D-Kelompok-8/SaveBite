@@ -28,12 +28,18 @@
 
     <form class="food-journal__search" method="get" action="{% url 'jurnal:index' %}" data-foodlog-filter-form>
       <div class="food-journal__filter-row">
-        <div class="food-journal__filter-search">{{ filter_form.query }}</div>
-        {{ filter_form.status }}
-        <label class="food-journal__date-filter">Dari {{ filter_form.date_from }}</label>
-        <label class="food-journal__date-filter">Sampai {{ filter_form.date_to }}</label>
-        {% include 'components/button.html' with label='Terapkan' type='secondary' color='dark-green' icon_right='icons/bx-search-alt.svg' submit=True %}
-        <a class="btn btn--tertiary btn--dark-green food-journal__clear-filters" href="{% url 'jurnal:index' %}" data-foodlog-reset>Reset</a>
+        <div class="food-journal__filter-main">
+          <div class="food-journal__filter-search">{{ filter_form.query }}</div>
+          <div class="food-journal__filter-actions">
+            {% include 'components/button.html' with label='Terapkan' type='secondary' color='dark-green' icon_right='icons/bx-search-alt.svg' submit=True %}
+            <a class="btn btn--tertiary btn--dark-green food-journal__clear-filters" href="{% url 'jurnal:index' %}" data-foodlog-reset>Reset</a>
+          </div>
+        </div>
+        <div class="food-journal__filter-options">
+          {{ filter_form.status }}
+          <label class="food-journal__date-filter">Dari {{ filter_form.date_from }}</label>
+          <label class="food-journal__date-filter">Sampai {{ filter_form.date_to }}</label>
+        </div>
       </div>
       {% if filter_form.errors %}
         <div class="food-journal__filter-errors" role="alert">
@@ -43,12 +49,20 @@
       {% endif %}
     </form>
 
-    <p class="food-journal__live-message" role="status" aria-live="polite" data-foodlog-message></p>
     <div class="food-journal__results" data-foodlog-results aria-live="polite">
       {% include 'jurnal/foodlog_list.html' %}
     </div>
   </section>
 </section>
+
+<div class="food-journal__toasts" data-foodlog-toasts aria-live="polite" aria-relevant="additions">
+  {% for message in messages %}
+    {% include "components/toast.html" with type=message.tags message=message %}
+  {% endfor %}
+</div>
+<template data-foodlog-toast-template="success">{% include "components/toast.html" with type="success" message="Notifikasi" %}</template>
+<template data-foodlog-toast-template="error">{% include "components/toast.html" with type="error" message="Notifikasi" %}</template>
+<template data-foodlog-toast-template="warning">{% include "components/toast.html" with type="warning" message="Notifikasi" %}</template>
 
 {% url 'jurnal:create' as create_url %}
 {% include "components/form-modal.html" with id="create-log-modal" title="Tambah Catatan Makanan" action=create_url fields_template="jurnal/foodlog_form_fields.html" open_on_load=form.errors %}

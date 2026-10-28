@@ -1,4 +1,4 @@
-from django import forms
+﻿from django import forms
 
 from .models import FoodLog
 
@@ -25,7 +25,7 @@ class FoodLogFilterForm(forms.Form):
     )
     date_from = forms.DateField(
         required=False,
-        input_formats=["%Y-%m-%d"],
+        input_formats=["%Y-%m-%d"], 
         widget=forms.DateInput(attrs={
             "type": "date",
             "class": "food-journal__filter-control",

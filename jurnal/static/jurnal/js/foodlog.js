@@ -3,13 +3,42 @@
   let latestListRequest = 0;
   let searchTimer;
 
-  const getMessageRegion = () => document.querySelector("[data-foodlog-message]");
+  const toastTimers = new WeakMap();
+  const toastActions = ["create", "update", "delete"];
+
+  function dismissToast(toast) {
+    if (!toast || toast.classList.contains("food-journal__toast--leaving")) return;
+    window.clearTimeout(toastTimers.get(toast));
+    toast.classList.add("food-journal__toast--leaving");
+    window.setTimeout(() => toast.remove(), 250);
+  }
+
+  function mountToast(toast) {
+    const action = toastActions.find((item) => toast.classList.contains(`foodlog-${item}`));
+    if (action) toast.dataset.toastAction = action;
+    const closeButton = toast.querySelector(".ds-toast__close");
+    closeButton?.removeAttribute("onclick");
+    toastTimers.set(toast, window.setTimeout(() => dismissToast(toast), 5000));
+  }
+
+  function showToast(type, message, action = null) {
+    const container = document.querySelector("[data-foodlog-toasts]");
+    const template = document.querySelector(`[data-foodlog-toast-template="${type}"]`)
+      || document.querySelector('[data-foodlog-toast-template="success"]');
+    const toast = template?.content.firstElementChild?.cloneNode(true);
+    if (!container || !toast) return;
+    toast.querySelector(".ds-toast__message").textContent = message;
+    if (toastActions.includes(action)) toast.dataset.toastAction = action;
+    container.append(toast);
+    mountToast(toast);
+  }
 
   function announce(message, isError = false) {
-    const region = getMessageRegion();
-    if (!region) return;
-    region.textContent = message;
-    region.classList.toggle("food-journal__live-message--error", isError);
+    showToast(isError ? "error" : "success", message);
+  }
+
+  function initializeToasts() {
+    document.querySelectorAll("[data-foodlog-toasts] .ds-toast").forEach(mountToast);
   }
 
   async function readJsonResponse(response) {
@@ -95,9 +124,9 @@
         if (payload.form_html && modal) {
           modal.querySelector(".modal__content").innerHTML = payload.form_html;
           modal.querySelector(".input__field")?.focus();
-        } else {
-          announce(payload.message || "Catatan gagal disimpan.", true);
         }
+        if (payload.toast) showToast(payload.toast.type, payload.toast.message, payload.toast.action);
+        else if (!payload.form_html) announce(payload.message || "Catatan gagal disimpan.", true);
         return;
       }
 
@@ -107,7 +136,8 @@
       delete form.dataset.foodLogId;
       latestListRequest += 1;
       applyJournalPayload(payload);
-      announce(payload.message || (isEdit ? "Catatan diperbarui." : "Catatan ditambahkan."));
+      if (payload.toast) showToast(payload.toast.type, payload.toast.message, payload.toast.action);
+      else announce(payload.message || (isEdit ? "Catatan diperbarui." : "Catatan ditambahkan."));
     } catch (error) {
       announce("Catatan gagal disimpan. Coba lagi.", true);
     } finally {
@@ -133,14 +163,16 @@
       });
       const payload = await readJsonResponse(response);
       if (!response.ok || !payload.ok) {
-        announce(payload.message || "Catatan gagal dihapus.", true);
+        if (payload.toast) showToast(payload.toast.type, payload.toast.message, payload.toast.action);
+        else announce(payload.message || "Catatan gagal dihapus.", true);
         return;
       }
 
       form.closest("dialog")?.close();
       latestListRequest += 1;
       applyJournalPayload(payload);
-      announce(payload.message || "Catatan dihapus.");
+      if (payload.toast) showToast(payload.toast.type, payload.toast.message, payload.toast.action);
+      else announce(payload.message || "Catatan dihapus.");
     } catch (error) {
       announce("Catatan gagal dihapus. Coba lagi.", true);
     } finally {
@@ -151,6 +183,11 @@
   }
 
   document.addEventListener("click", (event) => {
+    const toastClose = event.target.closest("[data-foodlog-toasts] .ds-toast__close");
+    if (toastClose) {
+      dismissToast(toastClose.closest(".ds-toast"));
+      return;
+    }
     const editLink = event.target.closest(
       ".food-journal__log-list .card__actions .btn--secondary"
     );
@@ -245,6 +282,7 @@
     refreshJournal(url.href);
   });
 
+  initializeToasts();
   window.addEventListener("popstate", () => {
     const form = document.querySelector("[data-foodlog-filter-form]");
     if (form) {

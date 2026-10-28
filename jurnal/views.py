@@ -84,7 +84,7 @@ def _journal_context(request, form=None):
     }
 
 
-def _ajax_journal_response(request, message=None):
+def _ajax_journal_response(request, message=None, toast_type="success", toast_action=None):
     """Return fresh list and summary markup for a single AJAX round trip."""
     context = _journal_context(request)
     payload = {
@@ -98,6 +98,7 @@ def _ajax_journal_response(request, message=None):
     }
     if message:
         payload["message"] = message
+        payload["toast"] = {"type": toast_type, "message": message, "action": toast_action}
     return JsonResponse(payload)
 
 
@@ -107,6 +108,7 @@ def food_log_list(request):
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return _ajax_journal_response(request)
     return render(request, "jurnal/index.html", context)
+
 
 
 @login_required(login_url="login")
@@ -121,9 +123,9 @@ def food_log_create(request):
         food_log.save()
         if is_ajax:
             return _ajax_journal_response(
-                request, "Catatan makanan berhasil ditambahkan."
+                request, "Catatan makanan berhasil ditambahkan.", toast_action="create"
             )
-        messages.success(request, "Catatan makanan berhasil ditambahkan.")
+        messages.success(request, "Catatan makanan berhasil ditambahkan.", extra_tags="foodlog-create")
         return redirect("jurnal:index")
 
     if is_ajax:
@@ -132,6 +134,7 @@ def food_log_create(request):
             "form_html": render_to_string(
                 "jurnal/foodlog_form_fields.html", {"form": form}, request=request
             ),
+            "toast": {"type": "warning", "message": "Form belum lengkap. Periksa kembali isianmu."},
         }, status=400)
 
     return render(
@@ -155,9 +158,9 @@ def food_log_update(request, pk, *, food_log):
             form.save()
             if is_ajax:
                 return _ajax_journal_response(
-                    request, "Catatan makanan berhasil diperbarui."
+                    request, "Catatan makanan berhasil diperbarui.", toast_action="update"
                 )
-            messages.success(request, "Catatan makanan berhasil diperbarui.")
+            messages.success(request, "Catatan makanan berhasil diperbarui.", extra_tags="foodlog-update")
             return redirect("jurnal:index")
         if is_ajax:
             return JsonResponse({
@@ -165,6 +168,7 @@ def food_log_update(request, pk, *, food_log):
                 "form_html": render_to_string(
                     "jurnal/foodlog_form_fields.html", {"form": form}, request=request
                 ),
+                "toast": {"type": "warning", "message": "Form belum lengkap. Periksa kembali isianmu."},
             }, status=400)
     else:
         form = FoodLogForm(instance=food_log)
@@ -188,9 +192,9 @@ def food_log_delete(request, pk, *, food_log):
         food_log.delete()
         if is_ajax:
             return _ajax_journal_response(
-                request, "Catatan makanan berhasil dihapus."
+                request, "Catatan makanan berhasil dihapus.", toast_action="delete"
             )
-        messages.success(request, "Catatan makanan berhasil dihapus.")
+        messages.success(request, "Catatan makanan berhasil dihapus.", extra_tags="foodlog-delete")
         return redirect("jurnal:index")
 
     return render(request, "jurnal/delete_confirm.html", {"food_log": food_log})

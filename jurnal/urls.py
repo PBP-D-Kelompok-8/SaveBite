@@ -9,5 +9,6 @@ urlpatterns = [
     path("tambah/", views.food_log_create, name="create"),
     path("<int:pk>/edit/", views.food_log_update, name="update"),
     path("<int:pk>/hapus/", views.food_log_delete, name="delete"),
+
 ]
 

@@ -1,4 +1,4 @@
-/* ===== Halaman utama jurnal ===== */
+﻿/* ===== Halaman utama jurnal ===== */
 .food-journal {
   box-sizing: border-box;
   width: min(1240px, 100%);
@@ -50,6 +50,9 @@
 .food-journal__section-title {
   margin: 0;
   font-size: 24px;
+}
+#food-journal-list-title{
+  margin-top: 0rem;
 }
 
 .food-journal__logs > .food-journal__intro {
@@ -258,9 +261,10 @@
 /* Live saved/discarded donut summary */
 .food-journal__summary {
   display: grid;
-  grid-template-columns: minmax(150px, 0.75fr) minmax(0, 1.25fr);
+  grid-template-columns: max-content max-content;
+  justify-content: center;
   align-items: center;
-  gap: 18px;
+  gap: clamp(32px, 8vw, 100px);
   margin: 8px 0 32px;
 }
 
@@ -299,7 +303,7 @@
 
 .food-journal__donut {
   position: relative;
-  width: clamp(230px, 42vw, 390px);
+  width: clamp(210px, 30vw, 300px);
   aspect-ratio: 1;
   border-radius: 50%;
   background: conic-gradient(
@@ -456,4 +460,183 @@
   .food-journal__filter-control[name="status"] { grid-column: 1 / -1; }
   .food-journal__date-filter { grid-row: auto; flex-direction: column; align-items: stretch; }
   .food-journal__filter-row .btn { justify-self: stretch; }
+}
+/* Filter layout: search and actions on the first row, filter controls below. */
+.food-journal .food-journal__filter-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.food-journal__filter-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.food-journal__filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.food-journal__filter-actions .btn {
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.food-journal__filter-options {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) repeat(2, minmax(220px, 1fr));
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .food-journal__filter-options {
+    grid-template-columns: minmax(130px, 0.8fr) repeat(2, minmax(170px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .food-journal__filter-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .food-journal__filter-actions {
+    justify-content: flex-start;
+  }
+
+  .food-journal__filter-options {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .food-journal__filter-options > .food-journal__filter-control {
+    grid-column: 1 / -1;
+  }
+
+  .food-journal__date-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+.food-journal__filter-actions .food-journal__clear-filters {
+  box-sizing: border-box;
+  min-width: 84px;
+  justify-content: center;
+}
+
+
+/* Keep journal cards centered and compact. */
+.food-journal__log-list.card-list {
+  width: min(100%, 900px) !important;
+  margin-inline: auto !important;
+}
+
+
+
+
+.food-journal__log-list.card-list .card {
+  min-height: 136px;
+  padding: 14px;
+  grid-template-rows: auto 1fr auto;
+  align-content: stretch;
+}
+
+.food-journal__log-list.card-list .card__actions {
+  align-self: end;
+}
+
+/* Align card copy with the Edit action below it. */
+.food-journal__log-list .card__title,
+.food-journal__log-list .card__text {
+  margin-left: 7px;
+}
+
+
+/* Jurnal uses the shared design-system toast, positioned at the viewport corner. */
+.food-journal__toasts {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  width: min(440px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.food-journal__toasts .ds-toast {
+  max-width: 100%;
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 250ms ease, transform 250ms ease;
+  animation: food-journal-toast-enter 180ms ease-out both;
+}
+
+.food-journal__toasts .ds-toast.food-journal__toast--leaving {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+@keyframes food-journal-toast-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .food-journal__toasts .ds-toast { animation: none; transition-duration: 1ms; }
+}
+
+
+/* Action-specific icons for Jurnal toasts; shared toast markup stays unchanged. */
+.food-journal__toasts .ds-toast[data-toast-action] .ds-toast__icon svg {
+  display: none;
+}
+
+.food-journal__toasts .ds-toast[data-toast-action] .ds-toast__icon::after {
+  content: "";
+  display: block;
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  -webkit-mask: center / contain no-repeat;
+  mask: center / contain no-repeat;
+}
+
+.food-journal__toasts .ds-toast[data-toast-action="create"] .ds-toast__icon::after {
+  -webkit-mask-image: url("/static/icons/x.svg");
+  mask-image: url("/static/icons/x.svg");
+  transform: rotate(45deg);
+}
+
+.food-journal__toasts .ds-toast[data-toast-action="update"] .ds-toast__icon::after {
+  -webkit-mask-image: url("/static/icons/edit-alt.svg");
+  mask-image: url("/static/icons/edit-alt.svg");
+}
+
+.food-journal__toasts .ds-toast[data-toast-action="delete"] .ds-toast__icon::after {
+  -webkit-mask-image: url("/static/icons/trash.svg");
+  mask-image: url("/static/icons/trash.svg");
+}
+
+/* Center a lone food log while preserving the regular two-column grid. */
+.food-journal__log-list.card-list > .food-journal__card-item:only-child {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: min(100%, 440px) !important;
+}
+
+/* The shared card-list reset marks each item grid-column:auto !important. */
+.food-journal__log-list.card-list > .food-journal__card-item:only-child {
+  grid-column: 1 / -1 !important;
+  justify-self: center !important;
+  width: min(100%, 440px) !important;
 }
