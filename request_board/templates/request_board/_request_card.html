@@ -45,6 +45,7 @@
   {% endif %}
 
   {% if user.is_authenticated and user.id == item.owner_id %}
+    {% if item.selected_offer %}<p class="request-board__card-note">Penawar terpilih: {{ item.selected_offer.offered_by.get_username }}</p>{% elif item.status == 'fulfilled' %}<p class="request-board__card-note">Data lama: penawar terpilih tidak tercatat.</p>{% endif %}
     {% with preview=owner_offer_previews|owner_preview:item.pk %}
       {% if preview.items %}
         <div class="request-board__donors">
@@ -63,13 +64,18 @@
         </div>
       {% endif %}
     {% endwith %}
+    {% if item.offer_count %}<a href="{% url 'request_board:request_offers' item.pk %}">Lihat semua penawaran</a>{% endif %}
   {% endif %}
+
+  {% if item.selected_offer_id %}<p class="request-board__card-note">Penawaran sudah ditutup.</p>{% endif %}
 
   <time class="request-board__card-time" datetime="{{ item.created_at|date:'c' }}">Dibuat · {{ item.created_at|date:"d M Y, H:i" }}</time>
 
   {% if user.is_authenticated and user.id != item.owner_id and item.status != "fulfilled" %}
     <div class="request-board__card-actions">
-      {% if item.has_offered %}
+      {% if item.selected_offer_id %}
+        <p class="request-board__card-note">Penawaran ditutup</p>
+      {% elif item.has_offered %}
         <p class="request-board__card-note">Sudah menawarkan</p>
       {% else %}
         <form method="post" action="{% url 'request_board:request_offer' item.pk %}">
@@ -82,7 +88,7 @@
 
   {% if user.is_authenticated and user.id == item.owner_id %}
   <div class="request-board__owner-actions">
-  {% if item.status == "offered" %}
+  {% if item.status == "offered" and item.selected_offer_id %}
     <div class="request-board__card-actions">
       <form method="post" action="{% url 'request_board:request_fulfill' item.pk %}">
         {% csrf_token %}

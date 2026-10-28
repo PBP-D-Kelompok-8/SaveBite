@@ -56,6 +56,10 @@ def offer_request(*, actor, request_id: int) -> tuple[RequestOffer, bool]:
                 code="request_fulfilled",
             )
 
+        existing = RequestOffer.objects.filter(request=locked_request, offered_by=actor).first()
+        if locked_request.selected_offer_id and existing is None:
+            raise ValidationError("Penawaran sudah ditutup.", code="offers_closed")
+
         offer, created = RequestOffer.objects.get_or_create(
             request=locked_request,
             offered_by=actor,
@@ -68,6 +72,21 @@ def offer_request(*, actor, request_id: int) -> tuple[RequestOffer, bool]:
         return offer, created
 
 
+def select_request_offer(*, actor, request_id: int, offer_id: int) -> Request:
+    _require_saved_user(actor)
+    with transaction.atomic():
+        locked_request = Request.objects.select_for_update().get(pk=request_id)
+        if locked_request.owner_id != actor.pk:
+            raise PermissionDenied("Hanya pemilik request yang dapat memilih penawar.")
+        if locked_request.status == Request.STATUS_FULFILLED:
+            raise ValidationError("Request sudah terpenuhi.", code="request_fulfilled")
+        offer = RequestOffer.objects.get(pk=offer_id, request=locked_request)
+        if locked_request.selected_offer_id != offer.pk:
+            locked_request.selected_offer = offer
+            locked_request.save(update_fields=["selected_offer", "updated_at"])
+        return locked_request
+
+
 def fulfill_request(*, actor, request_id: int) -> Request:
     _require_saved_user(actor)
 
@@ -77,10 +96,10 @@ def fulfill_request(*, actor, request_id: int) -> Request:
         if locked_request.owner_id != actor.pk:
             raise PermissionDenied("Hanya pemilik request yang dapat memenuhi request.")
 
-        if locked_request.status == Request.STATUS_PENDING:
+        if locked_request.status != Request.STATUS_FULFILLED and not locked_request.selected_offer_id:
             raise ValidationError(
-                "Request belum ditawarkan.",
-                code="request_not_offered",
+                "Pilih penawar sebelum menandai request terpenuhi.",
+                code="offer_selection_required",
             )
 
         if locked_request.status == Request.STATUS_OFFERED:
@@ -111,7 +130,7 @@ def _requests_for_display(actor):
     else:
         has_offered = Value(False, output_field=BooleanField())
 
-    return Request.objects.select_related("owner").annotate(
+    return Request.objects.select_related("owner", "selected_offer__offered_by").annotate(
         offer_count=Count("offers", distinct=True),
         has_offered=has_offered,
     )
