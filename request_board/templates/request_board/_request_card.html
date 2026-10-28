@@ -45,7 +45,7 @@
   {% endif %}
 
   {% if user.is_authenticated and user.id == item.owner_id %}
-    {% if item.selected_offer %}<p class="request-board__card-note">Penawar terpilih: {{ item.selected_offer.offered_by.get_username }}</p>{% elif item.status == 'fulfilled' %}<p class="request-board__card-note">Data lama: penawar terpilih tidak tercatat.</p>{% endif %}
+    {% if item.selected_offer %}<p class="request-board__card-note">Penawar terpilih: {{ item.selected_offer.offered_by.get_username }}</p>{% endif %}
     {% with preview=owner_offer_previews|owner_preview:item.pk %}
       {% if preview.items %}
         <div class="request-board__donors">

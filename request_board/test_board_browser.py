@@ -17,6 +17,44 @@ except ImportError:
 
 @skipUnless(sync_playwright, "Optional Playwright browser tooling is not installed")
 class BoardAjaxBrowserTests(StaticLiveServerTestCase):
+    def test_offers_long_title_wraps_without_horizontal_overflow(self):
+        owner = get_user_model().objects.create_user(username='browser-long-title-owner')
+        title = 'Bantuan ' + 'sayuransegar' * 9
+        item = Request.objects.create(owner=owner, title=title, food_item='Roti', quantity=1, unit='porsi')
+        client = Client()
+        client.force_login(owner)
+        session = client.cookies['sessionid'].value
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                for width in (375, 768, 1280):
+                    with self.subTest(width=width):
+                        context = browser.new_context(viewport={'width': width, 'height': 900})
+                        context.add_cookies([{'name': 'sessionid', 'value': session, 'url': self.live_server_url}])
+                        page = context.new_page()
+                        response = page.goto(self.live_server_url + reverse('request_board:request_offers', args=[item.pk]))
+                        self.assertEqual(response.status, 200)
+                        heading = page.locator('[data-board-offers] h1')
+                        expect(heading).to_have_text('Penawaran untuk ' + title)
+                        geometry = heading.evaluate('''element => {
+                            const range = document.createRange();
+                            range.selectNodeContents(element);
+                            const bounds = element.getBoundingClientRect();
+                            const rects = Array.from(range.getClientRects());
+                            return {
+                                viewport: document.documentElement.clientWidth,
+                                scroll: document.documentElement.scrollWidth,
+                                textFits: rects.every(rect => rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1),
+                                visible: getComputedStyle(element).overflow === 'visible' && getComputedStyle(element).textOverflow === 'clip',
+                            };
+                        }''')
+                        self.assertLessEqual(geometry['scroll'], geometry['viewport'])
+                        self.assertTrue(geometry['textFits'])
+                        self.assertTrue(geometry['visible'])
+                        context.close()
+            finally:
+                browser.close()
+
     def test_old_get_cannot_replace_newer_reset(self):
         owner = get_user_model().objects.create_user(username='browser-stale-owner')
         Request.objects.create(owner=owner, title='Hasil asli', food_item='Roti', quantity=1, unit='porsi')

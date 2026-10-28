@@ -34,6 +34,7 @@
 .request-board__card-note { margin: 0; padding: 8px 16px; border: 2px solid var(--ink-light); border-radius: 16px; font-size: 24px; line-height: 1.5; font-weight: 700; }
 .request-board__donors { border-radius: 16px; background: var(--board-success); color: var(--accent-dark-green); padding: 12px; }
 .request-board__donors-title { margin: 0 0 8px; color: inherit; font-size: 20px; line-height: 1.4; font-weight: 700; }
+.request-board[data-board-offers] > h1 { overflow-wrap: anywhere; }
 .request-board__donors-list { padding: 0; margin: 0; list-style: none; }
 .request-board__donor { font-size: 20px; line-height: 1.4; overflow-wrap: anywhere; }
 .request-board__donor-name { font-weight: 600; }
