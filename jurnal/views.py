@@ -2,6 +2,7 @@ import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -67,19 +68,26 @@ def _food_logs_for_user(user, filters=None):
             logs = logs.filter(completed_at__date__gte=filters["date_from"])
         if filters.get("date_to"):
             logs = logs.filter(completed_at__date__lte=filters["date_to"])
-    return [_prepare_food_log_card(log) for log in logs]
+    return logs
 
 
 def _journal_context(request, form=None):
     filter_form = FoodLogFilterForm(request.GET or None)
     filters_valid = filter_form.is_valid()
     filters = filter_form.cleaned_data if filters_valid else {}
+    paginator = Paginator(_food_logs_for_user(request.user, filters), 6)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    food_logs = [_prepare_food_log_card(log) for log in page_obj.object_list]
+    filters_applied = any(
+        value.strip() for key, value in request.GET.items() if key != "page"
+    )
     return {
-        "food_logs": _food_logs_for_user(request.user, filters),
+        "food_logs": food_logs,
+        "page_obj": page_obj,
         "form": form if form is not None else FoodLogForm(),
         "filter_form": filter_form,
         "filters_invalid": bool(request.GET and not filters_valid),
-        "filters_applied": any(value.strip() for value in request.GET.values()),
+        "filters_applied": filters_applied,
         **_food_log_summary(request.user),
     }
 
@@ -92,6 +100,7 @@ def _ajax_journal_response(request, message=None, toast_type="success", toast_ac
         "list_html": render_to_string(
             "jurnal/foodlog_list.html", context, request=request
         ),
+        "current_page": context["page_obj"].number,
         "summary_html": render_to_string(
             "jurnal/foodlog_summary.html", context, request=request
         ),

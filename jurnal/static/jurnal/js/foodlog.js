@@ -52,6 +52,13 @@
     return response.json();
   }
 
+  function syncPageParameter(pageNumber) {
+    const url = new URL(window.location.href);
+    if (pageNumber > 1) url.searchParams.set("page", pageNumber);
+    else url.searchParams.delete("page");
+    if (url.href !== window.location.href) window.history.replaceState({}, "", url.href);
+  }
+
   function applyJournalPayload(payload) {
     const listFragment = document.createRange().createContextualFragment(payload.list_html);
     const summaryFragment = document.createRange().createContextualFragment(payload.summary_html);
@@ -63,6 +70,7 @@
       oldResults.removeAttribute("aria-busy");
     }
     if (oldSummary && newSummary) oldSummary.replaceWith(newSummary);
+    if (Number.isInteger(payload.current_page)) syncPageParameter(payload.current_page);
   }
 
   function actionWithCurrentFilters(action) {
@@ -113,7 +121,9 @@
     form.setAttribute("aria-busy", "true");
 
     try {
-      const response = await fetch(actionWithCurrentFilters(form.action), {
+      const submitUrl = new URL(actionWithCurrentFilters(form.action));
+      if (!isEdit) submitUrl.searchParams.delete("page");
+      const response = await fetch(submitUrl.href, {
         method: "POST",
         body: new FormData(form),
         headers: REQUEST_HEADER,
@@ -183,6 +193,14 @@
   }
 
   document.addEventListener("click", (event) => {
+    const pageLink = event.target.closest("[data-foodlog-results] .ds-pagination a");
+    if (pageLink) {
+      event.preventDefault();
+      const url = new URL(pageLink.href, window.location.href);
+      window.history.pushState({}, "", url.href);
+      refreshJournal(url.href);
+      return;
+    }
     const toastClose = event.target.closest("[data-foodlog-toasts] .ds-toast__close");
     if (toastClose) {
       dismissToast(toastClose.closest(".ds-toast"));
