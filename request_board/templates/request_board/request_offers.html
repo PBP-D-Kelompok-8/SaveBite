@@ -2,7 +2,10 @@
 {% load static %}
 {% block body_class %}request-board-page{% endblock %}
 {% block title %}Penawaran — SaveBite{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/request-board.css' %}">{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/request-board-tailwind.css' %}">
+  <link rel="stylesheet" href="{% static 'css/request-board.css' %}">
+{% endblock %}
 {% block content %}
 <div class="request-board tw:mx-auto tw:w-full tw:max-w-[1440px] tw:px-5 tw:pt-7 tw:pb-10" lang="id">
   <h1>Penawaran untuk {{ item.title }}</h1>
