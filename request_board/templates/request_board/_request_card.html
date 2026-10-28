@@ -1,6 +1,6 @@
 {% load request_board_extras %}
 {% load static %}
-<article class="request-board__card request-board__card--{{ item.status }}">
+<article class="request-board__card request-board__card--{{ item.status }} tw:flex tw:min-w-0 tw:flex-col tw:gap-4">
   <div class="request-board__card-header">
     <span class="request-board__badge request-board__badge--{{ item.status }}">
       <picture class="request-board__status-icon">
@@ -49,9 +49,9 @@
       {% if preview.items %}
         <div class="request-board__donors">
           <h3 class="request-board__donors-title">Penawaran terbaru</h3>
-          <ul class="request-board__donors-list">
+          <ul class="request-board__donors-list tw:flex tw:flex-col tw:gap-2">
             {% for offer in preview.items %}
-              <li class="request-board__donor">
+              <li class="request-board__donor tw:flex tw:flex-wrap tw:items-baseline tw:gap-1">
                 <span class="request-board__donor-name">{{ offer.display_name }}</span>
                 <time class="request-board__donor-time" datetime="{{ offer.created_at|date:'c' }}">{{ offer.created_at|date:"d M Y, H:i" }}</time>
               </li>
