@@ -4,7 +4,9 @@ from urllib.parse import parse_qs, urlsplit
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from request_board.models import Request, RequestOffer
@@ -59,6 +61,120 @@ class BoardFilterTests(TestCase):
         location = self.item(location="Jalan temu")
         self.item(title="lain")
         self.assert_matches({"q": "tEmU"}, {title.pk, food.pk, location.pk})
+
+    def test_title_search_does_not_match_food_or_location(self):
+        title = self.item(title="Butuh NaSi", food_item="Roti", location="Depok")
+        self.item(title="Lain", food_item="nasi", location="Depok")
+        self.item(title="Lain", food_item="Roti", location="Nasi")
+        self.assert_matches({"title": " nasi "}, {title.pk})
+
+    def test_food_item_filter_matches_full_value_case_insensitively(self):
+        one = self.item(food_item="Nasi")
+        two = self.item(food_item="nAsI")
+        self.item(food_item="Nasi putih")
+        self.assert_matches({"food_item": " nasi "}, {one.pk, two.pk})
+
+    def test_title_and_food_combine_with_existing_filters(self):
+        first = self.item(title="Bantuan Nasi pertama", food_item="Nasi", status="offered", location="Depok")
+        second = self.item(title="Bantuan Nasi kedua", food_item="nAsI", status="offered", location="DEPOK")
+        self.item(title="Bantuan Nasi", food_item="Nasi putih", status="offered", location="Depok")
+        self.item(title="Bantuan lain", food_item="Nasi", status="offered", location="Depok")
+        self.item(title="Bantuan Nasi", food_item="Nasi", status="pending", location="Depok")
+        self.item(title="Bantuan Nasi", food_item="Nasi", status="offered", location="Bogor")
+        self.item(owner=self.other, title="Bantuan Nasi", food_item="Nasi", status="offered", location="Depok")
+        self.client.force_login(self.owner)
+        params = {"title": "bantuan nasi", "food_item": "NASI", "status": "offered", "location": "depok", "mine": "on"}
+        for sort, order in (("newest", [second.pk, first.pk]), ("oldest", [first.pk, second.pk])):
+            with self.subTest(sort=sort):
+                self.assert_matches({**params, "sort": sort}, order)
+                html = self.client.get(self.board, {**params, "sort": sort})
+                api = self.client.get(self.api, {**params, "sort": sort})
+                self.assertEqual([item.pk for item in html.context["page_obj"]], order)
+                self.assertEqual([item["id"] for item in api.json()["data"]], order)
+
+    def test_legacy_query_and_title_combine_with_and(self):
+        expected = self.item(title="Bantuan sayur", food_item="Nasi")
+        self.item(title="Bantuan nasi", food_item="Roti")
+        self.item(title="Lain", food_item="Nasi")
+        self.assert_matches({"q": "nasi", "title": "sayur"}, {expected.pk})
+
+    def test_new_filters_apply_before_pagination(self):
+        matches = [self.item(title=f"Target {i}", food_item="Nasi") for i in range(21)]
+        for i in range(25):
+            self.item(title=f"Target lain {i}", food_item="Roti")
+        params = {"title": "target", "food_item": "nasi", "page": 2}
+        self.assert_matches(params, {matches[0].pk})
+        html = self.client.get(self.board, params)
+        api = self.client.get(self.api, params)
+        self.assertEqual(html.context["page_obj"].paginator.count, 21)
+        self.assertEqual(api.json()["pagination"]["total_items"], 21)
+
+    def test_food_options_are_global_nonempty_and_stale_value_is_preserved(self):
+        self.item(food_item="Nasi", status="pending")
+        self.item(owner=self.other, food_item="Susu & \"Roti\"", status="offered")
+        self.item(food_item="")
+        self.client.force_login(self.owner)
+        response = self.client.get(self.board, {"title": "tidak ada", "status": "pending", "mine": "on"})
+        choices = list(response.context["filter_form"].fields["food_item"].widget.choices)
+        self.assertEqual(choices, [("", "Semua bahan"), ("Nasi", "Nasi"),
+                                   ('Susu & "Roti"', 'Susu & "Roti"')])
+        rendered = str(response.context["filter_form"]["food_item"])
+        self.assertIn('Susu &amp; &quot;Roti&quot;', rendered)
+        stale = 'Hilang & "lama"'
+        self.assert_matches({"food_item": stale}, set())
+        response = self.client.get(self.board, {"food_item": stale})
+        self.assertIn((stale, stale), list(response.context["filter_form"].fields["food_item"].widget.choices))
+        self.assertIn('value="Hilang &amp; &quot;lama&quot;" selected', str(response.context["filter_form"]["food_item"]))
+
+    def test_trimmed_food_value_remains_selected_in_widget(self):
+        item = self.item(food_item="Nasi")
+        for value in (" Nasi ", " Hilang "):
+            with self.subTest(value=value):
+                expected = {item.pk} if value.strip() == "Nasi" else set()
+                self.assert_matches({"food_item": value}, expected)
+                response = self.client.get(self.board, {"food_item": value})
+                self.assertIn(f'value="{value.strip()}" selected', str(response.context["filter_form"]["food_item"]))
+
+    def test_new_filter_limits_and_querystring_escaping(self):
+        for field in ("title", "food_item"):
+            for value in ("x" * 121, "bad\x00value"):
+                for url in (self.board, self.api):
+                    with self.subTest(field=field, value=repr(value), url=url):
+                        response = self.client.get(url, {field: value})
+                        self.assertEqual(response.status_code, 400)
+                        errors = (response.context["filter_form"].errors if url == self.board
+                                  else response.json()["error"]["fields"])
+                        self.assertIn(field, errors)
+        items = [self.item(title="Susu & Roti", food_item="Susu & Roti") for _ in range(21)]
+        self.assert_matches({"title": "   ", "food_item": "  ", "page": 2}, {items[0].pk})
+        self.assert_matches({"title": "x" * 120, "food_item": "x" * 120}, set())
+        response = self.client.get(self.board, {"title": " Susu & Roti ", "food_item": " Susu & Roti "})
+        links = [parse_qs(urlsplit(link.get("href", "")).query) for link in FilterMarkup(response.content.decode()).links]
+        self.assertIn({"title": ["Susu & Roti"], "food_item": ["Susu & Roti"], "page": ["2"]}, links)
+
+    def test_active_new_filters_remain_resettable_after_last_request_is_deleted(self):
+        item = self.item()
+        item.delete()
+        for params in ({"title": "Roti"}, {"food_item": "Roti"}, {"sort": "oldest"}):
+            with self.subTest(params=params):
+                response = self.client.get(self.board, params)
+                self.assertContains(response, 'aria-label="Filter permintaan"')
+                self.assertContains(response, "Reset Filter")
+                self.assertTrue(response.context["filters_active"])
+        response = self.client.get(self.board)
+        self.assertContains(response, "Belum Ada Permintaan")
+        self.assertNotContains(response, 'aria-label="Filter permintaan"')
+
+    def test_api_does_not_load_food_or_location_dropdown_options(self):
+        self.item(food_item="Nasi")
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(self.api, {"food_item": "nasi"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["data"]), 1)
+        for query in queries:
+            sql = query["sql"].upper()
+            self.assertNotIn('SELECT DISTINCT "REQUEST_BOARD_REQUEST"."FOOD_ITEM"', sql)
+            self.assertNotIn('SELECT DISTINCT "REQUEST_BOARD_REQUEST"."LOCATION"', sql)
 
     def test_status_and_mine_combine_with_search(self):
         expected = self.item(title="Nasi dibutuhkan", status="offered")

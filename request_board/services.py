@@ -146,6 +146,10 @@ def get_board_page(*, actor=None, page_value: str | int | None = None, filters=N
         queryset = queryset.filter(
             Q(title__icontains=term) | Q(food_item__icontains=term) | Q(location__icontains=term)
         )
+    if filters.get("title"):
+        queryset = queryset.filter(title__icontains=filters["title"])
+    if filters.get("food_item"):
+        queryset = queryset.filter(food_item__iexact=filters["food_item"])
     if filters.get("status"):
         queryset = queryset.filter(status=filters["status"])
     if filters.get("location"):

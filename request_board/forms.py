@@ -18,7 +18,19 @@ BOARD_FIELD_ERRORS = {
 }
 
 
+class TrimmedSelect(forms.Select):
+    def format_value(self, value):
+        if isinstance(value, str):
+            value = value.strip()
+        return super().format_value(value)
+
+
 class BoardFilterForm(forms.Form):
+    title = forms.CharField(
+        label="Cari judul permintaan", max_length=120, required=False,
+        widget=forms.TextInput(attrs={"placeholder": "Ketik judul permintaan..."}),
+    )
+    food_item = forms.CharField(label="Bahan", max_length=120, required=False, widget=TrimmedSelect)
     q = forms.CharField(
         label="Cari judul, bahan, atau lokasi", max_length=120, required=False,
         widget=forms.TextInput(attrs={"placeholder": "Judul, bahan, atau lokasi"}),
@@ -45,6 +57,15 @@ class BoardFilterForm(forms.Form):
         if selected and len(selected) <= 120 and selected not in locations:
             locations.append(selected)
         self.fields["location"].widget.choices = [("", "Semua lokasi"), *[(value, value) for value in locations]]
+
+    def populate_food_items(self) -> None:
+        """Load public ingredient choices only when rendering the HTML board."""
+        items = list(Request.objects.exclude(food_item="").order_by("food_item")
+                     .values_list("food_item", flat=True).distinct())
+        selected = self.data.get("food_item", "").strip() if self.is_bound else ""
+        if selected and len(selected) <= 120 and selected not in items:
+            items.append(selected)
+        self.fields["food_item"].widget.choices = [("", "Semua bahan"), *[(value, value) for value in items]]
 
 
 class RequestForm(forms.ModelForm):

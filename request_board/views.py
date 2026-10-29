@@ -493,6 +493,7 @@ def request_board(request):
 
     filter_form = BoardFilterForm(request.GET)
     filter_form.populate_locations()
+    filter_form.populate_food_items()
     if not filter_form.is_valid():
         return TemplateResponse(request, "request_board/index.html", {"filter_form": filter_form, "show_filters": True}, status=400)
     if filter_form.cleaned_data["mine"] and not request.user.is_authenticated:
@@ -512,6 +513,10 @@ def request_board(request):
         requests=page_items,
     )
 
+    filters_active = (
+        any(filter_form.cleaned_data.get(key) for key in ("q", "title", "food_item", "status", "location", "mine"))
+        or filter_form.cleaned_data["sort"] == "oldest"
+    )
     context = {
         "page_obj": page_obj,
         "owner_offer_previews": owner_offer_previews,
@@ -520,8 +525,8 @@ def request_board(request):
             key: ("on" if key == "mine" else value)
             for key, value in filter_form.cleaned_data.items() if value
         }),
-        "filters_active": any(filter_form.cleaned_data.get(key) for key in ("q", "status", "location", "mine")),
-        "show_filters": bool(page_obj.paginator.count) or Request.objects.exists(),
+        "filters_active": filters_active,
+        "show_filters": filters_active or bool(page_obj.paginator.count) or Request.objects.exists(),
         "filter_status_label": dict(Request.STATUS_CHOICES).get(filter_form.cleaned_data["status"], "Semua status"),
         "filter_sort_label": "Terlama" if filter_form.cleaned_data["sort"] == "oldest" else "Terbaru",
     }
