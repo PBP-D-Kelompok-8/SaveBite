@@ -116,3 +116,14 @@ class RequestOffer(models.Model):
 
     def __str__(self):
         return f"Offer on {self.request.title} by {self.offered_by}"
+
+
+class RequestCreationKey(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    key = models.UUIDField()
+    payload_digest = models.CharField(max_length=64)
+    request = models.ForeignKey(Request, null=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['owner', 'key'], name='unique_request_creation_key')]

@@ -24,6 +24,7 @@ urlpatterns = [
     ),
     path("board/", views.request_board, name="request_board"),
     path("board/new/", views.request_create, name="request_create"),
+    path("board/new/status/<uuid:key>/", views.request_create_status, name="request_create_status"),
     path("board/<int:request_id>/offers/", views.request_offers, name="request_offers"),
     path("board/<int:request_id>/offers/<int:offer_id>/select/", views.request_select_offer, name="request_select_offer"),
     path(

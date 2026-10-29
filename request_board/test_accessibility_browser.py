@@ -120,6 +120,10 @@ class AccessibilityBrowserTests(StaticLiveServerTestCase):
     def test_nonfield_and_network_errors_receive_focus(self):
         p = self.page
         p.goto(self.live_server_url + reverse('request_board:request_create'))
+        p.locator('[name=title]').fill('Draft aksesibel')
+        p.locator('[name=food_item]').fill('Beras')
+        p.locator('[name=quantity]').fill('1')
+        p.locator('[name=unit]').select_option('kg')
         p.route('**/board/new/', lambda route: route.fulfill(status=400, content_type='application/json', body='{"ok":false,"fields":{"__all__":["Tidak dapat menyimpan sekarang."]}}'))
         p.get_by_role('button', name='Simpan Permintaan').click()
         notice = p.locator('[data-ajax-notice]')
@@ -128,5 +132,5 @@ class AccessibilityBrowserTests(StaticLiveServerTestCase):
         p.unroute('**/board/new/')
         p.route('**/board/new/', lambda route: route.abort())
         p.get_by_role('button', name='Simpan Permintaan').click()
-        expect(notice).to_be_focused()
-        expect(notice).to_contain_text('Gagal menghubungi server')
+        expect(p.locator('[data-create-recovery]')).to_contain_text('belum dapat dipastikan')
+        expect(p.locator('[name=title]')).to_have_value('Draft aksesibel')

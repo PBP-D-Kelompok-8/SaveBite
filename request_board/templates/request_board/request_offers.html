@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="{% static 'css/request-board.css' %}">
 {% endblock %}
 {% block content %}
+{% include 'request_board/_messages.html' %}
 <div class="request-board" lang="id" data-board-offers>
-  {% include 'request_board/_messages.html' %}
   <a class="request-board__offer-back request-board__offer-back--outline" href="{% url 'request_board:request_board' %}">Kembali ke papan</a>
   <header class="request-board__offers-heading">
     <h1>Semua penawaran</h1>

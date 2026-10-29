@@ -39,6 +39,10 @@
 
   {% if show_filters %}{% include 'request_board/_filters.html' %}{% endif %}
   <div class="request-board__sr-only" data-board-status role="status" aria-live="polite" aria-atomic="true"></div>
+  {% if user.is_authenticated %}
+    <div data-create-pending role="status" aria-live="polite" hidden></div>
+    <dialog class="request-board__create-dialog" data-create-dialog data-create-owner="{{ user.pk }}" aria-label="Buat Permintaan Bantuan Makanan"></dialog>
+  {% endif %}
   <div data-board-results aria-busy="false">{% if page_obj is not None %}{% include 'request_board/_board_results.html' %}{% endif %}</div>
 </div>
 {% endblock %}

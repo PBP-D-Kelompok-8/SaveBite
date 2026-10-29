@@ -15,7 +15,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="request-board tw:mx-auto tw:w-full tw:max-w-[1440px] tw:px-5 tw:pt-7 tw:pb-10 tw:min-[769px]:px-10 tw:min-[769px]:pt-[52px] tw:min-[769px]:pb-20 tw:min-[1251px]:px-20" lang="id">
+<div class="request-board tw:mx-auto tw:w-full tw:max-w-[1440px] tw:px-5 tw:pt-7 tw:pb-10 tw:min-[769px]:px-10 tw:min-[769px]:pt-[52px] tw:min-[769px]:pb-20 tw:min-[1251px]:px-20" lang="id" data-create-owner="{{ user.pk }}">
   {% include 'request_board/_messages.html' %}
 
   <div class="request-board__form-card tw:mx-auto tw:w-full tw:max-w-[960px]">

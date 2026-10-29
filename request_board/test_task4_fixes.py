@@ -85,7 +85,7 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
         self.assertTrue(alert.evaluate('el => el.closest("dialog").matches(":modal")'))
         self.assertTrue(alert.evaluate('el => document.activeElement === el'))
 
-    def test_delete_bottom_card_errors_are_in_active_dialog_and_retryable(self):
+    def test_delete_bottom_card_errors_allow_safe_recovery(self):
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
             try:
@@ -108,11 +108,16 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
                             page.route('**/delete/', lambda route: route.abort())
                         button = dialog.get_by_role('button', name='Ya, hapus')
                         button.click()
-                        self.assert_visible_alert(page, dialog, {'csrf': 'CSRF', 'session': 'masuk', 'network': 'Gagal'}[error])
-                        expect(button).to_be_enabled()
+                        alert = page.locator('[data-ajax-notice][role=alert]')
+                        expect(alert).to_contain_text({'csrf': 'CSRF', 'session': 'masuk', 'network': 'belum dapat dipastikan'}[error])
                         expect(page.locator('.request-board__card')).to_have_count(8 - index)
                         if error == 'session':
-                            expect(dialog.get_by_role('link', name='Masuk')).to_be_visible()
+                            expect(alert.get_by_role('link', name='Masuk')).to_have_count(1)
+                        page.locator('.request-board__delete-summary').last.click()
+                        dialog = page.locator('dialog:modal')
+                        token = dialog.locator('[name=csrfmiddlewaretoken]')
+                        button = dialog.get_by_role('button', name='Ya, hapus')
+                        expect(button).to_be_enabled()
                         if error == 'csrf':
                             self.assertEqual(token.input_value(), 'invalid')
                             token.evaluate('(el, value) => el.value = value', original_token)
