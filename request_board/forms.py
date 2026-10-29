@@ -1,4 +1,6 @@
 from decimal import Decimal
+from datetime import timedelta
+from django.utils import timezone
 
 from django import forms
 
@@ -36,7 +38,7 @@ class BoardFilterForm(forms.Form):
         widget=forms.TextInput(attrs={"placeholder": "Judul, bahan, atau lokasi"}),
     )
     status = forms.ChoiceField(
-        label="Status", choices=[("", "Semua status"), *Request.STATUS_CHOICES], required=False,
+        label="Status", choices=[("", "Semua status"), *Request.STATUS_CHOICES, (Request.STATUS_EXPIRED, "Kedaluwarsa")], required=False,
     )
     location = forms.CharField(label="Lokasi", max_length=120, required=False, widget=forms.Select)
     sort = forms.ChoiceField(
@@ -69,6 +71,11 @@ class BoardFilterForm(forms.Form):
 
 
 class RequestForm(forms.ModelForm):
+    expires_at = forms.DateTimeField(
+        label="Batas waktu permintaan", required=False,
+        widget=forms.DateTimeInput(format="%Y-%m-%dT%H:%M", attrs={"type": "datetime-local", "required": True, "aria-required": "true"}),
+        input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S%z"],
+    )
     quantity = forms.DecimalField(
         max_digits=8,
         decimal_places=2,
@@ -82,9 +89,31 @@ class RequestForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            self.initial.setdefault("expires_at", timezone.localtime(timezone.now() + timedelta(hours=24)))
         # Instance fields also translate errors from native/model validators by code.
         for field in self.fields.values():
             field.error_messages.update(BOARD_FIELD_ERRORS)
+        for name in ("title", "food_item", "quantity", "expires_at", "description", "location"):
+            described = [f"id_{name}_hint"]
+            if self.is_bound and name in self.errors:
+                described.append(f"id_{name}_error")
+            self.fields[name].widget.attrs["aria-describedby"] = " ".join(described)
+
+    def add_error(self, field, error):
+        super().add_error(field, error)
+        if field in {"title", "food_item", "quantity", "expires_at", "description", "location"}:
+            self.fields[field].widget.attrs["aria-describedby"] = f"id_{field}_hint id_{field}_error"
+
+    def clean_expires_at(self):
+        value = self.cleaned_data.get("expires_at")
+        if value is None:
+            if "expires_at" in self.data:
+                raise forms.ValidationError("Isi batas waktu permintaan.")
+            return timezone.now() + timedelta(hours=24)
+        if value <= timezone.now():
+            raise forms.ValidationError("Batas waktu harus di masa mendatang.")
+        return value
 
     class Meta:
         model = Request
@@ -95,4 +124,5 @@ class RequestForm(forms.ModelForm):
             "unit",
             "description",
             "location",
+            "expires_at",
         ]

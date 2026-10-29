@@ -213,7 +213,11 @@ class RequestSelectionTests(TestCase):
         self.client.force_login(self.owner)
         url = reverse('request_board:request_offers', args=[self.item.pk])
         before = self.client.get(url)
-        self.assertContains(before, 'Pilih penawar', count=2)
+        before_markup = BoardMarkup(before.content.decode())
+        buttons = [node for node in before_markup.select('button') if node['text'].strip() == 'Pilih penawar']
+        self.assertEqual(len(buttons), 2)
+        self.assertEqual({button['attrs'].get('aria-label') for button in buttons},
+                         {f'Pilih penawar {self.donor.username}', f'Pilih penawar {self.second.username}'})
         self.assertNotContains(before, 'Penawar terpilih:')
         self.select(self.first)
         self.item.refresh_from_db()

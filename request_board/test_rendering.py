@@ -731,11 +731,11 @@ class RequestCreateRenderingTests(TestCase):
         for node in markup.nodes:
             if node["tag"] in {"input", "select", "textarea"}:
                 name = node["attrs"].get("name")
-                if name in {"title", "food_item", "quantity", "unit", "description", "location"}:
+                if name in {"title", "food_item", "quantity", "unit", "description", "location", "expires_at"}:
                     self.assertNotIn(name, controls, "Field tidak boleh terduplikasi")
                     controls[name] = node
         self.assertEqual(set(controls),
-                         {"title", "food_item", "quantity", "unit", "description", "location"})
+                         {"title", "food_item", "quantity", "unit", "description", "location", "expires_at"})
         ids = [node["attrs"].get("id") for node in markup.nodes if node["attrs"].get("id")]
         self.assertEqual(len(ids), len(set(ids)), "ID dokumen harus unik untuk association")
         for name, control in controls.items():
@@ -775,7 +775,7 @@ class RequestCreateRenderingTests(TestCase):
                             and re.search(r"batal|kembali", node["text"], re.I)
                             for node in markup.select("a", within=markup.select("main")[0])))
 
-    def test_six_labelled_fields_required_optional_and_existing_units(self):
+    def test_labelled_fields_required_optional_and_existing_units(self):
         _, markup, form_node, _ = self.create_page()
         controls = self.controls(markup)
         names = [node["attrs"].get("name") for node in markup.nodes

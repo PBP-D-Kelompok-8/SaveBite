@@ -9,8 +9,8 @@ function enhanceBoardDeleteDialogs(root = document) {
     details.dataset.enhanced = 'true';
     const dialog = document.createElement('dialog');
     dialog.className = panel.className;
-    dialog.setAttribute('aria-labelledby', panel.querySelector('strong').id);
-    dialog.setAttribute('aria-describedby', panel.querySelector('p').id);
+    dialog.setAttribute('aria-labelledby', panel.querySelector('[id^=delete-label-]').id);
+    dialog.setAttribute('aria-describedby', panel.querySelector('[id^=delete-description-]').id);
     while (panel.firstChild) dialog.appendChild(panel.firstChild);
     panel.replaceWith(dialog);
     trigger.addEventListener('click', (event) => {
@@ -168,10 +168,13 @@ enhanceBoardDeleteDialogs();
   const createForm = document.querySelector('[data-board-create]');
   const offers = document.querySelector('[data-board-offers]');
   const filter = document.querySelector('[data-filter-form]');
+  const boardStatus = document.querySelector('[data-board-status]');
+  const filterStatus = document.querySelector('[data-filter-status]');
   if (!window.fetch || !window.AbortController || !window.URLSearchParams || !window.FormData || (!results && !createForm && !offers)) return;
   let controller = null;
   let sequence = 0;
   let currentUrl = new URL(window.location.href);
+  let lastAnnouncement = "";
   const headers = { 'X-Requested-With': 'XMLHttpRequest' };
 
   function notice(message, isError = false, loginUrl = null) {
@@ -199,41 +202,65 @@ enhanceBoardDeleteDialogs();
       dialog.addEventListener('close', () => {
         if (dialog.contains(region)) region.remove();
       }, { once: true });
+    } else if (isError && createForm) {
+      region.setAttribute('tabindex', '-1');
+      region.focus();
     } else {
       region.removeAttribute('tabindex');
     }
+  }
+
+  function announce(message) {
+    lastAnnouncement = message;
+    if (filterStatus && filter && !filter.hidden && filter.closest('dialog[open]')) filterStatus.textContent = message;
+    else if (boardStatus) boardStatus.textContent = message;
   }
 
   async function boardGet(url, correctPage = false, push = true) {
     if (controller) controller.abort();
     controller = new AbortController();
     const id = ++sequence;
+    results.setAttribute('aria-busy', 'true');
+    announce('Memuat permintaan.');
     try {
       let response = await fetch(url, { headers, signal: controller.signal, credentials: 'same-origin' });
-      if (id !== sequence) return false;
+      if (id !== sequence) return null;
       let page = Number(url.searchParams.get('page'));
       while (correctPage && response.status === 404 && Number.isSafeInteger(page) && page > 1) {
         page -= 1;
         if (page === 1) url.searchParams.delete('page');
         else url.searchParams.set('page', page);
         response = await fetch(url, { headers, signal: controller.signal, credentials: 'same-origin' });
-        if (id !== sequence) return false;
+        if (id !== sequence) return null;
       }
       if (!response.ok) {
-        notice(response.status === 401 ? 'Silakan masuk untuk menggunakan filter ini.' : 'Filter atau halaman tidak valid.', true);
+        const message = response.status === 401 ? 'Silakan masuk untuk menggunakan filter ini.' : 'Filter atau halaman tidak valid.';
+        announce(message);
+        notice(message, true);
         return false;
       }
       const html = await response.text();
-      if (id !== sequence) return false;
+      if (id !== sequence) return null;
       results.innerHTML = html;
       enhanceBoardDeleteDialogs(results);
+      const summary = results.querySelector('[data-board-result-summary]');
+      if (summary) {
+        const { total, page, pages } = summary.dataset;
+        announce(Number(total) ? `${total} permintaan. Halaman ${page} dari ${pages}.` : 'Tidak ada permintaan yang cocok.');
+      }
       currentUrl = url;
       if (push) history.pushState(null, '', url);
       else history.replaceState(null, '', url);
       return true;
     } catch (error) {
-      if (error.name !== 'AbortError') notice('Gagal memuat papan. Periksa jaringan dan coba lagi.', true);
+      if (id !== sequence || error.name === 'AbortError') return null;
+      if (id === sequence) {
+        announce('Gagal memuat papan. Periksa jaringan dan coba lagi.');
+        notice('Gagal memuat papan. Periksa jaringan dan coba lagi.', true);
+      }
       return false;
+    } finally {
+      if (id === sequence) results.setAttribute('aria-busy', 'false');
     }
   }
 
@@ -242,10 +269,11 @@ enhanceBoardDeleteDialogs();
     form.querySelectorAll('[data-ajax-field-error], .request-board__field-errors').forEach(element => element.remove());
     form.querySelectorAll('[aria-invalid]').forEach(element => element.removeAttribute('aria-invalid'));
     form.querySelectorAll('[aria-describedby]').forEach(element => {
-      const ids = element.getAttribute('aria-describedby').split(/\s+/).filter(id => id && !id.startsWith('ajax-error-'));
+      const ids = element.getAttribute('aria-describedby').split(/\s+/).filter(id => id && !id.startsWith('ajax-error-') && !id.endsWith('_error'));
       if (ids.length) element.setAttribute('aria-describedby', ids.join(' '));
       else element.removeAttribute('aria-describedby');
     });
+    let firstInvalid = null;
     for (const [name, messages] of Object.entries(fields || {})) {
       const input = form.elements.namedItem(name);
       if (!input || !input.closest) {
@@ -253,6 +281,7 @@ enhanceBoardDeleteDialogs();
         continue;
       }
       input.setAttribute('aria-invalid', 'true');
+      if (!firstInvalid) firstInvalid = input;
       const error = document.createElement('div');
       error.dataset.ajaxFieldError = '';
       error.className = 'request-board__field-errors';
@@ -261,6 +290,7 @@ enhanceBoardDeleteDialogs();
       error.textContent = messages.join(' ');
       input.closest('.request-board__form-group').appendChild(error);
     }
+    if (firstInvalid) firstInvalid.focus();
   }
 
   document.addEventListener('submit', async event => {
@@ -270,7 +300,15 @@ enhanceBoardDeleteDialogs();
       const url = new URL(form.action);
       url.search = new URLSearchParams(new FormData(form)).toString();
       // A newer draft supersedes any pending GET; both submit controls remain usable.
-      if (await boardGet(url)) form.dispatchEvent(new CustomEvent('board:filter-applied', { detail: url.searchParams }));
+      if (await boardGet(url)) {
+        const message = lastAnnouncement;
+        const completedSequence = sequence;
+        form.dispatchEvent(new CustomEvent('board:filter-applied', { detail: url.searchParams }));
+        if (boardStatus) {
+          boardStatus.textContent = '';
+          requestAnimationFrame(() => { if (sequence === completedSequence) boardStatus.textContent = message; });
+        }
+      }
       return;
     }
     if (!(form === createForm || (results && results.contains(form)) || (offers && offers.contains(form)))) return;
@@ -284,8 +322,8 @@ enhanceBoardDeleteDialogs();
       const response = await fetch(form.action, { method: 'POST', headers, body: new FormData(form), credentials: 'same-origin' });
       const data = response.headers.get('content-type')?.includes('application/json') ? await response.json() : {};
       if (!response.ok || !data.ok) {
-        if (form === createForm && data.fields) fieldErrors(form, data.fields);
-        notice(data.message || (response.status === 403 ? 'Permintaan ditolak. Periksa sesi dan token CSRF.' : 'Permintaan gagal. Silakan coba lagi.'), true, data.login_url);
+        if (form === createForm && data.fields && Object.keys(data.fields).length) fieldErrors(form, data.fields);
+        else notice(data.message || (response.status === 403 ? 'Permintaan ditolak. Periksa sesi dan token CSRF.' : 'Permintaan gagal. Silakan coba lagi.'), true, data.login_url);
         return;
       }
       if (form === createForm) {
@@ -294,8 +332,9 @@ enhanceBoardDeleteDialogs();
         if (controller) controller.abort();
         ++sequence;
         const isDelete = form.action.endsWith('/delete/');
-        if (await boardGet(new URL(currentUrl), isDelete, false)) notice(data.message);
-        else notice('Aksi berhasil, tetapi papan gagal diperbarui. Muat ulang halaman.', true);
+        const refreshed = await boardGet(new URL(currentUrl), isDelete, false);
+        if (refreshed) notice(data.message);
+        else if (refreshed === false) notice('Aksi berhasil, tetapi papan gagal diperbarui. Muat ulang halaman.', true);
       } else {
         try {
           const refreshed = await fetch(window.location.href, { credentials: 'same-origin' });
@@ -324,10 +363,18 @@ enhanceBoardDeleteDialogs();
       if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       const reset = link.hasAttribute('data-board-reset');
-      if (await boardGet(new URL(link.href)) && reset && filter) {
+      const updated = await boardGet(new URL(link.href));
+      if (updated && !reset) results.querySelector('[data-board-results-focus]')?.focus();
+      if (updated && reset && filter) {
         for (const name of ['q', 'title', 'food_item', 'status', 'location', 'mine']) filter.elements[name].value = '';
         filter.elements.sort.value = 'newest';
+        const message = lastAnnouncement;
+        const completedSequence = sequence;
         filter.dispatchEvent(new Event('board:filter-applied'));
+        if (boardStatus) {
+          boardStatus.textContent = '';
+          requestAnimationFrame(() => { if (sequence === completedSequence) boardStatus.textContent = message; });
+        }
         document.querySelector('[data-filter-open]')?.focus({ preventScroll: true });
       }
     });

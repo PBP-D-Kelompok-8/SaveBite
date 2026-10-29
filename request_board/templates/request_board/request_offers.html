@@ -23,12 +23,12 @@
   {% if item.selected_offer_id %}
     <div class="request-board__offer-banner" tabindex="-1" data-offer-selection>
       <strong>Penawar terpilih: {{ item.selected_offer.offered_by.get_username }}</strong>
-      <p>{% if item.status == 'fulfilled' %}Permintaan telah terpenuhi.{% else %}Penawaran baru ditutup. Anda masih bisa mengganti pilihan.{% endif %}</p>
+      <p>{% if item.effective_status == 'fulfilled' %}Permintaan telah terpenuhi.{% elif item.effective_status == 'expired' %}Permintaan telah kedaluwarsa.{% else %}Penawaran baru ditutup. Anda masih bisa mengganti pilihan.{% endif %}</p>
     </div>
   {% endif %}
   <section class="request-board__offers-list" aria-labelledby="offer-count">
     <h2 id="offer-count">{{ page_obj.paginator.count }} penawaran</h2>
-    {% if item.status == 'fulfilled' %}<p class="request-board__offers-readonly">Permintaan telah terpenuhi. Daftar ini hanya untuk dilihat.</p>{% endif %}
+    {% if item.effective_status == 'fulfilled' %}<p class="request-board__offers-readonly">Permintaan telah terpenuhi. Daftar ini hanya untuk dilihat.</p>{% elif item.effective_status == 'expired' %}<p class="request-board__offers-readonly">Permintaan telah kedaluwarsa. Daftar ini hanya untuk dilihat.</p>{% endif %}
     {% if page_obj.object_list %}
       <ul class="request-board__donors-list">
         {% for offer in page_obj %}
@@ -42,9 +42,9 @@
             </div>
             {% if item.selected_offer_id == offer.id %}
               <span class="request-board__offer-selected">Terpilih</span>
-            {% elif item.status != 'fulfilled' %}
+            {% elif item.effective_status != 'fulfilled' and item.effective_status != 'expired' %}
               <form method="post" action="{% url 'request_board:request_select_offer' item.pk offer.pk %}">
-                {% csrf_token %}<button class="request-board__offer-action" type="submit">{% if item.selected_offer_id %}Ganti pilihan{% else %}Pilih penawar{% endif %}</button>
+                {% csrf_token %}<button class="request-board__offer-action" type="submit" aria-label="{% if item.selected_offer_id %}Ganti pilihan{% else %}Pilih penawar{% endif %} {{ offer.offered_by.get_username }}">{% if item.selected_offer_id %}Ganti pilihan{% else %}Pilih penawar{% endif %}</button>
               </form>
             {% endif %}
           </li>
@@ -59,7 +59,7 @@
     {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Sebelumnya</a>{% endif %}
     {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Berikutnya</a>{% endif %}
   </nav>
-  {% if item.selected_offer_id and item.status != 'fulfilled' %}<a class="request-board__offer-back request-board__offer-back--solid" href="{% url 'request_board:request_board' %}">Kembali ke papan</a>{% endif %}
+  {% if item.selected_offer_id and item.effective_status != 'fulfilled' and item.effective_status != 'expired' %}<a class="request-board__offer-back request-board__offer-back--solid" href="{% url 'request_board:request_board' %}">Kembali ke papan</a>{% endif %}
 </div>
 {% endblock %}
 {% block extra_js %}<script src="{% static 'js/request-board.js' %}" defer></script>{% endblock %}

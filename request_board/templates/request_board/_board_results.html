@@ -1,4 +1,5 @@
 {% load static %}
+<span hidden data-board-result-summary data-total="{{ page_obj.paginator.count }}" data-page="{{ page_obj.number }}" data-pages="{{ page_obj.paginator.num_pages }}"></span>
 {% if page_obj.object_list %}
   <div class="request-board__cards tw:grid tw:grid-cols-1 tw:items-start tw:gap-6 tw:min-[769px]:grid-cols-2 tw:min-[769px]:gap-x-4 tw:min-[769px]:gap-y-11">
     {% for item in page_obj %}
@@ -10,7 +11,7 @@
       {% if page_obj.has_previous %}
         <a href="{% url 'request_board:request_board' %}?{% if filter_query %}{{ filter_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}" class="btn btn--tertiary btn--dark-green request-board__pagination-link">Sebelumnya</a>
       {% endif %}
-      <span class="request-board__pagination-info">
+      <span class="request-board__pagination-info" tabindex="-1" data-board-results-focus>
         Halaman <span class="request-board__pagination-current" aria-current="page">{{ page_obj.number }}</span> dari {{ page_obj.paginator.num_pages }}
       </span>
       {% if page_obj.has_next %}
