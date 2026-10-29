@@ -1,6 +1,5 @@
 {% load static %}
 {% if page_obj.object_list %}
-  <h2 class="request-board__section-title">Daftar Permintaan</h2>
   <div class="request-board__cards tw:grid tw:grid-cols-1 tw:items-start tw:gap-6 tw:min-[769px]:grid-cols-2 tw:min-[769px]:gap-x-4 tw:min-[769px]:gap-y-11">
     {% for item in page_obj %}
       {% include 'request_board/_request_card.html' with item=item %}

@@ -42,13 +42,27 @@ enhanceBoardDeleteDialogs();
   const close = form.querySelector('[data-filter-close]');
   const mobile = window.matchMedia('(max-width: 768px)');
   let snapshot = [];
+  let opened = false;
 
   function saveValues() {
     snapshot = [...form.elements].map(field => ({ field, value: field.value, checked: field.checked }));
   }
-  form.addEventListener('board:filter-applied', () => {
+  function restoreValues() {
+    snapshot.forEach(({ field, value, checked }) => {
+      field.value = value;
+      if (field.type === 'checkbox') field.checked = checked;
+    });
+  }
+  form.addEventListener('board:filter-applied', (event) => {
+    if (event.detail) {
+      for (const name of ['title', 'food_item', 'status', 'location', 'sort', 'q', 'mine']) {
+        const field = form.elements[name];
+        if (field.type === 'checkbox') field.checked = event.detail.has(name);
+        else field.value = event.detail.get(name) || '';
+      }
+    }
     saveValues();
-    const summary = toolbar.querySelector('p');
+    const summary = toolbar.querySelector('[data-filter-summary]');
     const status = form.elements.status;
     const sort = form.elements.sort;
     summary.textContent = `${status.selectedOptions[0].textContent} · ${sort.selectedOptions[0].textContent}`;
@@ -58,31 +72,77 @@ enhanceBoardDeleteDialogs();
       location.textContent = form.elements.location.value;
       summary.appendChild(location);
     }
+    for (const name of ['title', 'food_item', 'q', 'mine']) {
+      const field = form.elements[name];
+      if (!field.value) continue;
+      const detail = document.createElement('span');
+      detail.className = 'tw:block';
+      detail.textContent = name === 'mine' ? 'Permintaan saya' : (name === 'food_item' ? field.selectedOptions[0].textContent : field.value);
+      summary.appendChild(detail);
+    }
     let indicator = trigger.querySelector('[aria-label="aktif"]');
-    const active = form.elements.status.value || form.elements.location.value || form.elements.q.value || form.elements.mine?.checked;
+    const active = ['title', 'food_item', 'status', 'location', 'q', 'mine'].some(name => form.elements[name].value) || form.elements.sort.value === 'oldest';
     if (active && !indicator) {
       indicator = document.createElement('span');
-      indicator.className = 'tw:size-2 tw:rounded-full tw:bg-current';
+      indicator.className = 'request-board__filter-active';
       indicator.setAttribute('aria-label', 'aktif');
       trigger.appendChild(indicator);
     } else if (!active && indicator) indicator.remove();
     if (dialog.open) dialog.close();
+    else if (opened) {
+      opened = false;
+      form.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus({ preventScroll: true });
+    }
   });
   function syncLayout() {
+    if (opened) restoreValues();
+    opened = false;
     if (dialog.open) dialog.close();
-    if (mobile.matches) dialog.appendChild(form);
-    else slot.appendChild(form);
-    toolbar.hidden = !mobile.matches;
+    document.body.classList.remove('tw:overflow-hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+    if (mobile.matches) {
+      form.hidden = false;
+      dialog.appendChild(form);
+      trigger.setAttribute('aria-haspopup', 'dialog');
+    } else {
+      slot.appendChild(form);
+      form.hidden = true;
+      trigger.removeAttribute('aria-haspopup');
+    }
+    toolbar.hidden = false;
     close.hidden = !mobile.matches;
   }
   function open() {
     saveValues();
-    dialog.showModal();
+    opened = true;
+    if (mobile.matches) {
+      dialog.showModal();
+      document.body.classList.add('tw:overflow-hidden');
+    } else form.hidden = false;
     trigger.setAttribute('aria-expanded', 'true');
-    document.body.classList.add('tw:overflow-hidden');
-    close.focus();
+    form.elements.title.focus();
   }
-  trigger.addEventListener('click', open);
+  trigger.addEventListener('click', () => {
+    if (!opened) open();
+    else if (dialog.open) dialog.close();
+    else {
+      restoreValues();
+      opened = false;
+      form.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  });
+  form.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || mobile.matches || !opened) return;
+    event.preventDefault();
+    restoreValues();
+    opened = false;
+    form.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.focus({ preventScroll: true });
+  });
   close.addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => {
     const bounds = dialog.getBoundingClientRect();
@@ -90,17 +150,16 @@ enhanceBoardDeleteDialogs();
         event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
   });
   dialog.addEventListener('close', () => {
-    snapshot.forEach(({ field, value, checked }) => {
-      field.value = value;
-      if (field.type === 'checkbox') field.checked = checked;
-    });
+    restoreValues();
+    opened = false;
     trigger.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('tw:overflow-hidden');
-    if (mobile.matches) trigger.focus({ preventScroll: true });
+    trigger.focus({ preventScroll: true });
   });
   mobile.addEventListener('change', syncLayout);
   syncLayout();
-  if (mobile.matches && form.querySelector('.errorlist')) open();
+  form.dispatchEvent(new Event('board:filter-applied'));
+  if (form.querySelector('.errorlist')) open();
 })();
 
 /* Server-rendered fragments and ordinary forms remain the source of truth. */
@@ -210,12 +269,8 @@ enhanceBoardDeleteDialogs();
       event.preventDefault();
       const url = new URL(form.action);
       url.search = new URLSearchParams(new FormData(form)).toString();
-      const button = form.querySelector('[type=submit]');
-      if (button.disabled) return;
-      button.disabled = true;
-      try {
-        if (await boardGet(url)) form.dispatchEvent(new Event('board:filter-applied'));
-      } finally { button.disabled = false; }
+      // A newer draft supersedes any pending GET; both submit controls remain usable.
+      if (await boardGet(url)) form.dispatchEvent(new CustomEvent('board:filter-applied', { detail: url.searchParams }));
       return;
     }
     if (!(form === createForm || (results && results.contains(form)) || (offers && offers.contains(form)))) return;
@@ -265,10 +320,10 @@ enhanceBoardDeleteDialogs();
       event.preventDefault();
       const reset = link.hasAttribute('data-board-reset');
       if (await boardGet(new URL(link.href)) && reset && filter) {
-        for (const name of ['q', 'status', 'location']) filter.elements[name].value = '';
+        for (const name of ['q', 'title', 'food_item', 'status', 'location', 'mine']) filter.elements[name].value = '';
         filter.elements.sort.value = 'newest';
-        if (filter.elements.mine) filter.elements.mine.checked = false;
         filter.dispatchEvent(new Event('board:filter-applied'));
+        document.querySelector('[data-filter-open]')?.focus({ preventScroll: true });
       }
     });
     window.addEventListener('popstate', () => window.location.reload());

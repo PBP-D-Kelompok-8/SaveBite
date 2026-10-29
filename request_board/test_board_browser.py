@@ -17,6 +17,357 @@ except ImportError:
 
 @skipUnless(sync_playwright, "Optional Playwright browser tooling is not installed")
 class BoardAjaxBrowserTests(StaticLiveServerTestCase):
+    def test_reapply_pending_and_after_reset_preserves_latest_full_state(self):
+        from urllib.parse import parse_qs, urlsplit
+
+        owner = get_user_model().objects.create_user(username='reapply-full-owner')
+        Request.objects.create(owner=owner, title='Target', food_item='Nasi', location='Depok', quantity=1, unit='kg')
+        Request.objects.create(owner=owner, title='Distractor', food_item='Roti', location='Bogor', quantity=1, unit='kg')
+        client = Client()
+        client.force_login(owner)
+        session = client.cookies['sessionid'].value
+        first = {'title': 'Target', 'food_item': 'Nasi', 'status': 'pending', 'location': 'Depok', 'sort': 'oldest', 'q': 'a', 'mine': 'on'}
+        latest = {'title': 'Distractor', 'food_item': 'Roti', 'status': 'pending', 'location': 'Bogor', 'sort': 'oldest', 'q': 'a', 'mine': 'on'}
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                for width in (375, 768, 1280):
+                    for mode in ('cancel', 'reset_then_apply', 'reset_then_release'):
+                        with self.subTest(width=width, mode=mode):
+                            context = browser.new_context(viewport={'width': width, 'height': 667})
+                            context.add_cookies([{'name': 'sessionid', 'value': session, 'url': self.live_server_url}])
+                            page = context.new_page()
+                            try:
+                                page.goto(self.live_server_url + reverse('request_board:request_board') + '?q=a&mine=on')
+                                page.evaluate('''() => {
+                                    const original = window.fetch;
+                                    window.sent = [];
+                                    window.fetch = (...args) => {
+                                        window.sent.push(String(args[0]));
+                                        return original(...args).then(response => !window.releaseFirst
+                                            ? new Promise(resolve => { window.releaseFirst = () => resolve(response); })
+                                            : response);
+                                    };
+                                }''')
+                                trigger = page.locator('[data-filter-open]')
+                                form = page.locator('[data-filter-form]')
+                                trigger.click()
+                                form.evaluate('(f, values) => { for (const [name, value] of Object.entries(values)) f.elements[name].value = value; }', first)
+                                page.locator('#id_title').press('Enter')
+                                page.wait_for_function('typeof window.releaseFirst === "function"')
+                                if mode != 'cancel':
+                                    page.get_by_role('link', name='Reset', exact=True).filter(visible=True).click()
+                                    page.wait_for_url(self.live_server_url + reverse('request_board:request_board'))
+                                    expect(page.locator('.request-board__card-title')).to_have_count(2)
+                                    expect(trigger.locator('[aria-label=aktif]')).to_have_count(0)
+                                    if mode == 'reset_then_release':
+                                        page.evaluate('window.releaseFirst()')
+                                        page.wait_for_timeout(250)
+                                        self.assertEqual(page.url, self.live_server_url + reverse('request_board:request_board'))
+                                        expect(page.locator('.request-board__card-title')).to_have_count(2)
+                                        expect(trigger.locator('[aria-label=aktif]')).to_have_count(0)
+                                        self.assertEqual(page.locator('[data-filter-summary]').text_content(), 'Semua status · Terbaru')
+                                        cleared = {'title': '', 'food_item': '', 'status': '', 'location': '', 'sort': 'newest', 'q': '', 'mine': ''}
+                                        self.assertEqual(form.evaluate('(f, names) => Object.fromEntries(names.map(n => [n, f.elements[n].value]))', list(cleared)), cleared)
+                                        trigger.click()
+                                        page.locator('#id_title').fill('discard')
+                                        page.keyboard.press('Escape')
+                                        trigger.click()
+                                        self.assertEqual(form.evaluate('(f, names) => Object.fromEntries(names.map(n => [n, f.elements[n].value]))', list(cleared)), cleared)
+                                        page.keyboard.press('Escape')
+                                else:
+                                    page.keyboard.press('Escape')
+                                trigger.click()
+                                form.evaluate('(f, values) => { for (const [name, value] of Object.entries(values)) f.elements[name].value = value; }', latest)
+                                buttons = form.locator('button[type=submit]')
+                                self.assertEqual(buttons.evaluate_all('es => es.map(e => e.disabled)'), [False, False])
+                                page.get_by_role('button', name='Terapkan', exact=True).filter(visible=True).click()
+                                page.wait_for_url('**/*title=Distractor*', timeout=3000)
+                                expect(page.locator('.request-board__card-title')).to_have_text(['Distractor'])
+                                sent = page.evaluate('window.sent')
+                                self.assertEqual(len(sent), 2 if mode == 'cancel' else 3)
+                                self.assertEqual(parse_qs(urlsplit(sent[0]).query), {k: [v] for k, v in first.items()})
+                                self.assertEqual(parse_qs(urlsplit(sent[-1]).query), {k: [v] for k, v in latest.items()})
+                                if mode != 'reset_then_release':
+                                    page.evaluate('window.releaseFirst()')
+                                page.wait_for_timeout(250)
+                                self.assertEqual(parse_qs(urlsplit(page.url).query), {k: [v] for k, v in latest.items()})
+                                expect(page.locator('.request-board__card-title')).to_have_text(['Distractor'])
+                                self.assertEqual(form.evaluate('(f, names) => Object.fromEntries(names.map(n => [n, f.elements[n].value]))', list(latest)), latest)
+                                summary = page.locator('[data-filter-summary]').text_content()
+                                for text in ('Distractor', 'Roti', 'Bogor', 'Pending', 'Terlama', 'Permintaan saya'):
+                                    self.assertIn(text, summary)
+                                expect(trigger.locator('[aria-label=aktif]')).to_have_count(1)
+                                trigger.click()
+                                form.evaluate("f => { for (const n of ['title','food_item','status','location','q','mine']) f.elements[n].value = ''; f.elements.sort.value = 'newest'; }")
+                                page.keyboard.press('Escape')
+                                trigger.click()
+                                self.assertEqual(form.evaluate('(f, names) => Object.fromEntries(names.map(n => [n, f.elements[n].value]))', list(latest)), latest)
+                                self.assertEqual(buttons.evaluate_all('es => es.map(e => e.disabled)'), [False, False])
+                            finally:
+                                context.close()
+            finally:
+                browser.close()
+
+    def test_pending_filter_commits_submitted_values_after_draft_changes(self):
+        owner = get_user_model().objects.create_user(username='pending-filter-owner')
+        Request.objects.create(owner=owner, title='Target', food_item='Nasi', quantity=1, unit='kg')
+        Request.objects.create(owner=owner, title='Distractor', food_item='Roti', quantity=1, unit='kg')
+        cases = [(375, 'escape'), (375, 'close'), (375, 'backdrop'),
+                 (375, 'resize'), (1280, 'escape'), (1280, 'toggle'),
+                 (1280, 'resize'), (375, 'edit'), (1280, 'edit')]
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                for width, action in cases:
+                    with self.subTest(width=width, action=action):
+                        page = browser.new_page(viewport={'width': width, 'height': 667})
+                        try:
+                            page.goto(self.live_server_url + reverse('request_board:request_board'))
+                            trigger = page.locator('[data-filter-open]')
+                            trigger.click()
+                            page.locator('#id_title').fill('Target')
+                            page.evaluate('''() => {
+                                const original = window.fetch;
+                                window.fetch = (...args) => original(...args).then(response =>
+                                    new Promise(resolve => { window.releasePending = () => resolve(response); }));
+                            }''')
+                            page.locator('#id_title').press('Enter')
+                            page.wait_for_function('typeof window.releasePending === "function"')
+                            if action == 'escape':
+                                page.keyboard.press('Escape')
+                            elif action == 'close':
+                                page.locator('[data-filter-close]').click()
+                            elif action == 'backdrop':
+                                page.mouse.click(5, 5)
+                            elif action == 'toggle':
+                                trigger.click()
+                            elif action == 'resize':
+                                page.set_viewport_size({'width': 1280 if width == 375 else 375, 'height': 667})
+                            else:
+                                page.locator('#id_title').fill('Distractor')
+                            if action != 'edit':
+                                expect(page.locator('[data-filter-form]')).not_to_be_visible()
+                            page.evaluate('window.releasePending()')
+                            page.wait_for_url('**/*title=Target*')
+                            expect(page.locator('.request-board__card-title')).to_have_text(['Target'])
+                            expect(page.locator('[data-filter-summary]')).to_contain_text('Target')
+                            expect(trigger.locator('[aria-label=aktif]')).to_have_count(1)
+                            expect(page.locator('[data-filter-form]')).not_to_be_visible()
+                            trigger.click()
+                            expect(page.locator('#id_title')).to_have_value('Target')
+                            page.locator('#id_title').fill('discard')
+                            page.keyboard.press('Escape')
+                            trigger.click()
+                            expect(page.locator('#id_title')).to_have_value('Target')
+                        finally:
+                            page.close()
+            finally:
+                browser.close()
+
+    def test_filter_trigger_width_at_reference_breakpoints(self):
+        owner = get_user_model().objects.create_user(username='filter-width-owner')
+        Request.objects.create(owner=owner, title='Target', food_item='Nasi', quantity=1, unit='kg')
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                for viewport, expected in ((375, 104), (768, 140), (1280, 160)):
+                    with self.subTest(viewport=viewport):
+                        page = browser.new_page(viewport={'width': viewport, 'height': 667})
+                        try:
+                            page.goto(self.live_server_url + reverse('request_board:request_board'))
+                            rect = page.locator('[data-filter-open]').bounding_box()
+                            self.assertAlmostEqual(rect['width'], expected, delta=2)
+                            self.assertAlmostEqual(rect['height'], 52 if viewport == 1280 else 44, delta=1)
+                        finally:
+                            page.close()
+            finally:
+                browser.close()
+
+    def test_title_food_apply_cancel_reset_and_legacy_across_viewports(self):
+        owner = get_user_model().objects.create_user(username='board-filter-live-owner')
+        Request.objects.create(owner=owner, title='Bantuan beras', food_item='Susu & Roti', quantity=1, unit='kg')
+        Request.objects.create(owner=owner, title='Bantuan sayur', food_item='Sayur', quantity=1, unit='kg')
+        client = Client()
+        client.force_login(owner)
+        session = client.cookies['sessionid'].value
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                for width in (375, 768, 1280):
+                    with self.subTest(width=width):
+                        context = browser.new_context(viewport={'width': width, 'height': 900 if width == 1280 else 667})
+                        context.add_cookies([{'name': 'sessionid', 'value': session, 'url': self.live_server_url}])
+                        page = context.new_page()
+                        page.goto(self.live_server_url + reverse('request_board:request_board') + '?q=Bantuan&mine=on')
+                        trigger = page.locator('[data-filter-open]')
+                        self.assertEqual(page.locator('[data-filter-form]').count(), 1)
+                        self.assertEqual(page.get_by_role('heading', name='Daftar Permintaan').count(), 1)
+                        expect(trigger).to_have_attribute('aria-expanded', 'false')
+                        trigger.click()
+                        expect(page.locator('#id_title')).to_be_focused()
+                        geometry = page.evaluate('''() => ({
+                            viewport: document.documentElement.clientWidth,
+                            scroll: document.documentElement.scrollWidth,
+                            trigger: document.querySelector('[data-filter-open]').getBoundingClientRect().height,
+                        })''')
+                        self.assertLessEqual(geometry['scroll'], geometry['viewport'])
+                        self.assertGreaterEqual(geometry['trigger'], 44)
+                        page.locator('#id_title').fill('beras')
+                        page.locator('#id_food_item').select_option('Susu & Roti')
+                        screenshot_dir = os.environ.get('FILTER_TASK2_SCREENSHOTS')
+                        if screenshot_dir:
+                            from pathlib import Path
+                            path = Path(screenshot_dir) / f'filter-runtime-{width}.png'
+                            if path.exists():
+                                raise AssertionError(f'Refusing to overwrite {path}')
+                            page.screenshot(path=str(path))
+                        page.get_by_role('button', name='Terapkan', exact=True).click()
+                        expect(page.locator('.request-board__card-title')).to_have_text(['Bantuan beras'])
+                        self.assertIn('title=beras', page.url)
+                        self.assertIn('food_item=Susu+%26+Roti', page.url)
+                        self.assertIn('q=Bantuan', page.url)
+                        self.assertIn('mine=on', page.url)
+                        expect(trigger).to_be_focused()
+                        trigger.click()
+                        page.locator('#id_title').fill('draft')
+                        if width <= 768:
+                            page.keyboard.press('Escape')
+                        else:
+                            trigger.click()
+                        trigger.click()
+                        expect(page.locator('#id_title')).to_have_value('beras')
+                        expect(page.locator('#id_food_item')).to_have_value('Susu & Roti')
+                        page.get_by_role('link', name='Reset', exact=True).filter(visible=True).click()
+                        expect(page.locator('.request-board__card-title')).to_have_count(2)
+                        expect(trigger).to_be_focused()
+                        self.assertNotIn('?', page.url)
+                        trigger.click()
+                        for name in ('title', 'food_item', 'q', 'mine'):
+                            expect(page.locator(f'[name={name}]')).to_have_value('')
+                        context.close()
+            finally:
+                browser.close()
+
+    def test_filtered_pagination_and_history_preserve_title_and_food(self):
+        owner = get_user_model().objects.create_user(username='board-filter-history')
+        Request.objects.bulk_create([
+            Request(owner=owner, title=f'Target {index}', food_item='Susu & Roti', quantity=1, unit='kg')
+            for index in range(21)
+        ])
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                page = browser.new_page(viewport={'width': 1280, 'height': 667})
+                page.goto(self.live_server_url + reverse('request_board:request_board'))
+                page.locator('[data-filter-open]').click()
+                page.locator('#id_title').fill('Target')
+                page.locator('#id_food_item').select_option('Susu & Roti')
+                page.get_by_role('button', name='Terapkan', exact=True).click()
+                expect(page.locator('.request-board__card')).to_have_count(20)
+                page.get_by_role('link', name='Berikutnya').click()
+                expect(page.locator('.request-board__card')).to_have_count(1)
+                self.assertIn('title=Target', page.url)
+                self.assertIn('food_item=Susu+%26+Roti', page.url)
+                page.go_back()
+                expect(page.locator('.request-board__card')).to_have_count(20)
+                page.go_forward()
+                expect(page.locator('.request-board__card')).to_have_count(1)
+                expect(page.locator('#id_title')).to_have_value('Target')
+                expect(page.locator('#id_food_item')).to_have_value('Susu & Roti')
+            finally:
+                browser.close()
+
+    def test_resizing_cancels_draft_and_keeps_one_form(self):
+        owner = get_user_model().objects.create_user(username='board-filter-resize')
+        Request.objects.create(owner=owner, title='Bantuan beras', food_item='Nasi', quantity=1, unit='kg')
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                page = browser.new_page(viewport={'width': 375, 'height': 667})
+                page.goto(self.live_server_url + reverse('request_board:request_board') + '?title=beras&sort=oldest')
+                trigger = page.locator('[data-filter-open]')
+                expect(trigger.locator('[aria-label=aktif]')).to_have_count(1)
+                trigger.click()
+                page.locator('#id_title').fill('draft')
+                page.set_viewport_size({'width': 1280, 'height': 667})
+                expect(page.locator('[data-filter-form]')).not_to_be_visible()
+                expect(trigger).to_have_attribute('aria-expanded', 'false')
+                trigger.click()
+                expect(page.locator('#id_title')).to_have_value('beras')
+                page.locator('#id_title').fill('desktop draft')
+                page.set_viewport_size({'width': 768, 'height': 667})
+                expect(page.locator('[data-filter-form]')).not_to_be_visible()
+                trigger.click()
+                expect(page.locator('#id_title')).to_have_value('beras')
+                self.assertEqual(page.locator('[data-filter-form]').count(), 1)
+            finally:
+                browser.close()
+
+    def test_escape_cancels_desktop_filter_draft(self):
+        owner = get_user_model().objects.create_user(username='board-filter-escape')
+        Request.objects.create(owner=owner, title='Bantuan beras', food_item='Nasi', quantity=1, unit='kg')
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                page = browser.new_page(viewport={'width': 1280, 'height': 667})
+                page.goto(self.live_server_url + reverse('request_board:request_board') + '?title=beras')
+                trigger = page.locator('[data-filter-open]')
+                trigger.click()
+                page.locator('#id_title').fill('draft')
+                page.keyboard.press('Escape')
+                expect(page.locator('[data-filter-form]')).not_to_be_visible(timeout=2000)
+                expect(trigger).to_be_focused()
+                trigger.click()
+                expect(page.locator('#id_title')).to_have_value('beras')
+            finally:
+                browser.close()
+
+    def test_filter_without_javascript_uses_get_and_reset(self):
+        owner = get_user_model().objects.create_user(username='board-filter-no-js')
+        Request.objects.create(owner=owner, title='Bantuan beras', food_item='Nasi', quantity=1, unit='kg')
+        Request.objects.create(owner=owner, title='Bantuan sayur', food_item='Sayur', quantity=1, unit='kg')
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                context = browser.new_context(java_script_enabled=False, viewport={'width': 375, 'height': 667})
+                page = context.new_page()
+                page.goto(self.live_server_url + reverse('request_board:request_board'))
+                page.locator('#id_title').fill('beras')
+                page.locator('#id_food_item').select_option('Nasi')
+                page.locator('#id_title').press('Enter')
+                expect(page.locator('.request-board__card-title')).to_have_text(['Bantuan beras'])
+                self.assertIn('title=beras', page.url)
+                page.get_by_role('link', name='Reset', exact=True).filter(visible=True).click()
+                expect(page.locator('.request-board__card-title')).to_have_count(2)
+                response = page.goto(self.live_server_url + reverse('request_board:request_board') + '?title=' + 'x' * 121)
+                self.assertEqual(response.status, 400)
+                expect(page.locator('.errorlist')).to_be_visible()
+            finally:
+                browser.close()
+
+    def test_filter_pagination_without_javascript_preserves_values(self):
+        owner = get_user_model().objects.create_user(username='board-no-js-page')
+        Request.objects.bulk_create([
+            Request(owner=owner, title=f'Target {index}', food_item='Nasi', quantity=1, unit='kg')
+            for index in range(21)
+        ])
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
+            try:
+                context = browser.new_context(java_script_enabled=False)
+                page = context.new_page()
+                page.goto(self.live_server_url + reverse('request_board:request_board'))
+                page.locator('#id_title').fill('Target')
+                page.locator('#id_food_item').select_option('Nasi')
+                page.locator('#id_title').press('Enter')
+                page.get_by_role('link', name='Berikutnya').click()
+                expect(page.locator('.request-board__card')).to_have_count(1)
+                expect(page.locator('#id_title')).to_have_value('Target')
+                expect(page.locator('#id_food_item')).to_have_value('Nasi')
+            finally:
+                browser.close()
+
     def test_offers_long_title_wraps_without_horizontal_overflow(self):
         owner = get_user_model().objects.create_user(username='browser-long-title-owner')
         title = 'Bantuan ' + 'sayuransegar' * 9
@@ -63,6 +414,7 @@ class BoardAjaxBrowserTests(StaticLiveServerTestCase):
             try:
                 page = browser.new_page(viewport={'width': 1280, 'height': 900})
                 page.goto(self.live_server_url + reverse('request_board:request_board'))
+                page.locator('[data-filter-open]').click()
                 page.evaluate("""() => {
                     const original = window.fetch;
                     window.fetch = (url, options) => String(url).includes('q=lama')
@@ -70,10 +422,14 @@ class BoardAjaxBrowserTests(StaticLiveServerTestCase):
                       : original(url, options).then(response => { window.resetResolved = true; return response; });
                     const form = document.querySelector('[data-filter-form]');
                     form.elements.q.value = 'lama';
+                    form.elements.title.value = 'lama';
+                    form.elements.food_item.value = 'Roti';
                     form.requestSubmit();
                 }""")
                 page.locator('[data-filter-form] [data-board-reset]').first.click()
                 page.wait_for_function("window.resetResolved && document.querySelector('[name=q]').value === ''")
+                expect(page.locator('[name=title]')).to_have_value('')
+                expect(page.locator('[name=food_item]')).to_have_value('')
                 expect(page.locator('.request-board__card-title')).to_have_text('Hasil asli')
                 page.evaluate("""async () => {
                     window.resolveOld(new Response('<p id=stale>kadaluwarsa</p>', {status: 200}));
@@ -122,13 +478,15 @@ class BoardAjaxBrowserTests(StaticLiveServerTestCase):
                 page = context.new_page()
                 posts = []
                 page.on('request', lambda request: posts.append(request.url) if request.method == 'POST' and request.url.endswith('/delete/') else None)
-                page.goto(self.live_server_url + reverse('request_board:request_board') + '?q=Khusus&page=3')
+                page.goto(self.live_server_url + reverse('request_board:request_board') + '?q=Khusus&title=Khusus&food_item=Roti&page=3')
                 expect(page.locator('.request-board__card')).to_have_count(1)
                 page.locator('.request-board__delete-summary').click()
                 page.locator('dialog form').evaluate('(form) => { form.requestSubmit(); form.requestSubmit(); }')
                 expect(page.locator('.request-board__card')).to_have_count(20)
                 self.assertIn('page=2', page.url)
                 self.assertIn('q=Khusus', page.url)
+                self.assertIn('title=Khusus', page.url)
+                self.assertIn('food_item=Roti', page.url)
                 self.assertEqual(len(posts), 1)
             finally:
                 browser.close()
@@ -216,6 +574,7 @@ class BoardAjaxBrowserTests(StaticLiveServerTestCase):
                 owner_page.get_by_role('button', name='Tandai Terpenuhi').click()
                 expect(owner_page.get_by_text('Penawar terpilih: browser-ajax-second')).to_be_visible()
                 self.assertEqual(owner_page.evaluate('window.boardMarker'), 17)
+                owner_page.locator('[data-filter-open]').click()
                 owner_page.locator('#id_status').select_option('fulfilled')
                 owner_page.get_by_role('button', name='Terapkan').click()
                 expect(owner_page.locator('.request-board__card-title')).to_have_text('Bantuan browser')

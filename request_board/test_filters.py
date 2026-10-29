@@ -68,6 +68,23 @@ class BoardFilterTests(TestCase):
         self.item(title="Lain", food_item="Roti", location="Nasi")
         self.assert_matches({"title": " nasi "}, {title.pk})
 
+    def test_title_and_food_controls_are_uniquely_labeled_and_legacy_hidden(self):
+        self.item(food_item="Nasi")
+        self.client.force_login(self.owner)
+        response = self.client.get(self.board, {"q": "nasi", "mine": "on"})
+        html = response.content.decode()
+        markup = FilterMarkup(html)
+        self.assertEqual(sum("data-filter-form" in form for form in markup.forms), 1)
+        self.assertEqual(html.count('id="id_title"'), 1)
+        self.assertEqual(html.count('id="id_food_item"'), 1)
+        self.assertIn('for="id_title">Cari judul permintaan</label>', html)
+        self.assertIn('for="id_food_item">Bahan</label>', html)
+        self.assertNotIn('Filter lainnya', html)
+        for name in ("q", "mine"):
+            field = next(field for field in markup.inputs if field.get("name") == name)
+            self.assertEqual(field.get("type"), "hidden")
+            self.assertTrue(field.get("value"))
+
     def test_food_item_filter_matches_full_value_case_insensitively(self):
         one = self.item(food_item="Nasi")
         two = self.item(food_item="nAsI")
