@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static request_board_assets %}
 
 {% block html_lang %}id{% endblock %}
 {% block body_class %}request-board-page{% endblock %}
@@ -7,11 +7,11 @@
 {% block title %}Food Rescue Request Board — SaveBite{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/request-board-tailwind.css' %}">
+  <link rel="stylesheet" href="{% board_static 'css/request-board-tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'css/button.css' %}">
   <link rel="stylesheet" href="{% static 'css/navbar.css' %}">
   <link rel="stylesheet" href="{% static 'css/footer.css' %}">
-  <link rel="stylesheet" href="{% static 'css/request-board.css' %}?v=20261029-native-filter">
+  <link rel="stylesheet" href="{% board_static 'css/request-board.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -49,5 +49,5 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'js/request-board.js' %}?v=20261029-native-filter" defer></script>
+  <script src="{% board_static 'js/request-board.js' %}" defer></script>
 {% endblock %}

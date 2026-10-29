@@ -119,6 +119,7 @@ class RequestOffer(models.Model):
 
 
 class RequestCreationKey(models.Model):
+    """Retry records retained for at least 30 days; see cleanup_request_creation_keys."""
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     key = models.UUIDField()
     payload_digest = models.CharField(max_length=64)
@@ -126,4 +127,5 @@ class RequestCreationKey(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        indexes = [models.Index(fields=['created_at'], name='request_key_created_idx')]
         constraints = [models.UniqueConstraint(fields=['owner', 'key'], name='unique_request_creation_key')]

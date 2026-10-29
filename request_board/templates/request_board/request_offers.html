@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static request_board_assets %}
 {% block body_class %}request-board-page{% endblock %}
 {% block title %}Penawaran — SaveBite{% endblock %}
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/request-board-tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'css/request-board.css' %}">
+  <link rel="stylesheet" href="{% board_static 'css/request-board-tailwind.css' %}">
+  <link rel="stylesheet" href="{% board_static 'css/request-board.css' %}">
 {% endblock %}
 {% block content %}
 {% include 'request_board/_messages.html' %}
@@ -62,4 +62,4 @@
   {% if item.selected_offer_id and item.effective_status != 'fulfilled' and item.effective_status != 'expired' %}<a class="request-board__offer-back request-board__offer-back--solid" href="{% url 'request_board:request_board' %}">Kembali ke papan</a>{% endif %}
 </div>
 {% endblock %}
-{% block extra_js %}<script src="{% static 'js/request-board.js' %}" defer></script>{% endblock %}
+{% block extra_js %}<script src="{% board_static 'js/request-board.js' %}" defer></script>{% endblock %}
