@@ -7,7 +7,6 @@ from django.urls import reverse
 from .models import SavedRecipe
 from .services import MealDBError
 
-
 User = get_user_model()
 
 SAMPLE_MEAL = {
@@ -22,7 +21,6 @@ SAMPLE_MEAL = {
     "strIngredient2": "Soy Sauce",
     "strMeasure2": "2 tbsp",
 }
-
 
 class KatalogTests(TestCase):
     def setUp(self):
@@ -75,6 +73,12 @@ class KatalogTests(TestCase):
         self.assertContains(response, "maksimal 3 bahan")
         mock_search.assert_not_called()
 
+    @patch("katalog.views.services.search_meals", return_value=[SAMPLE_MEAL])
+    def test_guest_search_results_link_to_main_login(self, _mock_search):
+        response = self.client.get(reverse("katalog:home"), {"q": "teriyaki"})
+        login_link = f'href="{reverse("login")}?next={reverse("katalog:meal_detail", args=[52772])}"'
+        self.assertContains(response, login_link)
+
     @patch("katalog.views.services.search_meals", side_effect=MealDBError("offline"))
     def test_search_shows_message_when_service_fails(self, _mock_search):
         response = self.client.get(reverse("katalog:home"), {"q": "soup"})
@@ -88,15 +92,22 @@ class KatalogTests(TestCase):
         self.assertTemplateUsed(response, "katalog/meal_detail.html")
         self.assertEqual(response.context["ingredients"][0]["name"], "Chicken")
 
+    @patch("katalog.views.services.get_meal", return_value=SAMPLE_MEAL)
+    def test_guest_recipe_detail_links_to_main_login(self, _mock_get_meal):
+        response = self.client.get(reverse("katalog:meal_detail", args=[52772]))
+        login_link = f'href="{reverse("login")}?next={reverse("katalog:meal_detail", args=[52772])}"'
+        self.assertContains(response, login_link)
+
     @patch("katalog.views.services.get_meal", return_value=None)
     def test_unknown_recipe_returns_404(self, _mock_get_meal):
         response = self.client.get(reverse("katalog:meal_detail", args=[999999]))
         self.assertEqual(response.status_code, 404)
 
-    def test_guest_is_sent_to_working_login_before_saving(self):
+    def test_guest_is_sent_to_main_login_before_saving(self):
         response = self.client.post(reverse("katalog:saved_create"), {"meal_id": "52772"})
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(reverse("request_board:login")))
+        expected_url = f"{reverse('login')}?next={reverse('katalog:meal_detail', args=[52772])}"
+        self.assertEqual(response.url, expected_url)
 
     @patch("katalog.views.services.get_meal", return_value=SAMPLE_MEAL)
     def test_logged_in_user_can_save_recipe(self, _mock_get_meal):
@@ -122,7 +133,14 @@ class KatalogTests(TestCase):
     def test_saved_list_requires_login(self):
         response = self.client.get(reverse("katalog:saved_list"))
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(reverse("request_board:login")))
+        self.assertTrue(response.url.startswith(reverse("login")))
+
+    def test_guest_delete_redirects_to_main_login_and_saved_list(self):
+        recipe = SavedRecipe.objects.create(user=self.user, meal_id="52772", name="My recipe")
+        response = self.client.post(reverse("katalog:saved_delete", args=[recipe.pk]))
+        expected_url = f"{reverse('login')}?next={reverse('katalog:saved_list')}"
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, expected_url)
 
     def test_saved_list_only_shows_current_users_recipes(self):
         SavedRecipe.objects.create(user=self.user, meal_id="52772", name="My recipe")
@@ -132,6 +150,16 @@ class KatalogTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "My recipe")
         self.assertNotContains(response, "Other recipe")
+
+    def test_saved_list_uses_shared_delete_confirmation(self):
+        recipe = SavedRecipe.objects.create(user=self.user, meal_id="52772", name="My recipe")
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("katalog:saved_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="kat-delete-confirm"')
+        self.assertContains(response, 'data-confirm-open="#kat-delete-confirm"')
+        self.assertContains(response, 'data-name="My recipe"')
+        self.assertContains(response, f'data-action="{reverse("katalog:saved_delete", args=[recipe.pk])}"')
 
     def test_owner_can_open_edit_page(self):
         recipe = SavedRecipe.objects.create(user=self.user, meal_id="52772", name="My recipe")
