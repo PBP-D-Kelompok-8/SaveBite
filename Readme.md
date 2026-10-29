@@ -93,12 +93,12 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
   - **Delete:** Menghapus *posting* permintaan jika sudah tidak butuh atau sudah dibeli sendiri.
 
 ### 5. Jurnal Jejak Makanan — Geo
-**Deskripsi:** Modul rekam jejak pribadi (*tracker*) untuk menghitung dan mengevaluasi persentase makanan yang berhasil diselamatkan atau terbuang.
-- **Model Dasar:** Menyimpan log harian berupa nama makanan, status konsumsi (*Habis/Terbuang*), dan catatan evaluasi.
+**Deskripsi:** Modul rekam jejak pribadi (*tracker*) untuk menghitung persentase makanan yang berhasil diselamatkan atau terbuang dan menyimpan log riwayat makanan.
+- **Model Dasar:** Menyimpan log harian berupa nama makanan, status konsumsi (*Terselamatkan/Terbuang*), dan catatan evaluasi.
 - **Fitur CRUD:**
   - **Create:** Mencatat log riwayat makanan harian beserta status akhirnya.
   - **Read:** Menampilkan log riwayat secara kronologis serta ringkasan persentase keberhasilan (*success rate*).
-  - **Update:** Mengedit catatan atau memperbaiki *input* status dan jumlah yang salah.
+  - **Update:** Mengedit catatan atau memperbaiki *input* field (ex: jumlah, status) yang salah.
   - **Delete:** Menghapus baris catatan riwayat dari jurnal.
 
 ---
