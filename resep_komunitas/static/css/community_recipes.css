@@ -12,13 +12,16 @@
 .recipes-header h6 {
     margin: 4 0 0 0  !important;
     padding: 0 !important;
+    margin-block-start: 0 !important;
+    margin-block-end: 0 !important;
 }
 
 .recipes-header {
+    margin: 0 !important;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0;
+    gap: 4px;
 }
 
 
