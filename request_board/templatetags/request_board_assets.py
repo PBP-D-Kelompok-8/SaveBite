@@ -4,7 +4,7 @@ from django.templatetags.static import static
 register = template.Library()
 
 # Bump once when releasing changes to the shared request board JS or CSS.
-ASSET_VERSION = '20261029-native-filter'
+ASSET_VERSION = '20261029-create-retry-retention'
 
 
 @register.simple_tag

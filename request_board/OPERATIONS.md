@@ -8,6 +8,12 @@ Cleanup removes both linked records and deletion tombstones older than 30 days;
 it never deletes food requests. At exactly 30 days a key remains retained.
 After cleanup, an old UUID is treated as a new key and the status endpoint returns
 `found: false`. Clients must not retry old drafts beyond the retention window.
+The browser blocks retries 30 days after the first submission attempt, including
+direct form submission and retries delayed by a CSRF refresh. It checks both
+wall-clock and monotonic elapsed time and keeps expired attempts blocked even
+if the clock moves back. Status lookups remain available; a retained committed
+key can still confirm success. The draft remains locked when the result cannot
+be confirmed, so it cannot silently acquire a new UUID and create a duplicate.
 
 Run migrations before deploying this release to add the cleanup timestamp index:
 

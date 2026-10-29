@@ -408,6 +408,24 @@ document.addEventListener('click', event => {
     let submit = null;
     let submitContents = [];
     const cardTemplate = modal ? document.querySelector('[data-create-card-template]') : null;
+    // Match the server's creation-key retention. Start before the first POST,
+    // so this limit is conservative relative to the database commit time.
+    const createRetryWindowMs = 30 * 24 * 60 * 60 * 1000;
+
+    function retryExpired() {
+      if (!attempt) return false;
+      return attempt.expired || Date.now() - attempt.startedAt >= createRetryWindowMs
+        || performance.now() - attempt.startedMonotonic >= createRetryWindowMs;
+    }
+
+    function blockExpiredRetry() {
+      if (!retryExpired()) return false;
+      attempt.expired = true;
+      if (modal) setPendingCardState(attempt.localId, 'uncertain');
+      submit.disabled = true;
+      showRecovery('Batas waktu percobaan ulang 30 hari telah berakhir. Draft ini tidak dapat dikirim ulang. Periksa status atau papan permintaan untuk memastikan hasil penyimpanan.');
+      return true;
+    }
 
     function snapshotCreateDraft(form) {
       const value = name => form.elements.namedItem(name)?.value.trim() || '';
@@ -615,7 +633,7 @@ document.addEventListener('click', event => {
         const data = await response.json();
         if (attempt !== checkedAttempt || attempt.key !== key) return;
         attempt.wrongOwner = false;
-        submit.disabled = false;
+        submit.disabled = !!retryExpired();
         if (data.ok && data.found && data.request_id) {
           if (checkingStatus === statusOperation) checkingStatus = null;
           await completeCreate(data.request_id, checkedAttempt);
@@ -633,12 +651,14 @@ document.addEventListener('click', event => {
       } catch (error) { /* A failed lookup cannot establish whether the POST committed. */ }
       finally { if (checkingStatus === statusOperation) checkingStatus = null; }
       if (attempt !== checkedAttempt || attempt.key !== key) return;
+      if (blockExpiredRetry()) return;
       showRecovery('Hasil penyimpanan belum dapat dipastikan. Jangan tutup atau muat ulang halaman; periksa status atau coba simpan lagi dengan kunci yang sama.');
     }
 
     async function submitCreate(event) {
       event.preventDefault();
       if (inFlight || checkingStatus || attempt?.deleted || attempt?.wrongOwner) return;
+      if (blockExpiredRetry()) return;
       if (pendingMutation) {
         showRecovery('Tunggu perubahan lain selesai disimpan.', null, !!attempt?.uncertain);
         return;
@@ -651,7 +671,8 @@ document.addEventListener('click', event => {
         }
         fieldErrors(form, errors);
         if (Object.keys(errors).length) return;
-        attempt = { key: newKey(), localId: `temp-${newKey()}`, body: new FormData(form), title: form.elements.title.value, uncertain: false };
+        attempt = { key: newKey(), localId: `temp-${newKey()}`, body: new FormData(form), title: form.elements.title.value, uncertain: false,
+          startedAt: Date.now(), startedMonotonic: performance.now() };
         if (modal) attempt.draft = snapshotCreateDraft(form);
       }
       const currentAttempt = attempt;
@@ -685,6 +706,8 @@ document.addEventListener('click', event => {
           attempt.refreshCsrf = false;
           refreshFormToken = false;
         }
+        // A suspended tab or slow CSRF refresh may cross the limit while awaited.
+        if (blockExpiredRetry()) return;
         const response = await timedFetch(form.action, {
           method: 'POST', headers: { ...headers, 'Idempotency-Key': attempt.key, 'X-Create-Owner': dialog.dataset.createOwner },
           body: attempt.body, credentials: 'same-origin',
@@ -729,7 +752,7 @@ document.addEventListener('click', event => {
           activeCreateOperation = null;
           inFlight = false;
           releaseMutation(operation);
-          submit.disabled = !!(attempt?.deleted || attempt?.wrongOwner);
+          submit.disabled = !!(attempt?.deleted || attempt?.wrongOwner || retryExpired());
         }
       }
     }
@@ -772,6 +795,13 @@ document.addEventListener('click', event => {
       if (!attempt || (!inFlight && !attempt.uncertain)) return;
       event.preventDefault();
       event.returnValue = '';
+    });
+
+    window.addEventListener('focus', () => {
+      if (!inFlight && !checkingStatus && !attempt?.deleted) blockExpiredRetry();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && !inFlight && !checkingStatus && !attempt?.deleted) blockExpiredRetry();
     });
 
     if (!modal) {

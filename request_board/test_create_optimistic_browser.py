@@ -1,15 +1,21 @@
 """Delayed create responses exercise optimistic state and safe recovery."""
 import os
+from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
+from io import StringIO
 from contextlib import contextmanager
 from pathlib import Path
 from unittest import skipUnless
 
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.core.management import call_command
+from django.db import connections
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
-from request_board.models import Request
+from request_board.models import Request, RequestCreationKey
 
 try:
     from playwright.sync_api import expect, sync_playwright
@@ -72,6 +78,100 @@ class CreateOptimisticBrowserTests(StaticLiveServerTestCase):
                 return original(url, options);
             };
         }""", refresh)
+
+    def test_old_tab_cannot_retry_after_committed_key_is_cleaned_up(self):
+        for standalone in (False, True):
+            with self.subTest(standalone=standalone), self.board_page() as page:
+                title = f'Retensi {standalone}'
+                if standalone:
+                    page.goto(self.live_server_url + reverse('request_board:request_create'))
+                    dialog = page.locator('.request-board__form-card')
+                    for name, value in {'title': title, 'food_item': 'Beras', 'quantity': '2'}.items():
+                        dialog.locator(f'[name={name}]').fill(value)
+                    dialog.locator('[name=unit]').select_option('kg')
+                else:
+                    dialog = self.open_form(page, title)
+                page.evaluate("""() => {
+                    const original = window.fetch;
+                    window.posts = 0;
+                    window.fetch = (url, options) => {
+                        if (options?.method === 'POST') {
+                            window.posts++;
+                            return original(url, options).then(() => { throw new TypeError('lost response'); });
+                        }
+                        if (String(url).includes('/status/')) {
+                            return new Promise(resolve => {
+                                window.releaseStatus = () => resolve(original(url, options));
+                            });
+                        }
+                        return original(url, options);
+                    };
+                }""")
+                dialog.get_by_role('button', name='Simpan Permintaan').click()
+                page.wait_for_function('typeof window.releaseStatus === "function"')
+                # The request committed, but its key was subsequently removed by
+                # the actual cleanup command while this tab remained open.
+                def cleanup_key():
+                    try:
+                        item = Request.objects.get(title=title)
+                        RequestCreationKey.objects.filter(request=item).update(
+                            created_at=timezone.now() - timedelta(days=31),
+                        )
+                        call_command('cleanup_request_creation_keys', stdout=StringIO())
+                        self.assertFalse(RequestCreationKey.objects.filter(request=item).exists())
+                    finally:
+                        connections.close_all()
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    executor.submit(cleanup_key).result()
+                page.evaluate("""() => {
+                    const now = Date.now();
+                    Date.now = () => now + 31 * 24 * 60 * 60 * 1000;
+                    window.releaseStatus();
+                }""")
+                recovery = dialog.locator('[data-create-recovery]')
+                expect(recovery).to_contain_text('Batas waktu percobaan ulang 30 hari telah berakhir')
+                expect(dialog.get_by_role('button', name='Coba simpan lagi')).to_be_disabled()
+                # Dispatching submit directly must also be guarded, even if
+                # someone bypasses the disabled button.
+                page.evaluate('Date.now = () => 0')
+                dialog.locator('form').evaluate("f => f.dispatchEvent(new Event('submit', {cancelable: true}))")
+                self.assertEqual(page.evaluate('window.posts'), 1)
+            self.assertEqual(Request.objects.filter(title=title).count(), 1)
+
+    def test_retry_expiring_during_csrf_refresh_does_not_send_post(self):
+        with self.board_page() as page:
+            dialog = self.open_form(page, 'Retensi saat CSRF')
+            page.evaluate("""() => {
+                const original = window.fetch;
+                window.posts = 0;
+                window.fetch = (url, options) => {
+                    if (options?.method === 'POST') {
+                        window.posts++;
+                        return Promise.reject(new TypeError('offline'));
+                    }
+                    if (String(url).includes('/status/')) return Promise.resolve(new Response(
+                        JSON.stringify({ok:false, login_url:'/login/'}),
+                        {status:401, headers:{'Content-Type':'application/json'}}));
+                    return new Promise(resolve => {
+                        window.releaseCsrf = () => resolve(original(url, options));
+                    });
+                };
+            }""")
+            dialog.get_by_role('button', name='Simpan Permintaan').click()
+            expect(dialog.locator('[data-create-recovery]')).to_contain_text('Masuk kembali di tab lain')
+            retry = dialog.get_by_role('button', name='Coba simpan lagi')
+            expect(retry).to_be_enabled()
+            retry.click()
+            page.wait_for_function('typeof window.releaseCsrf === "function"')
+            page.evaluate("""() => {
+                const now = Date.now();
+                Date.now = () => now + 30 * 24 * 60 * 60 * 1000;
+                window.releaseCsrf();
+            }""")
+            expect(dialog.locator('[data-create-recovery]')).to_contain_text('Batas waktu percobaan ulang 30 hari telah berakhir')
+            expect(retry).to_be_disabled()
+            self.assertEqual(page.evaluate('window.posts'), 1)
+        self.assertFalse(Request.objects.filter(title='Retensi saat CSRF').exists())
 
     def test_pending_card_escapes_long_content_and_omits_empty_fields(self):
         owner_text = '<b>Pemohon & aman</b>'
