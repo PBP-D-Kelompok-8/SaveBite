@@ -292,7 +292,7 @@ class OptimisticOfferBrowserTests(StaticLiveServerTestCase):
                 page.wait_for_function('typeof window.rejectFulfill === "function"')
                 expect(card).to_contain_text('Terpenuhi (sedang menyimpan)', timeout=1500)
                 page.evaluate('window.rejectFulfill()')
-                expect(card).to_contain_text('Ditawarkan')
+                expect(card).to_contain_text('Menunggu pemenuhan')
                 expect(card.get_by_role('button', name='Tandai Terpenuhi')).to_be_enabled()
                 expect(page.get_by_role('alert')).to_contain_text('Sudah kedaluwarsa')
             finally:

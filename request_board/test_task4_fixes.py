@@ -131,7 +131,7 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
             finally:
                 browser.close()
 
-    def test_mobile_filter_errors_are_in_sheet_and_preserve_inputs_for_retry(self):
+    def test_mobile_inline_filter_errors_preserve_inputs_for_retry(self):
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
             try:
@@ -141,8 +141,8 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
                         context.add_cookies([{'name': 'sessionid', 'value': self.session, 'url': self.live_server_url}])
                         page = context.new_page()
                         page.goto(self.live_server_url + reverse('request_board:request_board') + ('?mine=on' if error == 'session' else ''))
-                        page.locator('[data-filter-open]').click()
-                        dialog = page.locator('#board-filter-dialog')
+                        page.get_by_role('button', name='Filter', exact=True).click()
+                        dialog = page.locator('[data-filter-form]')
                         dialog.locator('[name=title]').fill('Kartu')
                         if error == 'session':
                             context.clear_cookies(name='sessionid')
@@ -152,7 +152,9 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
                             page.route('**/board/?*', lambda route: route.fulfill(status=403, body='CSRF'))
                         button = dialog.get_by_role('button', name='Terapkan')
                         button.click()
-                        self.assert_visible_alert(page, dialog, {'forbidden': 'tidak valid', 'session': 'masuk', 'network': 'Gagal'}[error])
+                        alert = page.locator('[data-ajax-notice][role=alert]')
+                        expect(alert).to_contain_text({'forbidden': 'tidak valid', 'session': 'masuk', 'network': 'Gagal'}[error])
+                        expect(alert).to_be_visible()
                         expect(button).to_be_enabled()
                         expect(dialog.locator('[name=title]')).to_have_value('Kartu')
                         if error == 'session':
@@ -161,7 +163,8 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
                         else:
                             page.unroute('**/board/?*')
                         button.click()
-                        expect(dialog).not_to_be_visible()
+                        page.wait_for_url('**/*title=Kartu*')
+                        expect(dialog).to_be_visible()
                         self.assertIn('title=Kartu', page.url)
                         context.close()
             finally:

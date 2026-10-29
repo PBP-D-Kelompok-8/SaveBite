@@ -85,12 +85,12 @@ class AccessibilityBrowserTests(StaticLiveServerTestCase):
           window.release = [];
           window.fetch = (...args) => original(...args).then(response => new Promise(resolve => window.release.push(() => resolve(response))));
         }''')
-        p.locator('[data-filter-open]').click()
+        p.get_by_role('button', name='Filter', exact=True).click()
         form = p.locator('[data-filter-form]')
         form.locator('[name=title]').fill('Item')
         form.get_by_role('button', name='Terapkan', exact=True).filter(visible=True).click()
         p.wait_for_function('window.release.length === 1')
-        expect(form.locator('[data-filter-status]')).to_have_text('Memuat permintaan.')
+        expect(p.locator('[data-board-status]')).to_have_text('Memuat permintaan.')
         self.assertEqual(p.locator('[data-board-results]').get_attribute('aria-busy'), 'true')
         form.locator('[name=title]').fill('missing')
         form.get_by_role('button', name='Terapkan', exact=True).filter(visible=True).click()

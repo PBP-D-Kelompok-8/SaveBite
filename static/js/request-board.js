@@ -1,6 +1,6 @@
 /* Enhance the server-rendered confirmation; native details remains the fallback. */
 function enhanceBoardDeleteDialogs(root = document) {
-  if (!window.HTMLDialogElement) return;
+  if (!window.HTMLDialogElement || typeof HTMLDialogElement.prototype.showModal !== 'function') return;
   root.querySelectorAll('.request-board__delete').forEach((details) => {
     if (details.dataset.enhanced) return;
     const trigger = details.querySelector('summary');
@@ -12,154 +12,81 @@ function enhanceBoardDeleteDialogs(root = document) {
     dialog.setAttribute('aria-labelledby', panel.querySelector('[id^=delete-label-]').id);
     dialog.setAttribute('aria-describedby', panel.querySelector('[id^=delete-description-]').id);
     while (panel.firstChild) dialog.appendChild(panel.firstChild);
-    panel.replaceWith(dialog);
+    panel.remove();
+    details.after(dialog);
+    const fallbackCancel = dialog.querySelector('.request-board__delete-cancel');
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = fallbackCancel.className;
+    cancel.textContent = fallbackCancel.textContent;
+    fallbackCancel.replaceWith(cancel);
+    trigger.setAttribute('aria-haspopup', 'dialog');
+    trigger.setAttribute('aria-controls', dialog.id = `delete-dialog-${trigger.id}`);
     trigger.addEventListener('click', (event) => {
       event.preventDefault();
-      details.open = true;
+      if (dialog.open) return;
       dialog.showModal();
-      dialog.querySelector('.request-board__delete-cancel').focus();
+      cancel.focus();
     });
-    dialog.querySelector('.request-board__delete-cancel').addEventListener('click', (event) => {
+    cancel.addEventListener('click', (event) => {
       event.preventDefault();
       dialog.close();
     });
+    dialog.addEventListener('keydown', (event) => {
+      if (event.key !== 'Tab') return;
+      const controls = [...dialog.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled)')];
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !controls.includes(document.activeElement))) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    });
     dialog.addEventListener('close', () => {
-      details.open = false;
-      if (!details.dataset.removing) trigger.focus({ preventScroll: true });
+      if (!details.dataset.removing && trigger.isConnected) trigger.focus({ preventScroll: true });
     });
   });
 }
 enhanceBoardDeleteDialogs();
+document.addEventListener('click', event => {
+  const cancel = event.target.closest('.request-board__delete-cancel');
+  const details = cancel?.closest('details');
+  if (details) {
+    details.open = false;
+    details.querySelector('summary').focus();
+  }
+});
 
-/* Keep one GET form: inline on desktop, a native modal sheet on mobile. */
+/* Enhance the GET form with a disclosure; keep it usable without JavaScript. */
 (() => {
   const form = document.querySelector('[data-filter-form]');
-  const dialog = document.querySelector('#board-filter-dialog');
-  if (!form || !dialog || typeof dialog.showModal !== 'function') return;
-  const slot = document.querySelector('[data-filter-slot]');
-  const toolbar = document.querySelector('.request-board__filter-toolbar');
-  const trigger = document.querySelector('[data-filter-open]');
-  const close = form.querySelector('[data-filter-close]');
-  const mobile = window.matchMedia('(max-width: 768px)');
-  let snapshot = [];
-  let opened = false;
-
-  function saveValues() {
-    snapshot = [...form.elements].map(field => ({ field, value: field.value, checked: field.checked }));
-  }
-  function restoreValues() {
-    snapshot.forEach(({ field, value, checked }) => {
-      field.value = value;
-      if (field.type === 'checkbox') field.checked = checked;
+  if (!form) return;
+  const panel = document.querySelector('[data-filter-panel]');
+  const trigger = panel?.querySelector('[data-filter-open]');
+  if (panel && trigger) {
+    const syncExpanded = () => trigger.setAttribute('aria-expanded', String(panel.open));
+    panel.addEventListener('toggle', syncExpanded);
+    syncExpanded();
+    form.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      panel.open = false;
+      syncExpanded();
+      trigger.focus({ preventScroll: true });
     });
   }
   form.addEventListener('board:filter-applied', (event) => {
-    if (event.detail) {
-      for (const name of ['title', 'food_item', 'status', 'location', 'sort', 'q', 'mine']) {
-        const field = form.elements[name];
-        if (field.type === 'checkbox') field.checked = event.detail.has(name);
-        else field.value = event.detail.get(name) || '';
-      }
-    }
-    saveValues();
-    const summary = toolbar.querySelector('[data-filter-summary]');
-    const status = form.elements.status;
-    const sort = form.elements.sort;
-    summary.textContent = `${status.selectedOptions[0].textContent} · ${sort.selectedOptions[0].textContent}`;
-    if (form.elements.location.value) {
-      const location = document.createElement('span');
-      location.className = 'tw:block';
-      location.textContent = form.elements.location.value;
-      summary.appendChild(location);
-    }
-    for (const name of ['title', 'food_item', 'q', 'mine']) {
+    const params = event.detail || new URL(window.location.href).searchParams;
+    for (const name of ['title', 'food_item', 'status', 'location', 'sort', 'q', 'mine']) {
       const field = form.elements[name];
-      if (!field.value) continue;
-      const detail = document.createElement('span');
-      detail.className = 'tw:block';
-      detail.textContent = name === 'mine' ? 'Permintaan saya' : (name === 'food_item' ? field.selectedOptions[0].textContent : field.value);
-      summary.appendChild(detail);
-    }
-    let indicator = trigger.querySelector('[aria-label="aktif"]');
-    const active = ['title', 'food_item', 'status', 'location', 'q', 'mine'].some(name => form.elements[name].value) || form.elements.sort.value === 'oldest';
-    if (active && !indicator) {
-      indicator = document.createElement('span');
-      indicator.className = 'request-board__filter-active';
-      indicator.setAttribute('aria-label', 'aktif');
-      trigger.appendChild(indicator);
-    } else if (!active && indicator) indicator.remove();
-    if (dialog.open) dialog.close();
-    else if (opened) {
-      opened = false;
-      form.hidden = true;
-      trigger.setAttribute('aria-expanded', 'false');
-      trigger.focus({ preventScroll: true });
+      if (!field) continue;
+      if (field.type === 'checkbox') field.checked = params.has(name);
+      else field.value = params.get(name) || (name === 'sort' ? 'newest' : '');
     }
   });
-  function syncLayout() {
-    if (opened) restoreValues();
-    opened = false;
-    if (dialog.open) dialog.close();
-    document.body.classList.remove('tw:overflow-hidden');
-    trigger.setAttribute('aria-expanded', 'false');
-    if (mobile.matches) {
-      form.hidden = false;
-      dialog.appendChild(form);
-      trigger.setAttribute('aria-haspopup', 'dialog');
-    } else {
-      slot.appendChild(form);
-      form.hidden = true;
-      trigger.removeAttribute('aria-haspopup');
-    }
-    toolbar.hidden = false;
-    close.hidden = !mobile.matches;
-  }
-  function open() {
-    saveValues();
-    opened = true;
-    if (mobile.matches) {
-      dialog.showModal();
-      document.body.classList.add('tw:overflow-hidden');
-    } else form.hidden = false;
-    trigger.setAttribute('aria-expanded', 'true');
-    form.elements.title.focus();
-  }
-  trigger.addEventListener('click', () => {
-    if (!opened) open();
-    else if (dialog.open) dialog.close();
-    else {
-      restoreValues();
-      opened = false;
-      form.hidden = true;
-      trigger.setAttribute('aria-expanded', 'false');
-    }
-  });
-  form.addEventListener('keydown', event => {
-    if (event.key !== 'Escape' || mobile.matches || !opened) return;
-    event.preventDefault();
-    restoreValues();
-    opened = false;
-    form.hidden = true;
-    trigger.setAttribute('aria-expanded', 'false');
-    trigger.focus({ preventScroll: true });
-  });
-  close.addEventListener('click', () => dialog.close());
-  dialog.addEventListener('click', event => {
-    const bounds = dialog.getBoundingClientRect();
-    if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right ||
-        event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
-  });
-  dialog.addEventListener('close', () => {
-    restoreValues();
-    opened = false;
-    trigger.setAttribute('aria-expanded', 'false');
-    document.body.classList.remove('tw:overflow-hidden');
-    trigger.focus({ preventScroll: true });
-  });
-  mobile.addEventListener('change', syncLayout);
-  syncLayout();
-  form.dispatchEvent(new Event('board:filter-applied'));
-  if (form.querySelector('.errorlist')) open();
 })();
 
 /* Server-rendered fragments and ordinary forms remain the source of truth. */
@@ -169,12 +96,10 @@ enhanceBoardDeleteDialogs();
   const offers = document.querySelector('[data-board-offers]');
   const filter = document.querySelector('[data-filter-form]');
   const boardStatus = document.querySelector('[data-board-status]');
-  const filterStatus = document.querySelector('[data-filter-status]');
   if (!window.fetch || !window.AbortController || !window.URLSearchParams || !window.FormData || (!results && !createForm && !offers)) return;
   let controller = null;
   let sequence = 0;
   let currentUrl = new URL(window.location.href);
-  let lastAnnouncement = "";
   let pendingMutation = false;
   let pendingSelection = false;
   const headers = { 'X-Requested-With': 'XMLHttpRequest' };
@@ -238,9 +163,7 @@ enhanceBoardDeleteDialogs();
   }
 
   function announce(message) {
-    lastAnnouncement = message;
-    if (filterStatus && filter && !filter.hidden && filter.closest('dialog[open]')) filterStatus.textContent = message;
-    else if (boardStatus) boardStatus.textContent = message;
+    if (boardStatus) boardStatus.textContent = message;
   }
 
   async function boardGet(url, correctPage = false, push = true) {
@@ -357,7 +280,7 @@ enhanceBoardDeleteDialogs();
     const card = form.closest('.request-board__card');
     if (!card) return null;
     const marker = document.createComment('pending deletion');
-    const details = form.closest('.request-board__delete');
+    const details = card.querySelector('.request-board__delete');
     if (details) details.dataset.removing = 'true';
     form.closest('dialog')?.close();
     card.replaceWith(marker);
@@ -765,15 +688,9 @@ enhanceBoardDeleteDialogs();
       event.preventDefault();
       const url = new URL(form.action);
       url.search = new URLSearchParams(new FormData(form)).toString();
-      // A newer draft supersedes any pending GET; both submit controls remain usable.
+      // A newer draft supersedes any pending GET; the form remains usable.
       if (await boardGet(url)) {
-        const message = lastAnnouncement;
-        const completedSequence = sequence;
         form.dispatchEvent(new CustomEvent('board:filter-applied', { detail: url.searchParams }));
-        if (boardStatus) {
-          boardStatus.textContent = '';
-          requestAnimationFrame(() => { if (sequence === completedSequence) boardStatus.textContent = message; });
-        }
       }
       return;
     }
@@ -867,14 +784,8 @@ enhanceBoardDeleteDialogs();
       if (updated && reset && filter) {
         for (const name of ['q', 'title', 'food_item', 'status', 'location', 'mine']) filter.elements[name].value = '';
         filter.elements.sort.value = 'newest';
-        const message = lastAnnouncement;
-        const completedSequence = sequence;
         filter.dispatchEvent(new Event('board:filter-applied'));
-        if (boardStatus) {
-          boardStatus.textContent = '';
-          requestAnimationFrame(() => { if (sequence === completedSequence) boardStatus.textContent = message; });
-        }
-        document.querySelector('[data-filter-open]')?.focus({ preventScroll: true });
+        filter.elements.title.focus({ preventScroll: true });
       }
     });
     window.addEventListener('popstate', () => window.location.reload());

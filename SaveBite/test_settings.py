@@ -66,3 +66,10 @@ class SecuritySettingsTests(TestCase):
         )
         self.assertTrue(settings['PRODUCTION'])
         self.assertFalse(settings['DEBUG'])
+
+    def test_local_static_assets_refresh_even_when_debug_is_disabled(self):
+        local = self.load_settings(SECRET_KEY='test-only-key', DEBUG='false')
+        self.assertIs(local.get('WHITENOISE_AUTOREFRESH'), True)
+        self.assertEqual(local.get('WHITENOISE_MAX_AGE'), 0)
+        production = self.load_settings(SECRET_KEY='production-test-only-key', PRODUCTION='true')
+        self.assertIs(production.get('WHITENOISE_AUTOREFRESH'), False)

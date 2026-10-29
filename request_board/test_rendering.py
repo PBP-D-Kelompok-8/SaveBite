@@ -1498,7 +1498,7 @@ class BoardActionRenderingTests(TestCase):
         select_request_offer(actor=self.owner, request_id=self.offered.pk, offer_id=self.offered.offers.get(offered_by=self.donor).pk)
         self.client.force_login(self.owner)
         _, markup = self.board()
-        self.assert_latest_card(markup, self.offered, "Ditawarkan", 2)
+        self.assert_latest_card(markup, self.offered, "Menunggu pemenuhan", 2)
         url, payload = self.fulfill_form(markup, self.offered)
         before = self.snapshot()
 
@@ -1555,7 +1555,7 @@ class BoardActionRenderingTests(TestCase):
                 self.assertEqual(self.snapshot(), before)
                 board, markup = self.board()
                 self.assertEqual(list(board.context["messages"]), [])
-                self.assert_latest_card(markup, self.offered, "Ditawarkan", 1)
+                self.assert_latest_card(markup, self.offered, "Menunggu pemenuhan", 1)
                 self.fulfill_form(markup, self.offered)
 
     def test_forged_fulfill_valid_token_enforces_actor_state_and_missing_target_guards(self):

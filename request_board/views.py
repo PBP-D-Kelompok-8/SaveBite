@@ -530,7 +530,7 @@ def request_board(request):
             for key, value in filter_form.cleaned_data.items() if value
         }),
         "filters_active": filters_active,
-        "show_filters": filters_active or bool(page_obj.paginator.count) or Request.objects.exists(),
+        "show_filters": True,
         "filter_status_label": dict([*Request.STATUS_CHOICES, (Request.STATUS_EXPIRED, "Kedaluwarsa")]).get(filter_form.cleaned_data["status"], "Semua status"),
         "filter_sort_label": "Terlama" if filter_form.cleaned_data["sort"] == "oldest" else "Terbaru",
     }
