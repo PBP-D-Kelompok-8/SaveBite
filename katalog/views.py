@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from . import services
@@ -107,10 +108,16 @@ def meal_detail(request, meal_id):
     )
 
 
-@login_required(login_url="request_board:login")
 @require_POST
 def saved_create(request):
     """Simpan resep yang dikirim dari halaman detail."""
+    if not request.user.is_authenticated:
+        meal_id = request.POST.get("meal_id", "")
+        if meal_id.isdigit():
+            next_url = reverse("katalog:meal_detail", args=[meal_id])
+            return redirect(f"{reverse('login')}?next={next_url}")
+        return redirect("login")
+
     form = SaveRecipeForm(request.POST)
     if not form.is_valid():
         messages.error(request, "ID resep tidak valid.")
@@ -161,13 +168,13 @@ def saved_create(request):
     return redirect("katalog:saved_list")
 
 
-@login_required(login_url="request_board:login")
+@login_required(login_url="login")
 def saved_list(request):
     recipes = SavedRecipe.objects.filter(user=request.user)
     return render(request, "katalog/saved_list.html", {"recipes": recipes})
 
 
-@login_required(login_url="request_board:login")
+@login_required(login_url="login")
 def saved_update(request, pk):
     recipe = get_object_or_404(SavedRecipe, pk=pk, user=request.user)
     if request.method == "POST":
@@ -182,9 +189,12 @@ def saved_update(request, pk):
     return render(request, "katalog/saved_edit.html", {"form": form, "recipe": recipe})
 
 
-@login_required(login_url="request_board:login")
 @require_POST
 def saved_delete(request, pk):
+    if not request.user.is_authenticated:
+        next_url = reverse("katalog:saved_list")
+        return redirect(f"{reverse('login')}?next={next_url}")
+
     recipe = get_object_or_404(SavedRecipe, pk=pk, user=request.user)
     recipe.delete()
     messages.success(request, "Resep dihapus dari daftar tersimpan.")

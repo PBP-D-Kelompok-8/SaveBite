@@ -11,8 +11,6 @@ from urllib.request import Request, urlopen
 API_BASE_URL = "https://www.themealdb.com/api/json/v1/1/"
 REQUEST_TIMEOUT = 5
 MAX_RESULTS = 24
-
-
 class MealDBError(Exception):
     """Terjadi masalah saat menghubungi atau membaca respons TheMealDB."""
 
@@ -81,9 +79,9 @@ def _ingredient_terms(value):
     for part in value.split(","):
         term = " ".join(part.lower().split())
         if term:
-            translated = INGREDIENT_ALIASES.get(term, term).replace(" ", "_")
-            if translated not in terms:
-                terms.append(translated)
+            normalized = INGREDIENT_ALIASES.get(term, term).replace(" ", "_")
+            if normalized not in terms:
+                terms.append(normalized)
     return terms[:3]
 
 
