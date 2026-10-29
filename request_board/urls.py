@@ -1,8 +1,7 @@
-from django.contrib.auth import views as auth_views
-from django.urls import path, reverse_lazy
+from django.urls import path
+from django.views.generic import RedirectView
 
 from request_board import views
-from request_board.forms import BoardAuthenticationForm
 
 app_name = "request_board"
 
@@ -25,6 +24,8 @@ urlpatterns = [
     ),
     path("board/", views.request_board, name="request_board"),
     path("board/new/", views.request_create, name="request_create"),
+    path("board/<int:request_id>/offers/", views.request_offers, name="request_offers"),
+    path("board/<int:request_id>/offers/<int:offer_id>/select/", views.request_select_offer, name="request_select_offer"),
     path(
         "board/<int:request_id>/offer/",
         views.request_action,
@@ -45,11 +46,7 @@ urlpatterns = [
     ),
     path(
         "board/login/",
-        auth_views.LoginView.as_view(
-            authentication_form=BoardAuthenticationForm,
-            template_name="request_board/login.html",
-            next_page=reverse_lazy("request_board:request_board"),
-        ),
+        RedirectView.as_view(pattern_name="login", query_string=True),
         name="login",
     ),
 ]

@@ -1,0 +1,22 @@
+﻿{# Usage: {% include "components/toast.html" with type="success" message="Item berhasil ditambahkan!" %} #}
+{% with toast_type=type|default:"success"|lower %}
+{% if message %}
+<div class="ds-toast ds-toast--{{ toast_type }}"
+     role="{% if toast_type == 'error' %}alert{% else %}status{% endif %}"
+     aria-live="{% if toast_type == 'error' %}assertive{% else %}polite{% endif %}">
+  <span class="ds-toast__icon" aria-hidden="true">
+    {% if toast_type == "error" %}
+      <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v6m0 4h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    {% elif toast_type == "warning" %}
+      <svg viewBox="0 0 24 24" focusable="false"><path d="M12 3 22 21H2L12 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 9v5m0 3h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    {% else %}
+      <svg viewBox="0 0 24 24" focusable="false"><path d="m4 12.5 5 5L20 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    {% endif %}
+  </span>
+  <p class="ds-toast__message">{{ message }}</p>
+  <button class="ds-toast__close" type="button" aria-label="Tutup notifikasi" onclick="this.closest('.ds-toast').remove()">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+</div>
+{% endif %}
+{% endwith %}

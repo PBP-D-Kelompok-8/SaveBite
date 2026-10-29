@@ -95,7 +95,7 @@ class RequestListAdapterTests(TestCase):
     def assert_public_item(self, item, food_request, *, offer_count):
         self.assertEqual(set(item), {
             "id", "title", "food_item", "quantity", "unit", "description",
-            "location", "owner", "status", "created_at", "updated_at", "offer_count",
+            "location", "owner", "status", "expires_at", "created_at", "updated_at", "offer_count",
         })
         for field in ("id", "title", "food_item", "unit", "description", "location", "status"):
             self.assertEqual(item[field], getattr(food_request, field), field)
@@ -161,8 +161,8 @@ class RequestListAdapterTests(TestCase):
         self.assert_pagination(first, page=1, total_items=21)
         self.assert_pagination(second, page=2, total_items=21)
         ignored = self.assert_list_response(client.get(url, {
-            "owner": self.outsider.pk, "status": "fulfilled", "search": "absent",
-            "sort": "id", "order_by": "id", "page_size": "1",
+            "owner": self.outsider.pk, "search": "absent",
+            "order_by": "id", "page_size": "1",
         }))
         self.assertEqual(ignored, first)
 
@@ -411,7 +411,7 @@ class RequestCreateAdapterTests(TestCase):
         item = payload["data"]
         self.assertEqual(set(item), {
             "id", "title", "food_item", "quantity", "unit", "description",
-            "location", "owner", "status", "created_at", "updated_at", "offer_count",
+            "location", "owner", "status", "expires_at", "created_at", "updated_at", "offer_count",
         })
         food_request = Request.objects.get(pk=item["id"])
         self.assertEqual(food_request.owner_id, self.actor.pk)
@@ -767,7 +767,7 @@ class RequestOfferAdapterTests(TestCase):
         item = payload["data"]["request"]
         self.assertEqual(set(item), {
             "id", "title", "food_item", "quantity", "unit", "description",
-            "location", "owner", "status", "created_at", "updated_at", "offer_count",
+            "location", "owner", "status", "expires_at", "created_at", "updated_at", "offer_count",
         })
         self.food_request.refresh_from_db()
         for field in ("id", "title", "food_item", "unit", "description", "location", "status"):
@@ -1079,6 +1079,8 @@ class RequestOwnerActionAdapterTests(TestCase):
         if status != "pending":
             for donor in (self.donor, self.second_donor):
                 RequestOffer.objects.create(request=food_request, offered_by=donor)
+        if status == "offered":
+            Request.objects.filter(pk=food_request.pk).update(selected_offer=food_request.offers.get(offered_by=self.donor))
         Request.objects.filter(pk=food_request.pk).update(
             created_at=self.fixed_time, updated_at=self.fixed_time,
         )
@@ -1179,7 +1181,7 @@ class RequestOwnerActionAdapterTests(TestCase):
         item = payload["data"]
         self.assertEqual(set(item), {
             "id", "title", "food_item", "quantity", "unit", "description",
-            "location", "owner", "status", "created_at", "updated_at", "offer_count",
+            "location", "owner", "status", "expires_at", "created_at", "updated_at", "offer_count",
         })
         food_request.refresh_from_db()
         self.assertEqual(food_request.status, "fulfilled")
@@ -1232,7 +1234,7 @@ class RequestOwnerActionAdapterTests(TestCase):
         client = self.csrf_client(self.owner)
         pending = self.make_target(status="pending")
         self.assert_rejected_action(
-            client, "fulfill", pending.pk, status=409, code="request_not_offered",
+            client, "fulfill", pending.pk, status=409, code="offer_selection_required",
         )
         offered = self.make_target()
         before = self.database_snapshot()
@@ -1487,6 +1489,8 @@ class HtmlAdapterFixtures:
         cls.fixed_time = datetime(2020, 1, 2, 12, tzinfo=timezone.utc)
 
     def html_url(self, name, request_id=None):
+        if name == "login":
+            return reverse("login")
         kwargs = {} if request_id is None else {"request_id": request_id}
         try:
             return reverse("request_board:" + name, kwargs=kwargs)
@@ -1709,6 +1713,8 @@ class RequestHtmlAdapterTests(HtmlAdapterFixtures, TestCase):
             ("delete", self.owner, owner_client, False),
         ):
             with self.subTest(action=action, repeated=repeated):
+                if action == "fulfill" and not repeated:
+                    services.select_request_offer(actor=self.owner, request_id=target.pk, offer_id=target.offers.get(offered_by=self.donor).pk)
                 url = self.html_url("request_" + action, target.pk)
                 self.assertEqual(url, f"/board/{target.pk}/{action}/")
                 self.assertEqual(resolve(url).func.__name__, "request_action")
@@ -1927,7 +1933,8 @@ class RequestHtmlAdapterTests(HtmlAdapterFixtures, TestCase):
         """H07: action Location ignores referrer, query, payload next/redirect."""
         pending = self.make_request()
         offered = self.make_request(status="offered")
-        RequestOffer.objects.create(request=offered, offered_by=self.donor)
+        offer = RequestOffer.objects.create(request=offered, offered_by=self.donor)
+        Request.objects.filter(pk=offered.pk).update(selected_offer=offer)
         self.html_url("request_board")
         for action, actor, target in (("offer", self.donor, pending), ("fulfill", self.owner, offered),
                                       ("delete", self.owner, offered)):
@@ -1943,18 +1950,17 @@ class RequestHtmlAdapterTests(HtmlAdapterFixtures, TestCase):
     def test_login_rejects_external_next(self):
         """H08/F04 config; password/CSRF integration runs in the separate class."""
         from django.conf import settings
-        from django.contrib.auth.views import LoginView
+        from main.views import login_page
 
         url = self.html_url("login")
-        self.assertEqual(url, "/board/login/")
+        self.assertEqual(url, "/login/")
         callback = resolve(url).func
-        self.assertIs(callback.view_class, LoginView)
-        login_view = callback.view_class(**callback.view_initkwargs)
-        self.assertEqual(str(login_view.next_page), self.html_url("request_board"))
-        self.assertEqual(login_view.template_name, "request_board/login.html")
-        self.assertEqual(login_view.success_url_allowed_hosts, set())
-        self.assertEqual(settings.LOGIN_URL, "/accounts/login/")
-        self.assertEqual(settings.LOGIN_REDIRECT_URL, "/accounts/profile/")
+        self.assertIs(callback, login_page)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.template_name, "login.html")
+        self.assertEqual(reverse(settings.LOGIN_URL), url)
+        self.assertEqual(reverse(settings.LOGIN_REDIRECT_URL), reverse("landing_page"))
 
 
 class RequestLoginIntegrationTests(HtmlAdapterFixtures, TestCase):
@@ -1974,7 +1980,7 @@ class RequestLoginIntegrationTests(HtmlAdapterFixtures, TestCase):
             "BACKEND": "django.template.backends.django.DjangoTemplates",
             "APP_DIRS": False,
             "OPTIONS": {"loaders": [("django.template.loaders.locmem.Loader", {
-                "request_board/login.html": "<form method='post'>{% csrf_token %}{{ form.as_p }}</form>",
+                "login.html": "<form method='post'>{% csrf_token %}{{ form.as_p }}</form>",
             })]},
         }])
         loader.enable()
@@ -1992,18 +1998,18 @@ class RequestLoginIntegrationTests(HtmlAdapterFixtures, TestCase):
         return client
 
     def test_password_login_accepts_local_next_and_rejects_external_next(self):
-        """H08/F04: safe POST and query next, default board and session identity."""
+        """H08/F04: safe POST and query next, default landing and session identity."""
         from django.contrib.auth import SESSION_KEY
 
         url = self.html_url("login")
-        board = self.html_url("request_board")
+        landing = reverse("landing_page")
         local_next = self.html_url("request_create") + "?page=2"
-        cases = [("absent", None, board), ("local", local_next, local_next),
+        cases = [("absent", None, landing), ("local", local_next, local_next),
                  ("same_host", "http://testserver/board/", "http://testserver/board/"),
-                 ("external", "https://evil.invalid/", board),
-                 ("protocol_relative", "//evil.invalid/", board),
-                 ("backslash", "https://testserver\\@evil.invalid/", board),
-                 ("javascript", "javascript:alert(1)", board)]
+                 ("external", "https://evil.invalid/", landing),
+                 ("protocol_relative", "//evil.invalid/", landing),
+                 ("backslash", "https://testserver\\@evil.invalid/", landing),
+                 ("javascript", "javascript:alert(1)", landing)]
         from urllib.parse import urlencode
         for transport in ("post", "query"):
             for label, next_value, expected in cases:

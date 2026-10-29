@@ -2,10 +2,12 @@
 {% load static %}
 
 {% block html_lang %}id{% endblock %}
+{% block body_class %}request-board-page{% endblock %}
 
 {% block title %}Food Rescue Request Board — SaveBite{% endblock %}
 
 {% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/request-board-tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'css/button.css' %}">
   <link rel="stylesheet" href="{% static 'css/navbar.css' %}">
   <link rel="stylesheet" href="{% static 'css/footer.css' %}">
@@ -13,66 +15,34 @@
 {% endblock %}
 
 {% block content %}
-<div class="request-board" lang="id">
+<div class="request-board tw:mx-auto tw:w-full tw:max-w-[1440px] tw:px-5 tw:pt-7 tw:pb-10 tw:min-[769px]:px-10 tw:min-[769px]:pt-[52px] tw:min-[769px]:pb-20 tw:min-[1251px]:px-20" lang="id">
   {% include 'request_board/_messages.html' %}
-  <header class="request-board__header">
-    <div class="request-board__header-info">
+  <header class="request-board__header tw:mb-6 tw:flex tw:flex-col tw:items-stretch tw:gap-5 tw:min-[769px]:mb-11 tw:min-[769px]:flex-row tw:min-[769px]:flex-wrap tw:min-[769px]:items-center tw:min-[769px]:justify-between tw:min-[769px]:gap-8 tw:min-[1251px]:flex-nowrap">
+    <div class="request-board__header-info tw:min-w-0 tw:flex-1 tw:min-[769px]:basis-full tw:min-[1251px]:basis-auto">
       <h1 class="request-board__title">Food Rescue Request Board</h1>
-      <p class="request-board__subtitle">Papan permintaan bantuan makanan untuk menghubungkan pihak yang membutuhkan dengan donatur bahan makanan berlebih.</p>
+      <p class="request-board__subtitle">Hubungkan kebutuhan bahan makanan dengan donatur yang memiliki bahan berlebih.</p>
     </div>
-    <div class="request-board__header-action">
+    <div class="request-board__header-action tw:shrink-0">
       {% if user.is_authenticated %}
         <a href="{% url 'request_board:request_create' %}" class="btn btn--primary">
+          {% include 'request_board/_create_icon.html' %}
           Buat Permintaan
         </a>
       {% else %}
-        <a href="{% url 'request_board:login' %}?next={% url 'request_board:request_create' %}" class="btn btn--primary">
+        <a href="{% url 'login' %}?next={% url 'request_board:request_create' %}" class="btn btn--primary">
+          {% include 'request_board/_create_icon.html' %}
           Masuk untuk Buat Permintaan
         </a>
       {% endif %}
     </div>
   </header>
 
-  {% if page_obj.object_list %}
-    <div class="request-board__cards">
-      {% for item in page_obj %}
-        {% include 'request_board/_request_card.html' with item=item %}
-      {% endfor %}
-    </div>
-
-    {% if page_obj.has_other_pages %}
-      <nav class="request-board__pagination" aria-label="Navigasi halaman">
-        {% if page_obj.has_previous %}
-          <a href="{% url 'request_board:request_board' %}?page={{ page_obj.previous_page_number }}" class="btn btn--secondary btn--dark-green request-board__pagination-link">
-            Sebelumnya
-          </a>
-        {% endif %}
-        <span class="request-board__pagination-info">
-          Halaman <span class="request-board__pagination-current" aria-current="page">{{ page_obj.number }}</span> dari {{ page_obj.paginator.num_pages }}
-        </span>
-        {% if page_obj.has_next %}
-          <a href="{% url 'request_board:request_board' %}?page={{ page_obj.next_page_number }}" class="btn btn--secondary btn--dark-green request-board__pagination-link">
-            Berikutnya
-          </a>
-        {% endif %}
-      </nav>
-    {% endif %}
-  {% else %}
-    <div class="request-board__empty-state">
-      <h2 class="request-board__empty-title">Belum Ada Permintaan</h2>
-      <p class="request-board__empty-text">Belum ada permintaan bantuan makanan saat ini. Anda dapat membuat permintaan baru untuk kebutuhan bahan makanan.</p>
-      <div class="request-board__empty-action">
-        {% if user.is_authenticated %}
-          <a href="{% url 'request_board:request_create' %}" class="btn btn--primary">
-            Buat Permintaan
-          </a>
-        {% else %}
-          <a href="{% url 'request_board:login' %}?next={% url 'request_board:request_create' %}" class="btn btn--primary">
-            Masuk untuk Buat Permintaan
-          </a>
-        {% endif %}
-      </div>
-    </div>
-  {% endif %}
+  {% if show_filters %}{% include 'request_board/_filters.html' %}{% endif %}
+  <div class="request-board__sr-only" data-board-status role="status" aria-live="polite" aria-atomic="true"></div>
+  <div data-board-results aria-busy="false">{% if page_obj is not None %}{% include 'request_board/_board_results.html' %}{% endif %}</div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/request-board.js' %}" defer></script>
 {% endblock %}

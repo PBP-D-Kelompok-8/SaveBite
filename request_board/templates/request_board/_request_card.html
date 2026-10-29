@@ -1,36 +1,38 @@
 {% load request_board_extras %}
-<article class="request-board__card request-board__card--{{ item.status }}">
+{% load static %}
+<article class="request-board__card request-board__card--{{ item.effective_status }} tw:flex tw:min-w-0 tw:flex-col tw:gap-4">
   <div class="request-board__card-header">
-    <span class="request-board__badge request-board__badge--{{ item.status }}">
-      {{ item.get_status_display }}
+    <span class="request-board__badge request-board__badge--{{ item.effective_status }}">
+      <picture class="request-board__status-icon">
+        {% if item.effective_status != 'fulfilled' and item.effective_status != 'expired' %}<source media="(max-width: 768px)" srcset="{% static 'request-board/' %}{{ item.effective_status }}-mobile.svg">{% endif %}
+        <img src="{% static 'request-board/' %}{% if item.effective_status == 'expired' %}pending{% else %}{{ item.effective_status }}{% endif %}.svg" alt="">
+      </picture>
+      {{ item.effective_status_display }}
     </span>
-    <time class="request-board__card-time" datetime="{{ item.created_at|date:'c' }}">
-      {{ item.created_at|date:"d M Y, H:i" }}
-    </time>
   </div>
 
   <h2 id="request-title-{{ item.pk }}" class="request-board__card-title">{{ item.title }}</h2>
 
   <div class="request-board__card-meta">
     <div class="request-board__meta-item">
-      <span class="request-board__meta-label">Bahan:</span>
+      <span class="request-board__meta-label">Bahan</span>
       <span class="request-board__meta-value">{{ item.food_item }}</span>
     </div>
     <div class="request-board__meta-item">
-      <span class="request-board__meta-label">Jumlah:</span>
+      <span class="request-board__meta-label">Jumlah</span>
       <span class="request-board__meta-value">{{ item.quantity }} {{ item.get_unit_display }}</span>
     </div>
     <div class="request-board__meta-item">
-      <span class="request-board__meta-label">Pemohon:</span>
+      <span class="request-board__meta-label">Pemohon</span>
       <span class="request-board__meta-value">{{ item.owner.get_username }}</span>
     </div>
     <div class="request-board__meta-item">
-      <span class="request-board__meta-label">Penawaran:</span>
+      <span class="request-board__meta-label">Penawaran</span>
       <span class="request-board__meta-value">{{ item.offer_count }} penawaran</span>
     </div>
     {% if item.location %}
       <div class="request-board__meta-item">
-        <span class="request-board__meta-label">Lokasi:</span>
+        <span class="request-board__meta-label">Lokasi</span>
         <span class="request-board__meta-value">{{ item.location }}</span>
       </div>
     {% endif %}
@@ -43,13 +45,14 @@
   {% endif %}
 
   {% if user.is_authenticated and user.id == item.owner_id %}
+    {% if item.selected_offer %}<p class="request-board__card-note">Penawar terpilih: {{ item.selected_offer.offered_by.get_username }}</p>{% endif %}
     {% with preview=owner_offer_previews|owner_preview:item.pk %}
       {% if preview.items %}
         <div class="request-board__donors">
           <h3 class="request-board__donors-title">Penawaran terbaru</h3>
-          <ul class="request-board__donors-list">
+          <ul class="request-board__donors-list tw:flex tw:flex-col tw:gap-2">
             {% for offer in preview.items %}
-              <li class="request-board__donor">
+              <li class="request-board__donor tw:flex tw:flex-wrap tw:items-baseline tw:gap-1">
                 <span class="request-board__donor-name">{{ offer.display_name }}</span>
                 <time class="request-board__donor-time" datetime="{{ offer.created_at|date:'c' }}">{{ offer.created_at|date:"d M Y, H:i" }}</time>
               </li>
@@ -61,43 +64,61 @@
         </div>
       {% endif %}
     {% endwith %}
+    {% if item.offer_count %}
+      {% url 'request_board:request_offers' item.pk as offers_url %}
+      <div class="request-board__offers-link-action">
+        {% include 'components/button.html' with label="Lihat semua penawaran" type="tertiary" color="bright" href=offers_url extra_class="request-board__offers-link" only %}
+      </div>
+    {% endif %}
   {% endif %}
 
-  {% if user.is_authenticated and user.id != item.owner_id and item.status != "fulfilled" %}
+  {% if item.selected_offer_id %}<p class="request-board__card-note">Penawaran sudah ditutup.</p>{% endif %}
+
+  {% if item.expires_at %}<time class="request-board__card-time" datetime="{{ item.expires_at|date:'c' }}">Batas waktu: {{ item.expires_at|date:"d M Y, H:i" }} WIB</time>{% endif %}
+  <time class="request-board__card-time" datetime="{{ item.created_at|date:'c' }}">Dibuat · {{ item.created_at|date:"d M Y, H:i" }}</time>
+
+  {% if user.is_authenticated and user.id != item.owner_id and item.effective_status != "fulfilled" and item.effective_status != "expired" %}
     <div class="request-board__card-actions">
-      {% if item.has_offered %}
+      {% if item.selected_offer_id %}
+        <p class="request-board__card-note">Penawaran ditutup</p>
+      {% elif item.has_offered %}
         <p class="request-board__card-note">Sudah menawarkan</p>
       {% else %}
         <form method="post" action="{% url 'request_board:request_offer' item.pk %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn--primary request-board__action">Saya Punya!</button>
+          <button type="submit" class="btn btn--secondary btn--bright request-board__action">Saya Punya!</button>
         </form>
       {% endif %}
     </div>
   {% endif %}
 
-  {% if user.is_authenticated and user.id == item.owner_id and item.status == "offered" %}
+  {% if user.is_authenticated and user.id == item.owner_id %}
+  <div class="request-board__owner-actions">
+  {% if item.effective_status == "offered" and item.selected_offer_id %}
     <div class="request-board__card-actions">
       <form method="post" action="{% url 'request_board:request_fulfill' item.pk %}">
         {% csrf_token %}
-        <button type="submit" class="btn btn--primary request-board__action">Tandai Terpenuhi</button>
+        <button type="submit" class="btn btn--secondary btn--bright request-board__action">Tandai Terpenuhi</button>
       </form>
     </div>
   {% endif %}
 
-  {% if user.is_authenticated and user.id == item.owner_id %}
     <details class="request-board__delete">
-      <summary class="request-board__delete-summary" id="delete-summary-{{ item.pk }}" aria-describedby="delete-warning-{{ item.pk }}">Hapus</summary>
+      <summary class="request-board__delete-summary" id="delete-summary-{{ item.pk }}" aria-describedby="delete-warning-{{ item.pk }}"><img src="{% static 'request-board/trash.svg' %}" alt="" width="24" height="24">Hapus</summary>
       <div class="request-board__delete-panel">
+        <span class="request-board__delete-icon" aria-hidden="true"><img src="{% static 'request-board/trash-large.svg' %}" alt="" width="24" height="24"></span>
         <p id="delete-warning-{{ item.pk }}" class="request-board__delete-warning">
-          Hapus <strong id="delete-target-{{ item.pk }}">{{ item.title }}</strong>? Tindakan ini tidak dapat dibatalkan.
+          <span id="delete-label-{{ item.pk }}">Hapus <strong id="delete-target-{{ item.pk }}">{{ item.title }}</strong>?</span> <span id="delete-description-{{ item.pk }}">Tindakan ini tidak dapat dibatalkan.</span>
         </p>
+        <div class="request-board__delete-actions">
+        <a href="{% url 'request_board:request_board' %}" class="request-board__delete-cancel">Batal</a>
         <form method="post" action="{% url 'request_board:request_delete' item.pk %}">
           {% csrf_token %}
-          <button type="submit" id="delete-confirm-{{ item.pk }}" class="btn btn--secondary request-board__action request-board__delete-confirm" aria-describedby="delete-warning-{{ item.pk }}">Ya, hapus</button>
+          <button type="submit" id="delete-confirm-{{ item.pk }}" class="btn btn--danger request-board__action request-board__delete-confirm" aria-describedby="delete-warning-{{ item.pk }}"><img src="{% static 'request-board/trash.svg' %}" alt="" width="24" height="24">Ya, hapus</button>
         </form>
-        <a href="{% url 'request_board:request_board' %}" class="request-board__delete-cancel">Batal</a>
+        </div>
       </div>
     </details>
+  </div>
   {% endif %}
 </article>

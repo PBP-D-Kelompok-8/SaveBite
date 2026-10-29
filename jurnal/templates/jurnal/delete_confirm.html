@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Hapus Catatan | Jurnal SaveBite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'jurnal/css/foodlog.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="food-journal food-journal--delete">
+  <header class="food-journal__header">
+    <div>
+      <p class="food-journal__eyebrow">Jurnal Jejak Makanan</p>
+      <h1 class="food-journal__title">Hapus Catatan?</h1>
+      <p class="food-journal__intro">Tindakan ini tidak bisa dibatalkan.</p>
+    </div>
+  </header>
+
+  <section class="food-journal__form-panel" aria-labelledby="food-log-delete-title">
+    <h2 id="food-log-delete-title" class="food-journal__section-title">{{ food_log.food_name }}</h2>
+    <p class="food-journal__hint">{{ food_log.quantity }} {{ food_log.get_unit_display }} · {{ food_log.get_status_display }}</p>
+    <form method="post" class="food-log-form">
+      {% csrf_token %}
+      <div class="food-log-form__actions">
+        <a class="btn btn--tertiary btn--dark-green" href="{% url 'jurnal:index' %}">Batal</a>
+        {% include "components/button.html" with label="Ya, hapus catatan" type="danger" submit=True %}
+      </div>
+    </form>
+  </section>
+</section>
+{% endblock %}

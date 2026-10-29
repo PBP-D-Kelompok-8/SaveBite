@@ -1,0 +1,13 @@
+<div class="food-journal__card-item" data-log-id="{{ log.pk }}">
+  <button type="button" hidden data-foodlog-edit-trigger data-modal-open="#create-log-modal"
+          data-log-id="{{ log.pk }}" data-title="Edit Catatan Makanan"
+          data-action="{% url 'jurnal:update' log.pk %}"
+          data-values="{{ log.edit_values_json }}"></button>
+  <button type="button" hidden data-foodlog-delete-trigger
+          data-confirm-open="#food-log-delete-confirm"
+          data-name="{{ log.food_name }}"
+          data-action="{% url 'jurnal:delete' log.pk %}"></button>
+  {% url 'jurnal:update' log.pk as edit_url %}
+  {% url 'jurnal:delete' log.pk as delete_url %}
+  {% include 'components/card.html' with title=log.food_name text=log.card_text variant='dark' badge_status=log.card_badge_status badge_label=log.get_status_display action_label='Edit' action_href=edit_url second_action_label='Hapus' second_action_href=delete_url %}
+</div>
