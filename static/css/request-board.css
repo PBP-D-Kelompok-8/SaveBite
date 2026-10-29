@@ -69,7 +69,13 @@
 .request-board__form-card { padding: 32px; background: var(--ink-light); border: 2px solid var(--line); border-radius: 32px; }
 .request-board__create-dialog { box-sizing: border-box; width: min(960px, calc(100% - 40px)); max-width: none; max-height: calc(100dvh - 40px); margin: auto; padding: 0; border: 0; border-radius: 32px; color: var(--ink-dark); background: var(--ink-light); font-family: var(--font-family-main); overflow-y: auto; }
 .request-board__create-dialog::backdrop { background: rgba(35, 54, 26, .55); }
-[data-create-pending]:not([hidden]), [data-create-recovery]:not([hidden]) { margin: 16px 0; padding: 12px 16px; border-radius: 12px; background: #f3e3b6; overflow-wrap: anywhere; }
+[data-create-pending]:not([data-create-card-active]):not([hidden]), [data-create-recovery]:not([hidden]) { margin: 16px 0; padding: 12px 16px; border-radius: 12px; background: #f3e3b6; overflow-wrap: anywhere; }
+[data-create-card-slot][data-create-card-active]:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 24px; margin-bottom: 24px; }
+[data-create-card] [hidden] { display: none; }
+[data-create-card][data-state="saved"] [data-create-card-badge], [data-create-card][data-state="refreshing"] [data-create-card-badge] { background: var(--board-success); }
+@media (min-width: 769px) {
+  [data-create-card-slot][data-create-card-active]:not([hidden]) { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; row-gap: 44px; margin-bottom: 44px; }
+}
 .request-board__form-header { margin-bottom: 24px; }
 .request-board__form-header .request-board__title { font-size: 32px; color: var(--accent-dark-green); margin-bottom: 24px; }
 .request-board__form-header .request-board__subtitle { font-weight: 600; }

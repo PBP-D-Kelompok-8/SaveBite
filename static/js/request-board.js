@@ -100,9 +100,13 @@ document.addEventListener('click', event => {
   let controller = null;
   let sequence = 0;
   let currentUrl = new URL(window.location.href);
-  let pendingMutation = false;
+  let pendingMutation = null;
   let pendingSelection = false;
   const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+
+  function releaseMutation(owner) {
+    if (owner && pendingMutation === owner) pendingMutation = null;
+  }
 
   async function timedFetch(url, options = {}) {
     const abort = new AbortController();
@@ -171,6 +175,10 @@ document.addEventListener('click', event => {
       announce('Tunggu perubahan selesai disimpan sebelum mengubah tampilan papan.');
       return false;
     }
+    // Only reconcile cards already confirmed when this GET started.
+    const confirmedCards = [...document.querySelectorAll('[data-create-card][data-local-id]')]
+      .filter(card => card.dataset.state === 'refreshing' || card.dataset.state === 'saved')
+      .map(card => card.dataset.localId);
     if (controller) controller.abort();
     controller = new AbortController();
     const activeController = controller;
@@ -200,6 +208,7 @@ document.addEventListener('click', event => {
       if (id !== sequence) return null;
       results.innerHTML = html;
       enhanceBoardDeleteDialogs(results);
+      results.dispatchEvent(new CustomEvent('board:results-replaced', { detail: confirmedCards }));
       const summary = results.querySelector('[data-board-result-summary]');
       if (summary) {
         const { total, page, pages } = summary.dataset;
@@ -392,12 +401,90 @@ document.addEventListener('click', event => {
     let attempt = null;
     let inFlight = false;
     let opening = false;
-    let ownsMutation = false;
-    let checkingStatus = false;
+    let activeCreateOperation = null;
+    let checkingStatus = null;
     let refreshFormToken = false;
     let recovery = null;
     let submit = null;
     let submitContents = [];
+    const cardTemplate = modal ? document.querySelector('[data-create-card-template]') : null;
+
+    function snapshotCreateDraft(form) {
+      const value = name => form.elements.namedItem(name)?.value.trim() || '';
+      const unit = form.elements.namedItem('unit');
+      return {
+        title: value('title'),
+        foodItem: value('food_item'),
+        quantity: value('quantity'),
+        unitLabel: unit?.selectedOptions[0]?.textContent.trim() || '',
+        ownerName: dialog.dataset.createOwnerName || '',
+        location: value('location'),
+        description: value('description'),
+        expiresAt: value('expires_at'),
+      };
+    }
+
+    function pendingCardFor(localId) {
+      if (typeof localId !== 'string' || !localId) return null;
+      return [...pending.querySelectorAll('[data-create-card]')]
+        .find(card => card.dataset.localId === localId) || null;
+    }
+
+    function renderPendingCard(attempt) {
+      if (!cardTemplate || !attempt?.draft || typeof attempt.localId !== 'string' || !attempt.localId) return null;
+      const existing = pendingCardFor(attempt.localId);
+      if (existing) return existing;
+      const card = cardTemplate.content.firstElementChild.cloneNode(true);
+      const draft = attempt.draft;
+      card.id = attempt.localId;
+      card.dataset.localId = attempt.localId;
+      card.querySelector('[data-create-card-title]').textContent = draft.title;
+      card.querySelector('[data-create-card-food]').textContent = draft.foodItem;
+      card.querySelector('[data-create-card-quantity]').textContent = `${Number(draft.quantity).toFixed(2)} ${draft.unitLabel}`;
+      card.querySelector('[data-create-card-owner]').textContent = draft.ownerName;
+      card.querySelector('[data-create-card-location]').textContent = draft.location;
+      card.querySelector('[data-create-card-location-row]').hidden = !draft.location;
+      card.querySelector('[data-create-card-description]').textContent = draft.description;
+      card.querySelector('[data-create-card-description-row]').hidden = !draft.description;
+      const expires = card.querySelector('[data-create-card-expires]');
+      if (draft.expiresAt) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(draft.expiresAt);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const formatted = match ? `${match[3]} ${months[Number(match[2]) - 1]} ${match[1]}, ${match[4]}:${match[5]}` : draft.expiresAt;
+        expires.dateTime = draft.expiresAt;
+        expires.textContent = `Batas waktu: ${formatted} WIB`;
+        expires.hidden = false;
+      }
+      pending.dataset.createCardActive = '';
+      pending.prepend(card);
+      pending.hidden = false;
+      setPendingCardState(attempt.localId, 'saving');
+      return card;
+    }
+
+    function setPendingCardState(localId, state) {
+      const labels = {
+        saving: 'Sedang menyimpan…',
+        uncertain: 'Belum terkonfirmasi',
+        saved: 'Tersimpan',
+        refreshing: 'Tersimpan, memperbarui daftar…',
+      };
+      if (!Object.hasOwn(labels, state)) return;
+      const card = pendingCardFor(localId);
+      if (!card) return;
+      card.dataset.state = state;
+      card.querySelector('[data-create-card-state]').textContent = labels[state];
+    }
+
+    function removePendingCard(localId) {
+      const card = pendingCardFor(localId);
+      if (!card) return;
+      card.remove();
+      if (!pending.querySelector('[data-create-card]')) {
+        pending.hidden = true;
+        delete pending.dataset.createCardActive;
+      }
+    }
 
     function newKey() {
       if (window.crypto.randomUUID) return window.crypto.randomUUID();
@@ -415,28 +502,38 @@ document.addEventListener('click', event => {
     }
 
     function pendingMessage(message) {
+      // The board slot contains cards, not the standalone form's text notice.
+      if (modal) return;
       pending.hidden = !message;
       pending.textContent = message;
       if (message && attempt) pending.dataset.localId = attempt.localId;
       else delete pending.dataset.localId;
     }
 
-    function releaseMutation() {
-      if (ownsMutation) {
-        pendingMutation = false;
-        ownsMutation = false;
+    function reopenCreateForRecovery() {
+      if (!modal || !form) return;
+      if (!dialog.open) {
+        if (document.querySelector('dialog[open]:not([data-create-dialog])')) {
+          notice('Pemulihan permintaan tersedia melalui Buat Permintaan setelah dialog ini ditutup.', true);
+          return;
+        }
+        dialog.showModal();
       }
+      const invalid = form.querySelector('[aria-invalid="true"]:not(:disabled)');
+      (invalid || recovery).focus();
     }
 
-    function showRecovery(message, loginUrl = null) {
+    function showRecovery(message, loginUrl = null, check = true) {
       recovery.hidden = false;
       recovery.textContent = message + ' ';
-      const check = document.createElement('button');
-      check.type = 'button';
-      check.className = 'btn btn--tertiary btn--dark-green';
-      check.textContent = 'Periksa status';
-      check.addEventListener('click', checkStatus);
-      recovery.appendChild(check);
+      if (check) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn--tertiary btn--dark-green';
+        button.textContent = 'Periksa status';
+        button.addEventListener('click', checkStatus);
+        recovery.appendChild(button);
+      }
       if (loginUrl) {
         try {
           const url = new URL(loginUrl, window.location.href);
@@ -450,12 +547,16 @@ document.addEventListener('click', event => {
           }
         } catch (error) { /* Ignore an invalid recovery link. */ }
       }
+      reopenCreateForRecovery();
     }
 
-    async function completeCreate() {
+    async function completeCreate(requestId, completedAttempt) {
+      if (attempt !== completedAttempt) return;
+      const localId = completedAttempt.localId;
+      if (modal) setPendingCardState(localId, 'refreshing');
       attempt = null;
       inFlight = false;
-      releaseMutation();
+      if (activeCreateOperation?.attempt === completedAttempt) releaseMutation(activeCreateOperation);
       pendingMessage('');
       recovery.hidden = true;
       recovery.textContent = '';
@@ -469,26 +570,40 @@ document.addEventListener('click', event => {
         return;
       }
       const refreshed = await boardGet(new URL(currentUrl), true, false);
-      if (refreshed === false) notice('Permintaan berhasil dibuat, tetapi papan gagal diperbarui. Muat ulang halaman.', true);
-      else notice('Permintaan bantuan makanan berhasil dibuat.');
+      if (refreshed !== true) {
+        setPendingCardState(localId, 'saved');
+        if (refreshed === false) notice('Permintaan berhasil dibuat, tetapi papan gagal diperbarui. Muat ulang halaman.', true);
+        return;
+      }
+      removePendingCard(localId);
+      const serverTitle = document.getElementById(`request-title-${requestId}`);
+      if (!serverTitle || !results.contains(serverTitle)) {
+        notice('Permintaan berhasil dibuat. Daftar mengikuti filter dan halaman aktif.');
+      } else {
+        notice('Permintaan bantuan makanan berhasil dibuat.');
+      }
     }
 
     async function checkStatus() {
       if (!attempt || inFlight || checkingStatus) return;
-      const key = attempt.key;
-      checkingStatus = true;
+      const checkedAttempt = attempt;
+      const key = checkedAttempt.key;
+      const statusOperation = { attempt: checkedAttempt };
+      checkingStatus = statusOperation;
       try {
         const url = new URL(`status/${key}/`, form.action);
         const response = await timedFetch(url, { headers: { ...headers, 'X-Create-Owner': dialog.dataset.createOwner }, credentials: 'same-origin', cache: 'no-store' });
         if (response.status === 401) {
           const auth = await response.json();
-          attempt.refreshCsrf = true;
-          if (attempt?.key === key) showRecovery('Hasil penyimpanan belum dapat dipastikan. Masuk kembali di tab lain, lalu periksa status.', auth.login_url);
+          if (attempt === checkedAttempt && attempt.key === key) {
+            attempt.refreshCsrf = true;
+            showRecovery('Hasil penyimpanan belum dapat dipastikan. Masuk kembali di tab lain, lalu periksa status.', auth.login_url);
+          }
           return;
         }
         if (response.status === 403) {
           const auth = await response.json();
-          if (auth.code === 'owner_mismatch' && attempt?.key === key) {
+          if (auth.code === 'owner_mismatch' && attempt === checkedAttempt && attempt.key === key) {
             attempt.wrongOwner = true;
             attempt.refreshCsrf = true;
             submit.disabled = true;
@@ -498,22 +613,26 @@ document.addEventListener('click', event => {
         }
         if (!response.ok || response.redirected) throw new Error('status unavailable');
         const data = await response.json();
-        if (!attempt || attempt.key !== key) return;
+        if (attempt !== checkedAttempt || attempt.key !== key) return;
         attempt.wrongOwner = false;
         submit.disabled = false;
         if (data.ok && data.found && data.request_id) {
-          await completeCreate();
+          if (checkingStatus === statusOperation) checkingStatus = null;
+          await completeCreate(data.request_id, checkedAttempt);
           return;
         }
         if (data.ok && data.deleted) {
           attempt.deleted = true;
+          attempt.uncertain = false;
+          if (modal) removePendingCard(attempt.localId);
           pendingMessage('Permintaan telah dibuat, tetapi kemudian dihapus.');
           showRecovery('Permintaan telah dibuat tetapi kemudian dihapus. Jangan kirim ulang draft ini.');
           submit.disabled = true;
           return;
         }
       } catch (error) { /* A failed lookup cannot establish whether the POST committed. */ }
-      finally { checkingStatus = false; }
+      finally { if (checkingStatus === statusOperation) checkingStatus = null; }
+      if (attempt !== checkedAttempt || attempt.key !== key) return;
       showRecovery('Hasil penyimpanan belum dapat dipastikan. Jangan tutup atau muat ulang halaman; periksa status atau coba simpan lagi dengan kunci yang sama.');
     }
 
@@ -521,7 +640,7 @@ document.addEventListener('click', event => {
       event.preventDefault();
       if (inFlight || checkingStatus || attempt?.deleted || attempt?.wrongOwner) return;
       if (pendingMutation) {
-        showRecovery('Tunggu perubahan lain selesai disimpan.');
+        showRecovery('Tunggu perubahan lain selesai disimpan.', null, !!attempt?.uncertain);
         return;
       }
       if (!attempt) {
@@ -533,16 +652,24 @@ document.addEventListener('click', event => {
         fieldErrors(form, errors);
         if (Object.keys(errors).length) return;
         attempt = { key: newKey(), localId: `temp-${newKey()}`, body: new FormData(form), title: form.elements.title.value, uncertain: false };
+        if (modal) attempt.draft = snapshotCreateDraft(form);
       }
       const currentAttempt = attempt;
+      const operation = { attempt: currentAttempt };
       const wasUncertain = attempt.uncertain;
       inFlight = true;
-      pendingMutation = true;
-      ownsMutation = true;
+      pendingMutation = operation;
+      activeCreateOperation = operation;
       if (controller) controller.abort();
       ++sequence;
       results?.setAttribute('aria-busy', 'false');
-      pendingMessage(`Sedang menyimpan: ${attempt.title}`);
+      if (modal) {
+        renderPendingCard(currentAttempt);
+        setPendingCardState(currentAttempt.localId, 'saving');
+        if (dialog.open) dialog.close();
+      } else {
+        pendingMessage(`Sedang menyimpan: ${attempt.title}`);
+      }
       recovery.hidden = false;
       recovery.textContent = 'Sedang menyimpan permintaan.';
       setLocked(true);
@@ -569,29 +696,39 @@ document.addEventListener('click', event => {
             if (response.status === 403) attempt.refreshCsrf = true;
             throw new Error('original outcome unknown');
           }
+          if (![400, 401, 403].includes(response.status)) throw new Error('outcome unknown');
           if (response.status === 401 || response.status === 403) refreshFormToken = true;
           attempt = null;
+          if (modal) removePendingCard(currentAttempt.localId);
           pendingMessage('');
-          recovery.hidden = true;
           setLocked(false);
+          submit.disabled = false;
+          const message = json?.message || 'Permintaan ditolak. Periksa sesi dan token CSRF.';
+          if (modal) showRecovery(message, json?.login_url, false);
+          else {
+            recovery.hidden = true;
+            if (!json?.fields || !Object.keys(json.fields).length) notice(message, true, json?.login_url);
+          }
           if (json?.fields && Object.keys(json.fields).length) fieldErrors(form, json.fields);
-          else notice(json?.message || 'Permintaan ditolak. Periksa sesi dan token CSRF.', true, json?.login_url);
           return;
         }
         if (!json?.ok || !json.request_id) throw new Error('outcome unknown');
-        await completeCreate();
+        await completeCreate(json.request_id, currentAttempt);
       } catch (error) {
         if (attempt !== currentAttempt) return;
         attempt.uncertain = true;
+        if (modal) setPendingCardState(currentAttempt.localId, 'uncertain');
         pendingMessage(`Hasil belum pasti: ${attempt.title}`);
         submit.textContent = 'Coba simpan lagi';
         inFlight = false;
-        releaseMutation();
+        releaseMutation(operation);
+        showRecovery('Hasil penyimpanan belum dapat dipastikan. Sedang memeriksa status; jangan tutup atau muat ulang halaman.');
         await checkStatus();
       } finally {
-        if (!attempt || attempt === currentAttempt) {
+        if (activeCreateOperation === operation) {
+          activeCreateOperation = null;
           inFlight = false;
-          releaseMutation();
+          releaseMutation(operation);
           submit.disabled = !!(attempt?.deleted || attempt?.wrongOwner);
         }
       }
@@ -621,6 +758,7 @@ document.addEventListener('click', event => {
       recovery = document.createElement('div');
       recovery.dataset.createRecovery = '';
       recovery.setAttribute('role', 'status');
+      recovery.setAttribute('tabindex', '-1');
       recovery.hidden = true;
       form.prepend(recovery);
       form.addEventListener('submit', submitCreate);
@@ -641,8 +779,16 @@ document.addEventListener('click', event => {
       return;
     }
 
+    results.addEventListener('board:results-replaced', event => {
+      event.detail.forEach(removePendingCard);
+    });
+
     async function openCreate(link) {
       if (opening || dialog.open) return;
+      if (document.querySelector('dialog[open]:not([data-create-dialog])')) {
+        notice('Tutup dialog yang terbuka sebelum membuka Buat Permintaan.', true);
+        return;
+      }
       opening = true;
       trigger = link;
       if (!form) {
@@ -661,9 +807,14 @@ document.addEventListener('click', event => {
           return;
         }
       }
-      dialog.showModal();
+      if (!recovery.hidden) reopenCreateForRecovery();
+      else if (document.querySelector('dialog[open]:not([data-create-dialog])')) {
+        notice('Tutup dialog yang terbuka sebelum membuka Buat Permintaan.', true);
+      } else {
+        dialog.showModal();
+        (attempt ? submit : form.elements.title).focus();
+      }
       opening = false;
-      (attempt ? submit : form.elements.title).focus();
     }
 
     document.addEventListener('click', event => {
@@ -713,9 +864,10 @@ document.addEventListener('click', event => {
     buttons.forEach(button => { button.disabled = true; });
     let optimistic = null;
     let keepDisabled = false;
+    const mutationOwner = {};
     if (optimisticMutation) {
       if (isSelection) pendingSelection = true;
-      else pendingMutation = true;
+      else pendingMutation = mutationOwner;
       if (controller) controller.abort();
       ++sequence;
       results?.setAttribute('aria-busy', 'false');
@@ -734,13 +886,15 @@ document.addEventListener('click', event => {
       }
       if (results) {
         optimistic?.confirmed();
-        pendingMutation = false;
+        releaseMutation(mutationOwner);
         if (controller) controller.abort();
         ++sequence;
         const refreshed = await boardGet(new URL(currentUrl), isDelete, false);
+        // A superseding create can cancel this GET without replacing the old
+        // controls. Keep confirmed actions locked until authoritative markup arrives.
+        keepDisabled = optimisticMutation && refreshed !== true;
         if (refreshed !== false) notice(data.message);
         else if (refreshed === false) {
-          keepDisabled = optimisticMutation;
           notice('Aksi berhasil, tetapi papan gagal diperbarui. Muat ulang halaman.', true);
         }
       } else {
@@ -756,7 +910,7 @@ document.addEventListener('click', event => {
     } catch (error) {
       if (optimisticMutation) {
         optimistic?.uncertain();
-        pendingMutation = false;
+        releaseMutation(mutationOwner);
         const refreshed = isSelection ? await refreshOffers() : await boardGet(new URL(currentUrl), true, false);
         keepDisabled = refreshed !== true;
         notice(refreshed === true
@@ -766,7 +920,7 @@ document.addEventListener('click', event => {
         notice('Gagal menghubungi server atau memperbarui tampilan. Periksa jaringan dan muat ulang sebelum mencoba lagi.', true);
       }
     } finally {
-      if (optimisticMutation) pendingMutation = false;
+      if (optimisticMutation) releaseMutation(mutationOwner);
       if (isSelection) pendingSelection = false;
       delete form.dataset.pending;
       if (!keepDisabled) buttons.forEach(button => { button.disabled = false; });
