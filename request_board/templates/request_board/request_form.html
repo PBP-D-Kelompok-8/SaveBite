@@ -59,7 +59,7 @@
           Judul Permintaan <span class="request-board__required">*</span>
         </label>
         {{ form.title }}
-        <p class="request-board__field-hint">Maksimal 120 karakter.</p>
+        <p id="id_title_hint" class="request-board__field-hint">Maksimal 120 karakter.</p>
         {% if form.title.errors %}
           <div class="request-board__field-errors">
             {{ form.title.errors }}
@@ -72,7 +72,7 @@
           Bahan Makanan <span class="request-board__required">*</span>
         </label>
         {{ form.food_item }}
-        <p class="request-board__field-hint">Maksimal 120 karakter.</p>
+        <p id="id_food_item_hint" class="request-board__field-hint">Maksimal 120 karakter.</p>
         {% if form.food_item.errors %}
           <div class="request-board__field-errors">
             {{ form.food_item.errors }}
@@ -86,7 +86,7 @@
             Jumlah <span class="request-board__required">*</span>
           </label>
           {{ form.quantity }}
-          <p class="request-board__field-hint">Minimal 0,01; maksimal 2 angka desimal.</p>
+          <p id="id_quantity_hint" class="request-board__field-hint">Minimal 0,01; maksimal 2 angka desimal.</p>
           {% if form.quantity.errors %}
             <div class="request-board__field-errors">
               {{ form.quantity.errors }}
@@ -108,11 +108,18 @@
       </div>
 
       <div class="request-board__form-group">
+        <label for="{{ form.expires_at.id_for_label }}" class="request-board__label">Batas waktu permintaan <span class="request-board__required">*</span></label>
+        {{ form.expires_at }}
+        <p id="id_expires_at_hint" class="request-board__field-hint">Waktu Indonesia Barat (WIB). Setelah batas waktu, permintaan ditutup.</p>
+        {% if form.expires_at.errors %}<div class="request-board__field-errors">{{ form.expires_at.errors }}</div>{% endif %}
+      </div>
+
+      <div class="request-board__form-group">
         <label for="{{ form.description.id_for_label }}" class="request-board__label">
           Deskripsi <span class="request-board__optional">(opsional)</span>
         </label>
-        <textarea name="description" id="{{ form.description.id_for_label }}" maxlength="1000"{% if form.description.errors %} aria-invalid="true" aria-describedby="{{ form.description.auto_id }}_error"{% endif %}>{{ form.description.value|default_if_none:"" }}</textarea>
-        <p class="request-board__field-hint">Maksimal 1.000 karakter.</p>
+        <textarea name="description" id="{{ form.description.id_for_label }}" maxlength="1000" aria-describedby="id_description_hint{% if form.description.errors %} id_description_error{% endif %}"{% if form.description.errors %} aria-invalid="true"{% endif %}>{{ form.description.value|default_if_none:"" }}</textarea>
+        <p id="id_description_hint" class="request-board__field-hint">Maksimal 1.000 karakter.</p>
         {% if form.description.errors %}
           <div class="request-board__field-errors">
             {{ form.description.errors }}
@@ -125,7 +132,7 @@
           Lokasi <span class="request-board__optional">(opsional)</span>
         </label>
         {{ form.location }}
-        <p class="request-board__field-hint">Maksimal 120 karakter. Jangan cantumkan kontak pribadi.</p>
+        <p id="id_location_hint" class="request-board__field-hint">Maksimal 120 karakter. Jangan cantumkan kontak pribadi.</p>
         {% if form.location.errors %}
           <div class="request-board__field-errors">
             {{ form.location.errors }}

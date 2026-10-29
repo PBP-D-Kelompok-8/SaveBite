@@ -38,7 +38,8 @@
   </header>
 
   {% if show_filters %}{% include 'request_board/_filters.html' %}{% endif %}
-  <div data-board-results>{% if page_obj is not None %}{% include 'request_board/_board_results.html' %}{% endif %}</div>
+  <div class="request-board__sr-only" data-board-status role="status" aria-live="polite" aria-atomic="true"></div>
+  <div data-board-results aria-busy="false">{% if page_obj is not None %}{% include 'request_board/_board_results.html' %}{% endif %}</div>
 </div>
 {% endblock %}
 

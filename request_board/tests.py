@@ -398,7 +398,7 @@ class RequestFormTests(TestCase):
         self.assertIs(form._meta.model, models.Request)
         self.assertEqual(
             set(form.fields),
-            {"title", "food_item", "quantity", "unit", "description", "location"},
+            {"title", "food_item", "quantity", "unit", "description", "location", "expires_at"},
         )
 
     def test_internal_payload_cannot_override_request_metadata(self):
