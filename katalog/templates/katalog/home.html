@@ -11,14 +11,14 @@
 </header>
 
 <form id="kat-search-form" class="kat-search-panel" method="get" action="{% url 'katalog:home' %}" data-search-url="{% url 'katalog:api_search' %}">
-  <div class="kat-field-group">
+  <div class="input kat-field-group">
     <label class="input__label" for="kat-query">Nama resep</label>
     <input class="input__field" id="kat-query" name="q" type="search" maxlength="100" value="{{ initial_query }}" placeholder="Contoh: pasta, soup, curry" autocomplete="off">
   </div>
-  <div class="kat-field-group">
+  <div class="input kat-field-group">
     <label class="input__label" for="kat-ingredients">Bahan sisa</label>
     <input class="input__field" id="kat-ingredients" name="ingredients" type="text" maxlength="200" value="{{ initial_ingredients }}" placeholder="Contoh: ayam, nasi, telur" autocomplete="off">
-    <small class="input__help">Masukkan maksimal 3 bahan, pisahkan dengan koma. Bahan umum bahasa Indonesia akan dicoba diterjemahkan.</small>
+    <small class="input__help">Masukkan maksimal 3 bahan, pisahkan dengan koma. Bahan umum bahasa Indonesia didukung melalui padanan bahan yang tersedia.</small>
   </div>
   <div class="kat-search-actions">
     <button class="btn btn--primary btn--dark-green kat-button" type="submit">Cari resep</button>

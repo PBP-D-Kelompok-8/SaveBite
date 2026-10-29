@@ -22,14 +22,19 @@
             <a class="btn btn--secondary btn--blue kat-button kat-button--small" href="{% url 'katalog:meal_detail' recipe.meal_id %}">Lihat resep</a>
             <a class="btn btn--tertiary btn--bright kat-button kat-button--small" href="{% url 'katalog:saved_update' recipe.pk %}">Edit catatan</a>
           </div>
-          <form method="post" action="{% url 'katalog:saved_delete' recipe.pk %}" class="kat-delete-form">
-            {% csrf_token %}
-            <button class="kat-text-button" type="submit">Hapus dari daftar</button>
-          </form>
+          <button
+            class="btn btn--danger kat-button kat-button--small kat-delete-button"
+            type="button"
+            data-confirm-open="#kat-delete-confirm"
+            data-name="{{ recipe.name }}"
+            data-action="{% url 'katalog:saved_delete' recipe.pk %}">
+            Hapus dari daftar
+          </button>
         </div>
       </article>
     {% endfor %}
   </div>
+  {% include "components/delete-confirm.html" with id="kat-delete-confirm" %}
 {% else %}
   <section class="kat-panel kat-empty-state">
     <h2>Belum ada resep tersimpan</h2>

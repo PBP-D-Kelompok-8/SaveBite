@@ -25,7 +25,7 @@
           </form>
         {% endif %}
       {% else %}
-        <a class="btn btn--tertiary btn--dark-green kat-button" href="{% url 'request_board:login' %}?next={% url 'katalog:meal_detail' meal.idMeal %}">Login untuk menyimpan</a>
+        <a class="btn btn--tertiary btn--dark-green kat-button" href="{% url 'login' %}?next={% url 'katalog:meal_detail' meal.idMeal %}">Login untuk menyimpan</a>
       {% endif %}
 
       <h2>Bahan</h2>

@@ -212,15 +212,9 @@
   overflow-wrap: anywhere;
 }
 
-.kat-text-button {
+/* Tombol hapus memakai komponen konfirmasi bersama dari SaveBite. */
+.kat-delete-button {
   margin-top: 4px;
-  border: 0;
-  padding: 4px 0;
-  background: none;
-  color: #FF8888;
-  font: 600 13px var(--font-family-main);
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 .kat-empty-state {
@@ -398,6 +392,18 @@
 
 /* Mobile */
 @media (max-width: 768px) {
+  /* Breakpoint katalog mencakup 768px; samakan ukuran tombol dengan mode mobile. */
+  .kat-page .btn {
+    gap: 6px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+
+  .kat-page .btn__icon {
+    width: 18px;
+    height: 18px;
+  }
+
   .kat-page {
     width: calc(100% - 32px);
     padding-top: 28px;

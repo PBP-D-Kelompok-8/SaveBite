@@ -26,7 +26,7 @@
                 <button class="btn btn--tertiary btn--bright kat-button kat-button--small" type="submit">Simpan</button>
               </form>
             {% else %}
-              <a class="btn btn--tertiary btn--bright kat-button kat-button--small" href="{% url 'request_board:login' %}?next={% url 'katalog:home' %}">Login untuk simpan</a>
+              <a class="btn btn--tertiary btn--bright kat-button kat-button--small" href="{% url 'login' %}?next={% url 'katalog:meal_detail' meal.idMeal %}">Login untuk simpan</a>
             {% endif %}
           </div>
         </div>

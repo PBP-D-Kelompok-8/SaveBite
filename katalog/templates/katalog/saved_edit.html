@@ -9,7 +9,7 @@
     <h2>{{ recipe.name }}</h2>
     <form method="post" id="kat-edit-form" class="kat-edit-form">
       {% csrf_token %}
-      <div class="kat-field-group">
+      <div class="input kat-field-group">
         <label class="input__label" for="id_note">{{ form.note.label }}</label>
         {{ form.note }}
         {% for error in form.note.errors %}<p class="kat-form-error">{{ error }}</p>{% endfor %}
