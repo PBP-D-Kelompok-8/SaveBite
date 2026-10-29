@@ -1,9 +1,11 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 STATUS_PENDING = 'pending'
 STATUS_OFFERED = 'offered'
 STATUS_FULFILLED = 'fulfilled'
+STATUS_EXPIRED = 'expired'
 
 STATUS_CHOICES = [
     (STATUS_PENDING, 'Pending'),
@@ -27,6 +29,7 @@ class Request(models.Model):
     STATUS_PENDING = STATUS_PENDING
     STATUS_OFFERED = STATUS_OFFERED
     STATUS_FULFILLED = STATUS_FULFILLED
+    STATUS_EXPIRED = STATUS_EXPIRED
     STATUS_CHOICES = STATUS_CHOICES
     UNIT_CHOICES = UNIT_CHOICES
 
@@ -51,6 +54,7 @@ class Request(models.Model):
         'RequestOffer', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='selected_for_requests',
     )
+    expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -71,6 +75,16 @@ class Request(models.Model):
                 name='request_unit_valid',
             ),
         ]
+
+    @property
+    def effective_status(self):
+        if self.status != STATUS_FULFILLED and self.expires_at and self.expires_at <= timezone.now():
+            return STATUS_EXPIRED
+        return self.status
+
+    @property
+    def effective_status_display(self):
+        return dict([*STATUS_CHOICES, (STATUS_EXPIRED, "Kedaluwarsa")])[self.effective_status]
 
     def __str__(self):
         return self.title

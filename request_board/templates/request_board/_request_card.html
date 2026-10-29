@@ -1,13 +1,13 @@
 {% load request_board_extras %}
 {% load static %}
-<article class="request-board__card request-board__card--{{ item.status }} tw:flex tw:min-w-0 tw:flex-col tw:gap-4">
+<article class="request-board__card request-board__card--{{ item.effective_status }} tw:flex tw:min-w-0 tw:flex-col tw:gap-4">
   <div class="request-board__card-header">
-    <span class="request-board__badge request-board__badge--{{ item.status }}">
+    <span class="request-board__badge request-board__badge--{{ item.effective_status }}">
       <picture class="request-board__status-icon">
-        {% if item.status != 'fulfilled' %}<source media="(max-width: 768px)" srcset="{% static 'request-board/' %}{{ item.status }}-mobile.svg">{% endif %}
-        <img src="{% static 'request-board/' %}{{ item.status }}.svg" alt="">
+        {% if item.effective_status != 'fulfilled' and item.effective_status != 'expired' %}<source media="(max-width: 768px)" srcset="{% static 'request-board/' %}{{ item.effective_status }}-mobile.svg">{% endif %}
+        <img src="{% static 'request-board/' %}{% if item.effective_status == 'expired' %}pending{% else %}{{ item.effective_status }}{% endif %}.svg" alt="">
       </picture>
-      {{ item.get_status_display }}
+      {{ item.effective_status_display }}
     </span>
   </div>
 
@@ -64,14 +64,20 @@
         </div>
       {% endif %}
     {% endwith %}
-    {% if item.offer_count %}<a href="{% url 'request_board:request_offers' item.pk %}">Lihat semua penawaran</a>{% endif %}
+    {% if item.offer_count %}
+      {% url 'request_board:request_offers' item.pk as offers_url %}
+      <div class="request-board__offers-link-action">
+        {% include 'components/button.html' with label="Lihat semua penawaran" type="tertiary" color="bright" href=offers_url extra_class="request-board__offers-link" only %}
+      </div>
+    {% endif %}
   {% endif %}
 
   {% if item.selected_offer_id %}<p class="request-board__card-note">Penawaran sudah ditutup.</p>{% endif %}
 
+  {% if item.expires_at %}<time class="request-board__card-time" datetime="{{ item.expires_at|date:'c' }}">Batas waktu: {{ item.expires_at|date:"d M Y, H:i" }} WIB</time>{% endif %}
   <time class="request-board__card-time" datetime="{{ item.created_at|date:'c' }}">Dibuat · {{ item.created_at|date:"d M Y, H:i" }}</time>
 
-  {% if user.is_authenticated and user.id != item.owner_id and item.status != "fulfilled" %}
+  {% if user.is_authenticated and user.id != item.owner_id and item.effective_status != "fulfilled" and item.effective_status != "expired" %}
     <div class="request-board__card-actions">
       {% if item.selected_offer_id %}
         <p class="request-board__card-note">Penawaran ditutup</p>
@@ -88,7 +94,7 @@
 
   {% if user.is_authenticated and user.id == item.owner_id %}
   <div class="request-board__owner-actions">
-  {% if item.status == "offered" and item.selected_offer_id %}
+  {% if item.effective_status == "offered" and item.selected_offer_id %}
     <div class="request-board__card-actions">
       <form method="post" action="{% url 'request_board:request_fulfill' item.pk %}">
         {% csrf_token %}
@@ -102,7 +108,7 @@
       <div class="request-board__delete-panel">
         <span class="request-board__delete-icon" aria-hidden="true"><img src="{% static 'request-board/trash-large.svg' %}" alt="" width="24" height="24"></span>
         <p id="delete-warning-{{ item.pk }}" class="request-board__delete-warning">
-          Hapus <strong id="delete-target-{{ item.pk }}">{{ item.title }}</strong>? <span>Tindakan ini tidak dapat dibatalkan.</span>
+          <span id="delete-label-{{ item.pk }}">Hapus <strong id="delete-target-{{ item.pk }}">{{ item.title }}</strong>?</span> <span id="delete-description-{{ item.pk }}">Tindakan ini tidak dapat dibatalkan.</span>
         </p>
         <div class="request-board__delete-actions">
         <a href="{% url 'request_board:request_board' %}" class="request-board__delete-cancel">Batal</a>

@@ -461,6 +461,27 @@ class BoardMarkup(HTMLParser):
                 and (within is None or any(parent is within for parent in node["parents"]))]
 
 
+class OffersSummaryRenderingTests(TestCase):
+    def test_offers_escape_user_content_and_omit_empty_location_separator(self):
+        owner = get_user_model().objects.create_user(username='summary-owner')
+        donor = get_user_model().objects.create_user(username='summary-donor')
+        payload = '<script>alert("x")</script> & test'
+        get_user_model().objects.filter(pk=donor.pk).update(username=payload)
+        donor.refresh_from_db()
+        item = Request.objects.create(owner=owner, title=payload, food_item=payload,
+                                      quantity=Decimal('2.50'), unit='kg', location='')
+        offer_request(actor=donor, request_id=item.pk)
+        self.client.force_login(owner)
+        response = self.client.get(reverse('request_board:request_offers', args=[item.pk]))
+        markup = BoardMarkup(response.content.decode())
+        root, = [node for node in markup.nodes if 'data-board-offers' in node['attrs']]
+        self.assertGreaterEqual(root['text'].count(payload), 3)
+        self.assertFalse(markup.select('script', within=root))
+        self.assertContains(response, escape(payload))
+        self.assertIn('2.50 kg', root['text'])
+        self.assertNotRegex(root['text'], r'kg\s*·')
+
+
 class PublicBoardRenderingTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -710,11 +731,11 @@ class RequestCreateRenderingTests(TestCase):
         for node in markup.nodes:
             if node["tag"] in {"input", "select", "textarea"}:
                 name = node["attrs"].get("name")
-                if name in {"title", "food_item", "quantity", "unit", "description", "location"}:
+                if name in {"title", "food_item", "quantity", "unit", "description", "location", "expires_at"}:
                     self.assertNotIn(name, controls, "Field tidak boleh terduplikasi")
                     controls[name] = node
         self.assertEqual(set(controls),
-                         {"title", "food_item", "quantity", "unit", "description", "location"})
+                         {"title", "food_item", "quantity", "unit", "description", "location", "expires_at"})
         ids = [node["attrs"].get("id") for node in markup.nodes if node["attrs"].get("id")]
         self.assertEqual(len(ids), len(set(ids)), "ID dokumen harus unik untuk association")
         for name, control in controls.items():
@@ -754,7 +775,7 @@ class RequestCreateRenderingTests(TestCase):
                             and re.search(r"batal|kembali", node["text"], re.I)
                             for node in markup.select("a", within=markup.select("main")[0])))
 
-    def test_six_labelled_fields_required_optional_and_existing_units(self):
+    def test_labelled_fields_required_optional_and_existing_units(self):
         _, markup, form_node, _ = self.create_page()
         controls = self.controls(markup)
         names = [node["attrs"].get("name") for node in markup.nodes
@@ -2103,8 +2124,8 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                 print(f"PRIVACY_QUERY actor={actor} cards={count} total={len(captured)} "
                       f"auth_session={len(auth)} builder_render={len(builder)}")
                 self.assertEqual(len(auth), 0 if actor == "guest" else 2)
-                # One constant lookup supplies location choices, independent of card count.
-                self.assertEqual(len(builder), 4 if actor == "owner" else 3)
+                # Location and ingredient choices each use one constant lookup (Task 1).
+                self.assertEqual(len(builder), 5 if actor == "owner" else 4)
         for actor in clients:
             with self.subTest(actor=actor):
                 self.assertEqual(profiles[(actor, 1)], profiles[(actor, 20)])

@@ -95,7 +95,7 @@ class RequestListAdapterTests(TestCase):
     def assert_public_item(self, item, food_request, *, offer_count):
         self.assertEqual(set(item), {
             "id", "title", "food_item", "quantity", "unit", "description",
-            "location", "owner", "status", "created_at", "updated_at", "offer_count",
+            "location", "owner", "status", "expires_at", "created_at", "updated_at", "offer_count",
         })
         for field in ("id", "title", "food_item", "unit", "description", "location", "status"):
             self.assertEqual(item[field], getattr(food_request, field), field)
@@ -411,7 +411,7 @@ class RequestCreateAdapterTests(TestCase):
         item = payload["data"]
         self.assertEqual(set(item), {
             "id", "title", "food_item", "quantity", "unit", "description",
-            "location", "owner", "status", "created_at", "updated_at", "offer_count",
+            "location", "owner", "status", "expires_at", "created_at", "updated_at", "offer_count",
         })
         food_request = Request.objects.get(pk=item["id"])
         self.assertEqual(food_request.owner_id, self.actor.pk)
@@ -767,7 +767,7 @@ class RequestOfferAdapterTests(TestCase):
         item = payload["data"]["request"]
         self.assertEqual(set(item), {
             "id", "title", "food_item", "quantity", "unit", "description",
-            "location", "owner", "status", "created_at", "updated_at", "offer_count",
+            "location", "owner", "status", "expires_at", "created_at", "updated_at", "offer_count",
         })
         self.food_request.refresh_from_db()
         for field in ("id", "title", "food_item", "unit", "description", "location", "status"):
@@ -1181,7 +1181,7 @@ class RequestOwnerActionAdapterTests(TestCase):
         item = payload["data"]
         self.assertEqual(set(item), {
             "id", "title", "food_item", "quantity", "unit", "description",
-            "location", "owner", "status", "created_at", "updated_at", "offer_count",
+            "location", "owner", "status", "expires_at", "created_at", "updated_at", "offer_count",
         })
         food_request.refresh_from_db()
         self.assertEqual(food_request.status, "fulfilled")

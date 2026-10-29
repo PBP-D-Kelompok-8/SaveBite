@@ -9,8 +9,8 @@ function enhanceBoardDeleteDialogs(root = document) {
     details.dataset.enhanced = 'true';
     const dialog = document.createElement('dialog');
     dialog.className = panel.className;
-    dialog.setAttribute('aria-labelledby', panel.querySelector('strong').id);
-    dialog.setAttribute('aria-describedby', panel.querySelector('p').id);
+    dialog.setAttribute('aria-labelledby', panel.querySelector('[id^=delete-label-]').id);
+    dialog.setAttribute('aria-describedby', panel.querySelector('[id^=delete-description-]').id);
     while (panel.firstChild) dialog.appendChild(panel.firstChild);
     panel.replaceWith(dialog);
     trigger.addEventListener('click', (event) => {
@@ -42,13 +42,27 @@ enhanceBoardDeleteDialogs();
   const close = form.querySelector('[data-filter-close]');
   const mobile = window.matchMedia('(max-width: 768px)');
   let snapshot = [];
+  let opened = false;
 
   function saveValues() {
     snapshot = [...form.elements].map(field => ({ field, value: field.value, checked: field.checked }));
   }
-  form.addEventListener('board:filter-applied', () => {
+  function restoreValues() {
+    snapshot.forEach(({ field, value, checked }) => {
+      field.value = value;
+      if (field.type === 'checkbox') field.checked = checked;
+    });
+  }
+  form.addEventListener('board:filter-applied', (event) => {
+    if (event.detail) {
+      for (const name of ['title', 'food_item', 'status', 'location', 'sort', 'q', 'mine']) {
+        const field = form.elements[name];
+        if (field.type === 'checkbox') field.checked = event.detail.has(name);
+        else field.value = event.detail.get(name) || '';
+      }
+    }
     saveValues();
-    const summary = toolbar.querySelector('p');
+    const summary = toolbar.querySelector('[data-filter-summary]');
     const status = form.elements.status;
     const sort = form.elements.sort;
     summary.textContent = `${status.selectedOptions[0].textContent} · ${sort.selectedOptions[0].textContent}`;
@@ -58,31 +72,77 @@ enhanceBoardDeleteDialogs();
       location.textContent = form.elements.location.value;
       summary.appendChild(location);
     }
+    for (const name of ['title', 'food_item', 'q', 'mine']) {
+      const field = form.elements[name];
+      if (!field.value) continue;
+      const detail = document.createElement('span');
+      detail.className = 'tw:block';
+      detail.textContent = name === 'mine' ? 'Permintaan saya' : (name === 'food_item' ? field.selectedOptions[0].textContent : field.value);
+      summary.appendChild(detail);
+    }
     let indicator = trigger.querySelector('[aria-label="aktif"]');
-    const active = form.elements.status.value || form.elements.location.value || form.elements.q.value || form.elements.mine?.checked;
+    const active = ['title', 'food_item', 'status', 'location', 'q', 'mine'].some(name => form.elements[name].value) || form.elements.sort.value === 'oldest';
     if (active && !indicator) {
       indicator = document.createElement('span');
-      indicator.className = 'tw:size-2 tw:rounded-full tw:bg-current';
+      indicator.className = 'request-board__filter-active';
       indicator.setAttribute('aria-label', 'aktif');
       trigger.appendChild(indicator);
     } else if (!active && indicator) indicator.remove();
     if (dialog.open) dialog.close();
+    else if (opened) {
+      opened = false;
+      form.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus({ preventScroll: true });
+    }
   });
   function syncLayout() {
+    if (opened) restoreValues();
+    opened = false;
     if (dialog.open) dialog.close();
-    if (mobile.matches) dialog.appendChild(form);
-    else slot.appendChild(form);
-    toolbar.hidden = !mobile.matches;
+    document.body.classList.remove('tw:overflow-hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+    if (mobile.matches) {
+      form.hidden = false;
+      dialog.appendChild(form);
+      trigger.setAttribute('aria-haspopup', 'dialog');
+    } else {
+      slot.appendChild(form);
+      form.hidden = true;
+      trigger.removeAttribute('aria-haspopup');
+    }
+    toolbar.hidden = false;
     close.hidden = !mobile.matches;
   }
   function open() {
     saveValues();
-    dialog.showModal();
+    opened = true;
+    if (mobile.matches) {
+      dialog.showModal();
+      document.body.classList.add('tw:overflow-hidden');
+    } else form.hidden = false;
     trigger.setAttribute('aria-expanded', 'true');
-    document.body.classList.add('tw:overflow-hidden');
-    close.focus();
+    form.elements.title.focus();
   }
-  trigger.addEventListener('click', open);
+  trigger.addEventListener('click', () => {
+    if (!opened) open();
+    else if (dialog.open) dialog.close();
+    else {
+      restoreValues();
+      opened = false;
+      form.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  });
+  form.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || mobile.matches || !opened) return;
+    event.preventDefault();
+    restoreValues();
+    opened = false;
+    form.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.focus({ preventScroll: true });
+  });
   close.addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => {
     const bounds = dialog.getBoundingClientRect();
@@ -90,17 +150,16 @@ enhanceBoardDeleteDialogs();
         event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
   });
   dialog.addEventListener('close', () => {
-    snapshot.forEach(({ field, value, checked }) => {
-      field.value = value;
-      if (field.type === 'checkbox') field.checked = checked;
-    });
+    restoreValues();
+    opened = false;
     trigger.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('tw:overflow-hidden');
-    if (mobile.matches) trigger.focus({ preventScroll: true });
+    trigger.focus({ preventScroll: true });
   });
   mobile.addEventListener('change', syncLayout);
   syncLayout();
-  if (mobile.matches && form.querySelector('.errorlist')) open();
+  form.dispatchEvent(new Event('board:filter-applied'));
+  if (form.querySelector('.errorlist')) open();
 })();
 
 /* Server-rendered fragments and ordinary forms remain the source of truth. */
@@ -109,10 +168,13 @@ enhanceBoardDeleteDialogs();
   const createForm = document.querySelector('[data-board-create]');
   const offers = document.querySelector('[data-board-offers]');
   const filter = document.querySelector('[data-filter-form]');
+  const boardStatus = document.querySelector('[data-board-status]');
+  const filterStatus = document.querySelector('[data-filter-status]');
   if (!window.fetch || !window.AbortController || !window.URLSearchParams || !window.FormData || (!results && !createForm && !offers)) return;
   let controller = null;
   let sequence = 0;
   let currentUrl = new URL(window.location.href);
+  let lastAnnouncement = "";
   const headers = { 'X-Requested-With': 'XMLHttpRequest' };
 
   function notice(message, isError = false, loginUrl = null) {
@@ -140,41 +202,65 @@ enhanceBoardDeleteDialogs();
       dialog.addEventListener('close', () => {
         if (dialog.contains(region)) region.remove();
       }, { once: true });
+    } else if (isError && createForm) {
+      region.setAttribute('tabindex', '-1');
+      region.focus();
     } else {
       region.removeAttribute('tabindex');
     }
+  }
+
+  function announce(message) {
+    lastAnnouncement = message;
+    if (filterStatus && filter && !filter.hidden && filter.closest('dialog[open]')) filterStatus.textContent = message;
+    else if (boardStatus) boardStatus.textContent = message;
   }
 
   async function boardGet(url, correctPage = false, push = true) {
     if (controller) controller.abort();
     controller = new AbortController();
     const id = ++sequence;
+    results.setAttribute('aria-busy', 'true');
+    announce('Memuat permintaan.');
     try {
       let response = await fetch(url, { headers, signal: controller.signal, credentials: 'same-origin' });
-      if (id !== sequence) return false;
+      if (id !== sequence) return null;
       let page = Number(url.searchParams.get('page'));
       while (correctPage && response.status === 404 && Number.isSafeInteger(page) && page > 1) {
         page -= 1;
         if (page === 1) url.searchParams.delete('page');
         else url.searchParams.set('page', page);
         response = await fetch(url, { headers, signal: controller.signal, credentials: 'same-origin' });
-        if (id !== sequence) return false;
+        if (id !== sequence) return null;
       }
       if (!response.ok) {
-        notice(response.status === 401 ? 'Silakan masuk untuk menggunakan filter ini.' : 'Filter atau halaman tidak valid.', true);
+        const message = response.status === 401 ? 'Silakan masuk untuk menggunakan filter ini.' : 'Filter atau halaman tidak valid.';
+        announce(message);
+        notice(message, true);
         return false;
       }
       const html = await response.text();
-      if (id !== sequence) return false;
+      if (id !== sequence) return null;
       results.innerHTML = html;
       enhanceBoardDeleteDialogs(results);
+      const summary = results.querySelector('[data-board-result-summary]');
+      if (summary) {
+        const { total, page, pages } = summary.dataset;
+        announce(Number(total) ? `${total} permintaan. Halaman ${page} dari ${pages}.` : 'Tidak ada permintaan yang cocok.');
+      }
       currentUrl = url;
       if (push) history.pushState(null, '', url);
       else history.replaceState(null, '', url);
       return true;
     } catch (error) {
-      if (error.name !== 'AbortError') notice('Gagal memuat papan. Periksa jaringan dan coba lagi.', true);
+      if (id !== sequence || error.name === 'AbortError') return null;
+      if (id === sequence) {
+        announce('Gagal memuat papan. Periksa jaringan dan coba lagi.');
+        notice('Gagal memuat papan. Periksa jaringan dan coba lagi.', true);
+      }
       return false;
+    } finally {
+      if (id === sequence) results.setAttribute('aria-busy', 'false');
     }
   }
 
@@ -183,10 +269,11 @@ enhanceBoardDeleteDialogs();
     form.querySelectorAll('[data-ajax-field-error], .request-board__field-errors').forEach(element => element.remove());
     form.querySelectorAll('[aria-invalid]').forEach(element => element.removeAttribute('aria-invalid'));
     form.querySelectorAll('[aria-describedby]').forEach(element => {
-      const ids = element.getAttribute('aria-describedby').split(/\s+/).filter(id => id && !id.startsWith('ajax-error-'));
+      const ids = element.getAttribute('aria-describedby').split(/\s+/).filter(id => id && !id.startsWith('ajax-error-') && !id.endsWith('_error'));
       if (ids.length) element.setAttribute('aria-describedby', ids.join(' '));
       else element.removeAttribute('aria-describedby');
     });
+    let firstInvalid = null;
     for (const [name, messages] of Object.entries(fields || {})) {
       const input = form.elements.namedItem(name);
       if (!input || !input.closest) {
@@ -194,6 +281,7 @@ enhanceBoardDeleteDialogs();
         continue;
       }
       input.setAttribute('aria-invalid', 'true');
+      if (!firstInvalid) firstInvalid = input;
       const error = document.createElement('div');
       error.dataset.ajaxFieldError = '';
       error.className = 'request-board__field-errors';
@@ -202,6 +290,7 @@ enhanceBoardDeleteDialogs();
       error.textContent = messages.join(' ');
       input.closest('.request-board__form-group').appendChild(error);
     }
+    if (firstInvalid) firstInvalid.focus();
   }
 
   document.addEventListener('submit', async event => {
@@ -210,12 +299,16 @@ enhanceBoardDeleteDialogs();
       event.preventDefault();
       const url = new URL(form.action);
       url.search = new URLSearchParams(new FormData(form)).toString();
-      const button = form.querySelector('[type=submit]');
-      if (button.disabled) return;
-      button.disabled = true;
-      try {
-        if (await boardGet(url)) form.dispatchEvent(new Event('board:filter-applied'));
-      } finally { button.disabled = false; }
+      // A newer draft supersedes any pending GET; both submit controls remain usable.
+      if (await boardGet(url)) {
+        const message = lastAnnouncement;
+        const completedSequence = sequence;
+        form.dispatchEvent(new CustomEvent('board:filter-applied', { detail: url.searchParams }));
+        if (boardStatus) {
+          boardStatus.textContent = '';
+          requestAnimationFrame(() => { if (sequence === completedSequence) boardStatus.textContent = message; });
+        }
+      }
       return;
     }
     if (!(form === createForm || (results && results.contains(form)) || (offers && offers.contains(form)))) return;
@@ -229,8 +322,8 @@ enhanceBoardDeleteDialogs();
       const response = await fetch(form.action, { method: 'POST', headers, body: new FormData(form), credentials: 'same-origin' });
       const data = response.headers.get('content-type')?.includes('application/json') ? await response.json() : {};
       if (!response.ok || !data.ok) {
-        if (form === createForm && data.fields) fieldErrors(form, data.fields);
-        notice(data.message || (response.status === 403 ? 'Permintaan ditolak. Periksa sesi dan token CSRF.' : 'Permintaan gagal. Silakan coba lagi.'), true, data.login_url);
+        if (form === createForm && data.fields && Object.keys(data.fields).length) fieldErrors(form, data.fields);
+        else notice(data.message || (response.status === 403 ? 'Permintaan ditolak. Periksa sesi dan token CSRF.' : 'Permintaan gagal. Silakan coba lagi.'), true, data.login_url);
         return;
       }
       if (form === createForm) {
@@ -239,16 +332,22 @@ enhanceBoardDeleteDialogs();
         if (controller) controller.abort();
         ++sequence;
         const isDelete = form.action.endsWith('/delete/');
-        if (await boardGet(new URL(currentUrl), isDelete, false)) notice(data.message);
-        else notice('Aksi berhasil, tetapi papan gagal diperbarui. Muat ulang halaman.', true);
+        const refreshed = await boardGet(new URL(currentUrl), isDelete, false);
+        if (refreshed) notice(data.message);
+        else if (refreshed === false) notice('Aksi berhasil, tetapi papan gagal diperbarui. Muat ulang halaman.', true);
       } else {
-        const refreshed = await fetch(window.location.href, { credentials: 'same-origin' });
-        if (!refreshed.ok || refreshed.redirected) throw new Error('refresh failed');
-        const doc = new DOMParser().parseFromString(await refreshed.text(), 'text/html');
-        const replacement = doc.querySelector('[data-board-offers]');
-        if (!replacement) throw new Error('refresh failed');
-        offers.innerHTML = replacement.innerHTML;
-        notice(data.message);
+        try {
+          const refreshed = await fetch(window.location.href, { credentials: 'same-origin' });
+          if (!refreshed.ok || refreshed.redirected) throw new Error('refresh failed');
+          const doc = new DOMParser().parseFromString(await refreshed.text(), 'text/html');
+          const replacement = doc.querySelector('[data-board-offers]');
+          if (!replacement) throw new Error('refresh failed');
+          offers.innerHTML = replacement.innerHTML;
+          notice(data.message);
+          offers.querySelector('[data-offer-selection]')?.focus({ preventScroll: true });
+        } catch (error) {
+          notice('Aksi berhasil, tetapi daftar penawaran gagal diperbarui. Muat ulang halaman.', true);
+        }
       }
     } catch (error) {
       notice('Gagal menghubungi server atau memperbarui tampilan. Periksa jaringan dan muat ulang sebelum mencoba lagi.', true);
@@ -264,11 +363,19 @@ enhanceBoardDeleteDialogs();
       if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       const reset = link.hasAttribute('data-board-reset');
-      if (await boardGet(new URL(link.href)) && reset && filter) {
-        for (const name of ['q', 'status', 'location']) filter.elements[name].value = '';
+      const updated = await boardGet(new URL(link.href));
+      if (updated && !reset) results.querySelector('[data-board-results-focus]')?.focus();
+      if (updated && reset && filter) {
+        for (const name of ['q', 'title', 'food_item', 'status', 'location', 'mine']) filter.elements[name].value = '';
         filter.elements.sort.value = 'newest';
-        if (filter.elements.mine) filter.elements.mine.checked = false;
+        const message = lastAnnouncement;
+        const completedSequence = sequence;
         filter.dispatchEvent(new Event('board:filter-applied'));
+        if (boardStatus) {
+          boardStatus.textContent = '';
+          requestAnimationFrame(() => { if (sequence === completedSequence) boardStatus.textContent = message; });
+        }
+        document.querySelector('[data-filter-open]')?.focus({ preventScroll: true });
       }
     });
     window.addEventListener('popstate', () => window.location.reload());

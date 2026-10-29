@@ -135,13 +135,11 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
                         context = browser.new_context(viewport={'width': 375, 'height': 812})
                         context.add_cookies([{'name': 'sessionid', 'value': self.session, 'url': self.live_server_url}])
                         page = context.new_page()
-                        page.goto(self.live_server_url + reverse('request_board:request_board'))
+                        page.goto(self.live_server_url + reverse('request_board:request_board') + ('?mine=on' if error == 'session' else ''))
                         page.locator('[data-filter-open]').click()
                         dialog = page.locator('#board-filter-dialog')
-                        dialog.locator('summary').click()
-                        dialog.locator('[name=q]').fill('Kartu')
+                        dialog.locator('[name=title]').fill('Kartu')
                         if error == 'session':
-                            dialog.locator('[name=mine]').check()
                             context.clear_cookies(name='sessionid')
                         elif error == 'network':
                             page.route('**/board/?*', lambda route: route.abort())
@@ -151,15 +149,15 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
                         button.click()
                         self.assert_visible_alert(page, dialog, {'forbidden': 'tidak valid', 'session': 'masuk', 'network': 'Gagal'}[error])
                         expect(button).to_be_enabled()
-                        expect(dialog.locator('[name=q]')).to_have_value('Kartu')
+                        expect(dialog.locator('[name=title]')).to_have_value('Kartu')
                         if error == 'session':
-                            expect(dialog.locator('[name=mine]')).to_be_checked()
+                            expect(dialog.locator('[name=mine]')).to_have_value('on')
                             context.add_cookies([{'name': 'sessionid', 'value': self.session, 'url': self.live_server_url}])
                         else:
                             page.unroute('**/board/?*')
                         button.click()
                         expect(dialog).not_to_be_visible()
-                        self.assertIn('q=Kartu', page.url)
+                        self.assertIn('title=Kartu', page.url)
                         context.close()
             finally:
                 browser.close()
