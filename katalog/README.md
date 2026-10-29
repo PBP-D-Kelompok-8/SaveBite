@@ -9,6 +9,7 @@ Katalog adalah aplikasi Django di SaveBite. Pengguna dapat mencari resep berdasa
 - Melihat gambar, kategori, asal, bahan, takaran, dan cara memasak.
 - Menyimpan resep, menulis catatan pribadi, mengedit catatan, dan menghapus resep.
 - Menjaga daftar resep agar hanya dapat dilihat dan diubah oleh pemiliknya.
+- Meminta konfirmasi sebelum resep dihapus dari daftar.
 - Menampilkan pesan jika resep tidak ditemukan atau TheMealDB tidak dapat dihubungi.
 
 ## Cara kerja
@@ -26,16 +27,17 @@ Pencarian beberapa bahan menggabungkan hasil dari TheMealDB dan mengurutkannya b
 
 - `models.py`: menyimpan resep yang disimpan pengguna.
 - `forms.py`: memeriksa isian pencarian dan catatan.
-- `services.py`: mengambil data dari TheMealDB.
+- `services.py`: mengambil dan mengolah data dari TheMealDB.
 - `views.py`: menangani halaman dan aksi katalog.
 - `urls.py`: alamat halaman dan pencarian Fetch API.
 - `templates/katalog/`: halaman pencarian, hasil resep, detail, daftar tersimpan, dan edit catatan.
-- `static/katalog/css/`: tata letak dan tampilan katalog.
+- `templates/katalog/base_katalog.html`: memakai navbar/footer dan CSS global dari `base.html`; memuat `input.css` karena file itu belum dimuat secara global, lalu memuat CSS katalog.
+- `static/katalog/css/katalog.css`: tata letak dan tampilan khusus katalog.
 - `static/katalog/js/katalog.js`: Fetch API sederhana untuk pencarian.
 - `migrations/`: perubahan struktur database.
 - `tests.py`: pengujian fitur utama.
 
-Tampilan menggunakan warna, font, tombol, input, serta nilai radius dari Design System SaveBite. Ukuran kartu dibuat lebih ringkas agar beberapa resep dapat ditampilkan dengan rapi. Gaya khusus katalog menggunakan awalan `kat-` agar tidak mengubah tampilan aplikasi lain.
+Tampilan menggunakan warna, font, tombol, input, navbar, footer, dan dialog konfirmasi hapus dari komponen bersama SaveBite. CSS khusus katalog menggunakan awalan `kat-` agar tidak mengubah tampilan aplikasi lain. Karena `base.html` sudah memuat CSS tombol, navbar, footer, serta aset dialog hapus, `base_katalog.html` tidak memuat ulang file tersebut. `input.css` tetap dimuat di level modul, seperti pada halaman login dan register.
 
 ## URL
 
@@ -53,8 +55,8 @@ Tampilan menggunakan warna, font, tombol, input, serta nilai radius dari Design 
 
 1. Tambahkan `'katalog.apps.KatalogConfig'` ke `INSTALLED_APPS` di `SaveBite/settings.py`.
 2. Pastikan `include` diimpor pada `SaveBite/urls.py`, lalu tambahkan `path('katalog/', include('katalog.urls'))` ke `urlpatterns`.
-3. Jangan menghapus URL atau aplikasi lain yang sudah ada.
-4. Modul menggunakan `request_board:login`, yaitu halaman login Django yang tersedia pada snapshot proyek ini.
+3. Jangan menghapus URL atau aplikasi lain yang sudah ada. Pertahankan juga `main.apps.MainConfig` serta URL `login`, `logout`, dan `register` jika sudah tersedia dari autentikasi utama.
+4. Modul menggunakan halaman login utama SaveBite dengan URL name `login`, agar penyimpanan resep terhubung ke autentikasi proyek. Pastikan route `login` tersedia pada proyek yang dituju.
 5. Pastikan database lokal sudah siap, lalu jalankan migrasi.
 
 ## Menjalankan pemeriksaan
