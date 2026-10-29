@@ -400,6 +400,15 @@
                                     Hapus
                                 </button>
                             </form>
+
+                            {% if plan.metode_aksi == 'cook' %}
+                                <a
+                                    class="frp-button-secondary"
+                                    href="{% url 'resep_komunitas:recipe_list' %}?q={{ plan.nama_bahan|urlencode }}"
+                                >
+                                    Cari Resep Komunitas
+                                </a>
+                            {% endif %}
                         </div>
                     </article>
                 {% endfor %}
