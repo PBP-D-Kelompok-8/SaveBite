@@ -461,6 +461,27 @@ class BoardMarkup(HTMLParser):
                 and (within is None or any(parent is within for parent in node["parents"]))]
 
 
+class OffersSummaryRenderingTests(TestCase):
+    def test_offers_escape_user_content_and_omit_empty_location_separator(self):
+        owner = get_user_model().objects.create_user(username='summary-owner')
+        donor = get_user_model().objects.create_user(username='summary-donor')
+        payload = '<script>alert("x")</script> & test'
+        get_user_model().objects.filter(pk=donor.pk).update(username=payload)
+        donor.refresh_from_db()
+        item = Request.objects.create(owner=owner, title=payload, food_item=payload,
+                                      quantity=Decimal('2.50'), unit='kg', location='')
+        offer_request(actor=donor, request_id=item.pk)
+        self.client.force_login(owner)
+        response = self.client.get(reverse('request_board:request_offers', args=[item.pk]))
+        markup = BoardMarkup(response.content.decode())
+        root, = [node for node in markup.nodes if 'data-board-offers' in node['attrs']]
+        self.assertGreaterEqual(root['text'].count(payload), 3)
+        self.assertFalse(markup.select('script', within=root))
+        self.assertContains(response, escape(payload))
+        self.assertIn('2.50 kg', root['text'])
+        self.assertNotRegex(root['text'], r'kg\s*·')
+
+
 class PublicBoardRenderingTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -2103,8 +2124,8 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                 print(f"PRIVACY_QUERY actor={actor} cards={count} total={len(captured)} "
                       f"auth_session={len(auth)} builder_render={len(builder)}")
                 self.assertEqual(len(auth), 0 if actor == "guest" else 2)
-                # One constant lookup supplies location choices, independent of card count.
-                self.assertEqual(len(builder), 4 if actor == "owner" else 3)
+                # Location and ingredient choices each use one constant lookup (Task 1).
+                self.assertEqual(len(builder), 5 if actor == "owner" else 4)
         for actor in clients:
             with self.subTest(actor=actor):
                 self.assertEqual(profiles[(actor, 1)], profiles[(actor, 20)])

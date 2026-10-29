@@ -210,3 +210,44 @@ dialog.request-board__delete-panel { box-sizing: border-box; width: min(600px, c
 @media (min-width: 501px) and (max-width: 768px) {
   .request-board__filter-trigger { min-width: 140px; }
 }
+
+/* Owner-only offers page; board preview and filters remain unchanged. */
+.request-board[data-board-offers] { width: 100%; max-width: 1280px; margin: 0 auto; padding: 40px 80px 56px; display: flex; flex-direction: column; gap: 24px; line-height: 1.5; }
+.request-board[data-board-offers] :is(h1, h2, h3, p) { margin: 0; }
+.request-board[data-board-offers] .request-board__offer-back, .request-board[data-board-offers] .request-board__offer-action { display: inline-flex; align-items: center; justify-content: flex-start; min-height: 44px; padding: 8px 16px; border: 0; border-radius: 12px; background: var(--accent-dark-green); color: var(--ink-light); font: 700 16px/1.5 var(--font-family-main); text-align: left; text-decoration: none; cursor: pointer; }
+.request-board[data-board-offers] .request-board__offer-back { width: 195px; max-width: 100%; }
+.request-board[data-board-offers] .request-board__offer-back--outline { border: 2px solid var(--accent-dark-green); background: transparent; color: var(--accent-dark-green); }
+.request-board[data-board-offers] .request-board__offers-heading { display: flex; flex-direction: column; gap: 8px; }
+.request-board[data-board-offers] .request-board__offers-heading h1 { font-size: 40px; line-height: 1.5; font-weight: 700; }
+.request-board[data-board-offers] .request-board__offers-heading p { font-size: 16px; font-weight: 600; }
+.request-board[data-board-offers] .request-board__offer-summary { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 24px; border-radius: 32px; background: var(--line); color: var(--ink-light); overflow-wrap: anywhere; }
+.request-board[data-board-offers] .request-board__offer-summary p:first-child, .request-board[data-board-offers] .request-board__offer-summary time { font-size: 12px; font-weight: 600; }
+.request-board[data-board-offers] .request-board__offer-request-title { min-width: 0; color: inherit; font-size: 32px; line-height: 1.5; font-weight: 700; overflow-wrap: anywhere; }
+.request-board[data-board-offers] .request-board__offer-meta { font-size: 16px; font-weight: 600; }
+.request-board[data-board-offers] .request-board__offer-banner { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 16px 20px; border-radius: 16px; background: var(--board-success); font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.request-board[data-board-offers] .request-board__offer-banner strong { font-weight: 700; }
+.request-board[data-board-offers] .request-board__offer-banner p { font-size: 16px; line-height: 1.5; font-weight: 600; }
+.request-board[data-board-offers] .request-board__offers-list, .request-board[data-board-offers] .request-board__donors-list { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.request-board[data-board-offers] .request-board__offers-list h2, .request-board[data-board-offers] .request-board__offers-empty h3 { font-size: 24px; line-height: 1.5; font-weight: 700; }
+.request-board[data-board-offers] .request-board__offers-readonly, .request-board[data-board-offers] .request-board__offers-empty p { font-size: 16px; font-weight: 600; }
+.request-board[data-board-offers] .request-board__donor { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; padding: 20px 24px; border-radius: 32px; background: var(--ink-light); color: var(--ink-dark); line-height: 1.5; }
+.request-board[data-board-offers] .request-board__donor--selected { background: var(--board-success); }
+.request-board[data-board-offers] .request-board__offer-identity { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.request-board[data-board-offers] .request-board__offer-identity img { width: 28px; height: 28px; flex: none; }
+.request-board[data-board-offers] .request-board__offer-person { display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.request-board[data-board-offers] .request-board__donor-name { font-size: 16px; font-weight: 700; }
+.request-board[data-board-offers] .request-board__offer-person time { font-size: 12px; font-weight: 600; }
+.request-board[data-board-offers] .request-board__donor form { flex: none; margin: 0; }
+.request-board[data-board-offers] .request-board__offer-action { width: 180px; }
+.request-board[data-board-offers] .request-board__offer-selected { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 108px; height: 32px; border-radius: 16px; background: var(--accent-dark-green); color: var(--ink-light); font-size: 12px; font-weight: 600; text-align: center; }
+.request-board[data-board-offers] .request-board__offers-empty { display: flex; flex-direction: column; gap: 12px; padding: 32px 24px; border-radius: 32px; background: var(--ink-light); }
+.request-board[data-board-offers] .request-board__offer-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding-top: 8px; font-size: 12px; font-weight: 600; }
+.request-board[data-board-offers] .request-board__offer-pagination a { color: inherit; min-height: 44px; display: inline-flex; align-items: center; }
+@media (min-width: 641px) and (max-width: 1023px) { .request-board[data-board-offers] { padding-inline: 32px; } }
+@media (max-width: 640px) {
+  .request-board[data-board-offers] { padding: 24px 20px 40px; }
+  .request-board[data-board-offers] .request-board__offers-heading h1, .request-board[data-board-offers] .request-board__offer-request-title { font-size: 24px; }
+  .request-board[data-board-offers] .request-board__offer-summary { padding: 20px; }
+  .request-board[data-board-offers] .request-board__donor { flex-direction: column; align-items: flex-start; padding: 16px; }
+  .request-board[data-board-offers] .request-board__donor form, .request-board[data-board-offers] .request-board__offer-action, .request-board[data-board-offers] .request-board__offer-back--solid { width: 100%; }
+}

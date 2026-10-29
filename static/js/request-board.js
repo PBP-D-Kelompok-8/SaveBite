@@ -297,13 +297,18 @@ enhanceBoardDeleteDialogs();
         if (await boardGet(new URL(currentUrl), isDelete, false)) notice(data.message);
         else notice('Aksi berhasil, tetapi papan gagal diperbarui. Muat ulang halaman.', true);
       } else {
-        const refreshed = await fetch(window.location.href, { credentials: 'same-origin' });
-        if (!refreshed.ok || refreshed.redirected) throw new Error('refresh failed');
-        const doc = new DOMParser().parseFromString(await refreshed.text(), 'text/html');
-        const replacement = doc.querySelector('[data-board-offers]');
-        if (!replacement) throw new Error('refresh failed');
-        offers.innerHTML = replacement.innerHTML;
-        notice(data.message);
+        try {
+          const refreshed = await fetch(window.location.href, { credentials: 'same-origin' });
+          if (!refreshed.ok || refreshed.redirected) throw new Error('refresh failed');
+          const doc = new DOMParser().parseFromString(await refreshed.text(), 'text/html');
+          const replacement = doc.querySelector('[data-board-offers]');
+          if (!replacement) throw new Error('refresh failed');
+          offers.innerHTML = replacement.innerHTML;
+          notice(data.message);
+          offers.querySelector('[data-offer-selection]')?.focus({ preventScroll: true });
+        } catch (error) {
+          notice('Aksi berhasil, tetapi daftar penawaran gagal diperbarui. Muat ulang halaman.', true);
+        }
       }
     } catch (error) {
       notice('Gagal menghubungi server atau memperbarui tampilan. Periksa jaringan dan muat ulang sebelum mencoba lagi.', true);
