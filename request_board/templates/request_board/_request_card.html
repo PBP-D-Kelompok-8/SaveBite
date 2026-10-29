@@ -64,7 +64,12 @@
         </div>
       {% endif %}
     {% endwith %}
-    {% if item.offer_count %}<a href="{% url 'request_board:request_offers' item.pk %}">Lihat semua penawaran</a>{% endif %}
+    {% if item.offer_count %}
+      {% url 'request_board:request_offers' item.pk as offers_url %}
+      <div class="request-board__offers-link-action">
+        {% include 'components/button.html' with label="Lihat semua penawaran" type="tertiary" color="bright" href=offers_url extra_class="request-board__offers-link" only %}
+      </div>
+    {% endif %}
   {% endif %}
 
   {% if item.selected_offer_id %}<p class="request-board__card-note">Penawaran sudah ditutup.</p>{% endif %}

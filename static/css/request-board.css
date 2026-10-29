@@ -42,6 +42,10 @@
 .request-board__donor-time::before { content: '· '; }
 .request-board__owner-actions { display: flex; flex-wrap: wrap; gap: 12px 29px; align-items: start; }
 .request-board__donors-more { margin: 8px 0 0; font-size: 14px; line-height: 1.5; }
+.request-board__offers-link-action { display: flex; align-self: flex-start; max-width: 100%; }
+.request-board__offers-link { --btn-font-size: 16px; --btn-radius: 12px; --btn-pad-y: 10px; min-height: 44px; }
+.request-board .request-board__offers-link:hover { background: var(--accent-dark-green); }
+.request-board .request-board__offers-link:focus-visible { outline-color: var(--ink-light); }
 .request-board__pagination { display: flex; align-items: center; gap: 16px; margin-top: 44px; flex-wrap: wrap; }
 .request-board__pagination-info { margin-right: auto; font-size: 16px; line-height: 1.5; font-weight: 600; }
 .request-board__pagination-link { font-size: 16px; border-radius: 12px; }
@@ -134,6 +138,7 @@ dialog.request-board__delete-panel { box-sizing: border-box; width: min(600px, c
   .request-board__donors { padding: 12px; }
   .request-board__donors-title { font-size: 18px; }
   .request-board__donor { font-size: 16px; }
+  .request-board__offers-link-action, .request-board__offers-link { width: 100%; }
   .request-board__pagination { margin-top: 24px; gap: 12px; }
   .request-board__pagination-info { font-size: 14px; }
   .request-board__pagination-link { font-size: 14px; }
