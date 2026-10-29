@@ -1,6 +1,6 @@
 {% load request_board_extras %}
 {% load static %}
-<article class="request-board__card request-board__card--{{ item.status }}">
+<article class="request-board__card request-board__card--{{ item.status }} tw:flex tw:min-w-0 tw:flex-col tw:gap-4">
   <div class="request-board__card-header">
     <span class="request-board__badge request-board__badge--{{ item.status }}">
       <picture class="request-board__status-icon">
@@ -45,13 +45,14 @@
   {% endif %}
 
   {% if user.is_authenticated and user.id == item.owner_id %}
+    {% if item.selected_offer %}<p class="request-board__card-note">Penawar terpilih: {{ item.selected_offer.offered_by.get_username }}</p>{% endif %}
     {% with preview=owner_offer_previews|owner_preview:item.pk %}
       {% if preview.items %}
         <div class="request-board__donors">
           <h3 class="request-board__donors-title">Penawaran terbaru</h3>
-          <ul class="request-board__donors-list">
+          <ul class="request-board__donors-list tw:flex tw:flex-col tw:gap-2">
             {% for offer in preview.items %}
-              <li class="request-board__donor">
+              <li class="request-board__donor tw:flex tw:flex-wrap tw:items-baseline tw:gap-1">
                 <span class="request-board__donor-name">{{ offer.display_name }}</span>
                 <time class="request-board__donor-time" datetime="{{ offer.created_at|date:'c' }}">{{ offer.created_at|date:"d M Y, H:i" }}</time>
               </li>
@@ -63,13 +64,18 @@
         </div>
       {% endif %}
     {% endwith %}
+    {% if item.offer_count %}<a href="{% url 'request_board:request_offers' item.pk %}">Lihat semua penawaran</a>{% endif %}
   {% endif %}
+
+  {% if item.selected_offer_id %}<p class="request-board__card-note">Penawaran sudah ditutup.</p>{% endif %}
 
   <time class="request-board__card-time" datetime="{{ item.created_at|date:'c' }}">Dibuat · {{ item.created_at|date:"d M Y, H:i" }}</time>
 
   {% if user.is_authenticated and user.id != item.owner_id and item.status != "fulfilled" %}
     <div class="request-board__card-actions">
-      {% if item.has_offered %}
+      {% if item.selected_offer_id %}
+        <p class="request-board__card-note">Penawaran ditutup</p>
+      {% elif item.has_offered %}
         <p class="request-board__card-note">Sudah menawarkan</p>
       {% else %}
         <form method="post" action="{% url 'request_board:request_offer' item.pk %}">
@@ -82,7 +88,7 @@
 
   {% if user.is_authenticated and user.id == item.owner_id %}
   <div class="request-board__owner-actions">
-  {% if item.status == "offered" %}
+  {% if item.status == "offered" and item.selected_offer_id %}
     <div class="request-board__card-actions">
       <form method="post" action="{% url 'request_board:request_fulfill' item.pk %}">
         {% csrf_token %}

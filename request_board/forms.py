@@ -18,6 +18,35 @@ BOARD_FIELD_ERRORS = {
 }
 
 
+class BoardFilterForm(forms.Form):
+    q = forms.CharField(
+        label="Cari judul, bahan, atau lokasi", max_length=120, required=False,
+        widget=forms.TextInput(attrs={"placeholder": "Judul, bahan, atau lokasi"}),
+    )
+    status = forms.ChoiceField(
+        label="Status", choices=[("", "Semua status"), *Request.STATUS_CHOICES], required=False,
+    )
+    location = forms.CharField(label="Lokasi", max_length=120, required=False, widget=forms.Select)
+    sort = forms.ChoiceField(
+        label="Urutkan", choices=[("newest", "Terbaru"), ("oldest", "Terlama")], required=False,
+    )
+    mine = forms.BooleanField(label="Permintaan saya", required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.error_messages.update(BOARD_FIELD_ERRORS)
+
+    def populate_locations(self):
+        """Load public dropdown choices only when rendering the HTML board."""
+        locations = list(Request.objects.exclude(location="").order_by("location")
+                         .values_list("location", flat=True).distinct())
+        selected = self.data.get("location", "").strip() if self.is_bound else ""
+        if selected and len(selected) <= 120 and selected not in locations:
+            locations.append(selected)
+        self.fields["location"].widget.choices = [("", "Semua lokasi"), *[(value, value) for value in locations]]
+
+
 class RequestForm(forms.ModelForm):
     quantity = forms.DecimalField(
         max_digits=8,

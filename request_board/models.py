@@ -47,6 +47,10 @@ class Request(models.Model):
         choices=STATUS_CHOICES,
         default=STATUS_PENDING,
     )
+    selected_offer = models.ForeignKey(
+        'RequestOffer', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='selected_for_requests',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

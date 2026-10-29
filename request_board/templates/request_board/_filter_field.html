@@ -1,0 +1,14 @@
+{% load static %}
+<div class="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-2">
+  <label class="tw:text-base tw:font-bold tw:leading-normal tw:min-[769px]:text-xl" for="{{ field.id_for_label }}">{% if dropdown %}{{ field.label }}{% else %}Cari permintaan{% endif %}</label>
+  <div class="tw:relative tw:[&_:is(input,select)]:box-border tw:[&_:is(input,select)]:h-[50px] tw:[&_:is(input,select)]:w-full tw:[&_:is(input,select)]:min-w-0 tw:[&_:is(input,select)]:rounded-xl tw:[&_:is(input,select)]:border-2 tw:[&_:is(input,select)]:border-ink-dark tw:[&_:is(input,select)]:bg-ink-light tw:[&_:is(input,select)]:px-3 tw:[&_:is(input,select)]:py-2 tw:[&_:is(input,select)]:font-main tw:[&_:is(input,select)]:text-xl tw:[&_:is(input,select)]:text-ink-dark tw:[&_:is(input,select)]:font-semibold tw:[&_:is(input,select)]:leading-normal tw:[&_:is(input,select)]:placeholder:text-line tw:[&_:is(input,select)]:placeholder:opacity-100 tw:[&_:is(input,select):focus-visible]:outline-3 tw:[&_:is(input,select):focus-visible]:outline-offset-3 tw:[&_:is(input,select):focus-visible]:outline-accent-green tw:[&_[aria-invalid=true]]:border-[#991b1b] tw:[&_select]:cursor-pointer tw:[&_select]:appearance-none tw:[&_select]:text-ellipsis tw:[&_select]:pr-12 tw:min-[769px]:[&_:is(input,select)]:h-[60px] tw:min-[769px]:[&_:is(input,select)]:rounded-button">
+    {{ field }}
+    {% if dropdown %}
+      <picture class="tw:pointer-events-none tw:absolute tw:top-1/2 tw:right-3 tw:-translate-y-1/2">
+        <source media="(max-width: 768px)" srcset="{% static 'request-board/select-mobile.svg' %}">
+        <img src="{% static 'request-board/select.svg' %}" alt="" width="24" height="24" class="tw:block tw:size-[18px] tw:min-[769px]:size-6">
+      </picture>
+    {% endif %}
+  </div>
+  {{ field.errors }}
+</div>

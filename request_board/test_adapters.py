@@ -161,8 +161,8 @@ class RequestListAdapterTests(TestCase):
         self.assert_pagination(first, page=1, total_items=21)
         self.assert_pagination(second, page=2, total_items=21)
         ignored = self.assert_list_response(client.get(url, {
-            "owner": self.outsider.pk, "status": "fulfilled", "search": "absent",
-            "sort": "id", "order_by": "id", "page_size": "1",
+            "owner": self.outsider.pk, "search": "absent",
+            "order_by": "id", "page_size": "1",
         }))
         self.assertEqual(ignored, first)
 
@@ -1079,6 +1079,8 @@ class RequestOwnerActionAdapterTests(TestCase):
         if status != "pending":
             for donor in (self.donor, self.second_donor):
                 RequestOffer.objects.create(request=food_request, offered_by=donor)
+        if status == "offered":
+            Request.objects.filter(pk=food_request.pk).update(selected_offer=food_request.offers.get(offered_by=self.donor))
         Request.objects.filter(pk=food_request.pk).update(
             created_at=self.fixed_time, updated_at=self.fixed_time,
         )
@@ -1232,7 +1234,7 @@ class RequestOwnerActionAdapterTests(TestCase):
         client = self.csrf_client(self.owner)
         pending = self.make_target(status="pending")
         self.assert_rejected_action(
-            client, "fulfill", pending.pk, status=409, code="request_not_offered",
+            client, "fulfill", pending.pk, status=409, code="offer_selection_required",
         )
         offered = self.make_target()
         before = self.database_snapshot()
@@ -1711,6 +1713,8 @@ class RequestHtmlAdapterTests(HtmlAdapterFixtures, TestCase):
             ("delete", self.owner, owner_client, False),
         ):
             with self.subTest(action=action, repeated=repeated):
+                if action == "fulfill" and not repeated:
+                    services.select_request_offer(actor=self.owner, request_id=target.pk, offer_id=target.offers.get(offered_by=self.donor).pk)
                 url = self.html_url("request_" + action, target.pk)
                 self.assertEqual(url, f"/board/{target.pk}/{action}/")
                 self.assertEqual(resolve(url).func.__name__, "request_action")
@@ -1929,7 +1933,8 @@ class RequestHtmlAdapterTests(HtmlAdapterFixtures, TestCase):
         """H07: action Location ignores referrer, query, payload next/redirect."""
         pending = self.make_request()
         offered = self.make_request(status="offered")
-        RequestOffer.objects.create(request=offered, offered_by=self.donor)
+        offer = RequestOffer.objects.create(request=offered, offered_by=self.donor)
+        Request.objects.filter(pk=offered.pk).update(selected_offer=offer)
         self.html_url("request_board")
         for action, actor, target in (("offer", self.donor, pending), ("fulfill", self.owner, offered),
                                       ("delete", self.owner, offered)):

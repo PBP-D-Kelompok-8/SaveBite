@@ -20,7 +20,7 @@ from django.utils.translation import get_language, override
 
 from request_board.forms import RequestForm
 from request_board.models import Request, RequestOffer
-from request_board.services import fulfill_request, offer_request
+from request_board.services import fulfill_request, offer_request, select_request_offer
 
 
 class LoginMarkup(HTMLParser):
@@ -480,6 +480,7 @@ class PublicBoardRenderingTests(TestCase):
                 offer_request(actor=cls.reader, request_id=item.pk)
                 offer_request(actor=donor, request_id=item.pk)
             if index == 2:
+                select_request_offer(actor=cls.owner, request_id=item.pk, offer_id=item.offers.get(offered_by=donor).pk)
                 fulfill_request(actor=cls.owner, request_id=item.pk)
             Request.objects.filter(pk=item.pk).update(created_at=cls.fixed_time)
             item.refresh_from_db()
@@ -573,7 +574,7 @@ class BoardPaginationRenderingTests(TestCase):
     def test_twenty_then_one_rendered_items_follow_timestamp_and_id_order(self):
         expected = ["Posting urutan 00"] + [f"Posting urutan {index:02d}" for index in range(19, 0, -1)]
         for query, titles in (("", expected), ("?page=2", ["Posting urutan 20"]),
-                              ("?page=001&status=fulfilled&sort=id", expected)):
+                              ("?page=001&sort=newest", expected)):
             with self.subTest(query=query):
                 response, markup = self.board(query)
                 self.assertEqual(response.context_data["page_obj"].paginator.count, 21)
@@ -1160,6 +1161,7 @@ class BoardActionRenderingTests(TestCase):
             quantity=1, unit="kg",
         )
         offer_request(actor=cls.donor, request_id=cls.fulfilled.pk)
+        select_request_offer(actor=cls.owner, request_id=cls.fulfilled.pk, offer_id=cls.fulfilled.offers.get(offered_by=cls.donor).pk)
         fulfill_request(actor=cls.owner, request_id=cls.fulfilled.pk)
 
     def setUp(self):
@@ -1344,6 +1346,7 @@ class BoardActionRenderingTests(TestCase):
         self.client.force_login(self.second_donor)
         _, markup = self.board()
         url, payload = self.offer_form(markup, self.offered)
+        select_request_offer(actor=self.owner, request_id=self.offered.pk, offer_id=self.offered.offers.get(offered_by=self.donor).pk)
         fulfill_request(actor=self.owner, request_id=self.offered.pk)
         before = self.snapshot()
 
@@ -1455,6 +1458,7 @@ class BoardActionRenderingTests(TestCase):
         return tokens[0]
 
     def test_fulfill_control_is_only_available_to_owner_on_offered_request(self):
+        select_request_offer(actor=self.owner, request_id=self.offered.pk, offer_id=self.offered.offers.get(offered_by=self.donor).pk)
         for actor in (None, self.donor, self.second_donor, self.owner):
             self.client = Client(enforce_csrf_checks=True)
             if actor is not None:
@@ -1470,6 +1474,7 @@ class BoardActionRenderingTests(TestCase):
 
     def test_fulfill_post_and_replayed_production_form_preserve_offers_and_show_latest_card(self):
         offer_request(actor=self.second_donor, request_id=self.offered.pk)
+        select_request_offer(actor=self.owner, request_id=self.offered.pk, offer_id=self.offered.offers.get(offered_by=self.donor).pk)
         self.client.force_login(self.owner)
         _, markup = self.board()
         self.assert_latest_card(markup, self.offered, "Ditawarkan", 2)
@@ -1512,6 +1517,7 @@ class BoardActionRenderingTests(TestCase):
         self.assert_no_action(markup, self.offered, ("fulfill",))
 
     def test_missing_and_mismatched_fulfill_form_tokens_reject_without_writes_or_messages(self):
+        select_request_offer(actor=self.owner, request_id=self.offered.pk, offer_id=self.offered.offers.get(offered_by=self.donor).pk)
         self.client.force_login(self.owner)
         _, markup = self.board()
         url, payload = self.fulfill_form(markup, self.offered)
@@ -1555,7 +1561,7 @@ class BoardActionRenderingTests(TestCase):
                     self.assertEqual(target.path, reverse("login"))
                     self.assertEqual(parse_qs(target.query), {"next": [url]})
                 elif actor == self.owner and item is self.pending:
-                    markup = self.assert_offer_prg(response, messages.ERROR, "Request belum ditawarkan.")
+                    markup = self.assert_offer_prg(response, messages.ERROR, "Pilih penawar sebelum menandai request terpenuhi.")
                     self.assert_latest_card(markup, item, "Pending", 0)
                     self.assert_no_action(markup, item, ("fulfill",))
                 else:
@@ -1634,6 +1640,7 @@ class BoardDeleteConfirmationTests(TestCase):
                 offer_request(actor=cls.donor, request_id=item.pk)
                 offer_request(actor=cls.other_owner, request_id=item.pk)
             if state == Request.STATUS_FULFILLED:
+                select_request_offer(actor=cls.owner, request_id=item.pk, offer_id=item.offers.get(offered_by=cls.donor).pk)
                 fulfill_request(actor=cls.owner, request_id=item.pk)
             item.refresh_from_db()
             cls.items.append(item)
@@ -2096,7 +2103,8 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                 print(f"PRIVACY_QUERY actor={actor} cards={count} total={len(captured)} "
                       f"auth_session={len(auth)} builder_render={len(builder)}")
                 self.assertEqual(len(auth), 0 if actor == "guest" else 2)
-                self.assertEqual(len(builder), 3 if actor == "owner" else 2)
+                # One constant lookup supplies location choices, independent of card count.
+                self.assertEqual(len(builder), 4 if actor == "owner" else 3)
         for actor in clients:
             with self.subTest(actor=actor):
                 self.assertEqual(profiles[(actor, 1)], profiles[(actor, 20)])

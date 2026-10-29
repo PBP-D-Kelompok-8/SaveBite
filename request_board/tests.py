@@ -1018,7 +1018,9 @@ class RequestFulfillServiceTests(TestCase):
         models.RequestOffer.objects.filter(pk=offer.pk).update(
             created_at=target.created_at,
         )
-        models.Request.objects.filter(pk=target.pk).update(status=status)
+        models.Request.objects.filter(pk=target.pk).update(
+            status=status, selected_offer=offer if status == "offered" else None,
+        )
         return offer
 
     def snapshot(self):
@@ -1143,7 +1145,7 @@ class RequestFulfillServiceTests(TestCase):
         before = self.snapshot()
         with self.assertRaises(ValidationError) as caught:
             fulfill_request(actor=self.owner, request_id=self.food_request.pk)
-        self.assertEqual(caught.exception.code, "request_not_offered")
+        self.assertEqual(caught.exception.code, "offer_selection_required")
         self.assertEqual(self.snapshot(), before)
 
     def test_missing_request_raises_does_not_exist_without_writes(self):
@@ -1275,6 +1277,7 @@ class RequestFulfillServiceTests(TestCase):
     def test_offer_after_fulfillment_rejects_new_and_repeated_donors(self):
         fulfill_request = self.service()
         self.prepare_offered()
+        models.Request.objects.filter(pk=self.food_request.pk).update(selected_offer_id=self.food_request.offers.get(offered_by=self.donor).pk)
         self.assert_result(fulfill_request(actor=self.owner, request_id=self.food_request.pk))
         offer_request = import_module("request_board.services").offer_request
         for actor in (self.donor, self.other_user):

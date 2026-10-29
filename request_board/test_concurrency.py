@@ -11,7 +11,7 @@ from django.test import Client, TransactionTestCase
 from django.urls import reverse
 
 from request_board.models import Request, RequestOffer
-from request_board.services import delete_request, fulfill_request, offer_request
+from request_board.services import delete_request, fulfill_request, offer_request, select_request_offer
 
 
 @skipUnless(connection.vendor == "postgresql", "Requires isolated PostgreSQL and real row locks")
@@ -183,7 +183,7 @@ class RequestConcurrencyTests(TransactionTestCase):
         self.assertEqual(initial["status"], Request.STATUS_PENDING)
         with self.assertRaises(ValidationError) as caught:
             fulfill_request(actor=self.owner, request_id=self.food_request.pk)
-        self.assertEqual(caught.exception.code, "request_not_offered")
+        self.assertEqual(caught.exception.code, "offer_selection_required")
         self.assertEqual(self._request_snapshot(), initial)
 
         def offer():
@@ -191,8 +191,9 @@ class RequestConcurrencyTests(TransactionTestCase):
             return {"offer_id": saved.pk, "created": created}
 
         def fulfill():
-            saved = fulfill_request(actor=self.owner, request_id=self.food_request.pk)
-            return {"result_updated_at": saved.updated_at, "result_status": saved.status}
+            with self.assertRaises(ValidationError) as error:
+                fulfill_request(actor=self.owner, request_id=self.food_request.pk)
+            return {"error_code": error.exception.code}
 
         leader, contender = self._ordered_services(offer, fulfill)
 
@@ -203,21 +204,20 @@ class RequestConcurrencyTests(TransactionTestCase):
         self.assertEqual(final["offers"][0][:2], (leader["offer_id"], self.donor.pk))
         self.assertEqual(final["offers"], leader["offers"])
         self.assertEqual(final["offers"], contender["offers"])
-        self.assertEqual(final["status"], Request.STATUS_FULFILLED)
-        self.assertEqual(contender["result_status"], Request.STATUS_FULFILLED)
-        self.assertEqual(final["updated_at"], contender["result_updated_at"])
+        self.assertEqual(final["status"], Request.STATUS_OFFERED)
+        self.assertEqual(contender["error_code"], "offer_selection_required")
         self.assertEqual(final["updated_at"], contender["updated_at"])
         self.assertGreater(leader["updated_at"], initial["updated_at"])
-        self.assertGreater(final["updated_at"], leader["updated_at"])
+        self.assertEqual(final["updated_at"], leader["updated_at"])
         for snapshot in (leader, contender, final):
             self.assertEqual(snapshot["created_at"], initial["created_at"])
-        self._assert_fulfilled_rejects_new_offer()
 
     def test_fulfill_commits_before_offer(self):
         initial_offer, created = offer_request(
             actor=self.donor, request_id=self.food_request.pk,
         )
         self.assertIs(created, True)
+        select_request_offer(actor=self.owner, request_id=self.food_request.pk, offer_id=initial_offer.pk)
         initial = self._request_snapshot()
         self.assertEqual(initial["status"], Request.STATUS_OFFERED)
         self.assertEqual(initial["offers"], [
@@ -258,6 +258,7 @@ class RequestConcurrencyTests(TransactionTestCase):
             actor=self.donor, request_id=self.food_request.pk,
         )
         self.assertIs(created, True)
+        select_request_offer(actor=self.owner, request_id=self.food_request.pk, offer_id=initial_offer.pk)
         initial = self._request_snapshot()
         self.assertEqual(initial["status"], Request.STATUS_OFFERED)
         self.assertEqual(initial["offers"], [
