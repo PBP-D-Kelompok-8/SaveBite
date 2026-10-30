@@ -456,3 +456,27 @@
     min-height: 84px;
   }
 }
+
+/* Dark theme readable headings, panels, and recipe controls. */
+:root[data-theme="dark"] .kat-page :is(h1, h2, h3, .kat-back-link,
+  .kat-credit a, .kat-source a, .kat-message) {
+  color: #f1f3e8;
+}
+
+:root[data-theme="dark"] :is(.kat-header h1, .kat-detail h1, .kat-form-page h1,
+  .kat-results-heading h2, .kat-empty-state h2, .kat-error-state h2,
+  .kat-panel > h1, .kat-detail-content h2, .kat-form-page .kat-panel h1) {
+  color: var(--accent-green);
+}
+
+:root[data-theme="dark"] .kat-recipe-card :is(h2, p) {
+  color: #f1f3e8;
+}
+
+:root[data-theme="dark"] .kat-image-placeholder {
+  color: var(--accent-green);
+}
+
+:root[data-theme="dark"] .kat-page :is(.kat-search-panel, .kat-panel, .kat-recipe-card) {
+  border-color: #526247;
+}

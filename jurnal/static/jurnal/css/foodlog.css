@@ -569,3 +569,14 @@
 .food-journal__results .ds-pagination {
   margin: 1rem auto 0;
 }
+
+/* Dark theme fine-tuning for the journal summary and empty states. */
+:root[data-theme="dark"] .food-journal__chart-total,
+:root[data-theme="dark"] .food-journal__empty-chart-label {
+  color: #d4dacb;
+}
+
+:root[data-theme="dark"] .food-journal__log-list .card--green {
+  background: #405532;
+  color: #f1f3e8;
+}
