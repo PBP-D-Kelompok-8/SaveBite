@@ -7,6 +7,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SaveBite{% endblock %}</title>
     {% block meta %} {% endblock meta %}
+    <script>
+      try {
+        if (localStorage.getItem("savebite-theme") === "dark") {
+          document.documentElement.dataset.theme = "dark";
+        }
+      } catch (_) {}
+    </script>
 
     <link rel="stylesheet" href="{% static 'css/auth.css' %}">
     <link rel="stylesheet" href="{% static 'css/badge.css' %}">
@@ -29,6 +36,8 @@
     
 
     {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}">
+    <script src="{% static 'js/theme.js' %}" defer></script>
 </head>
 <body class="{% block body_class %}{% endblock %}">
 

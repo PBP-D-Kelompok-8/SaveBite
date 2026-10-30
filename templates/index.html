@@ -5,12 +5,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SaveBite</title>
+  <script>
+    try {
+      if (localStorage.getItem("savebite-theme") === "dark") {
+        document.documentElement.dataset.theme = "dark";
+      }
+    } catch (_) {}
+  </script>
   <link rel="stylesheet" href="{% static 'css/static.css' %}">
   <link rel="stylesheet" href="{% static 'css/button.css' %}">
   <link rel="stylesheet" href="{% static 'css/navbar.css' %}">
   <link rel="stylesheet" href="{% static 'css/card.css' %}">
   <link rel="stylesheet" href="{% static 'css/footer.css' %}">
   <link rel="stylesheet" href="{% static 'css/landing.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dark-mode.css' %}">
+  <script src="{% static 'js/theme.js' %}" defer></script>
 </head>
 <body>
   {% include 'components/navbar.html' %}
@@ -19,7 +28,8 @@
     <!-- HERO -->
     <section class="hero">
       <div class="hero__brand">
-        <img class="hero__logo" src="{% static 'images/logo-light.svg' %}" alt="SaveBite">
+        <img class="hero__logo hero__logo--light" src="{% static 'images/logo-light.svg' %}" alt="SaveBite">
+        <img class="hero__logo hero__logo--dark" src="{% static 'images/logo-dark.svg' %}" alt="" aria-hidden="true">
         <h1 class="h2">Less Waste, More Taste!</h1>
       </div>
       <img class="hero__image" src="{% static 'images/hero.png' %}" alt="Tempat sampah penuh sisa makanan">

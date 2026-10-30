@@ -679,3 +679,55 @@ body.delete-modal-open {
         padding: 22px;
     }
 }
+
+/* Dark theme: keep recipe metadata icons and actions legible on dark cards. */
+:root[data-theme="dark"] .recipe-card__meta-icon,
+:root[data-theme="dark"] .recipe-detail__meta-icon {
+    filter: brightness(0) invert(1);
+}
+
+:root[data-theme="dark"] .recipe-card__image-link {
+    background-color: #35452f;
+    text-decoration: none;
+}
+
+:root[data-theme="dark"] .recipe-card__image--placeholder {
+    background-color: #35452f;
+    color: #f1f3e8;
+}
+
+:root[data-theme="dark"] .recipe-form__field :is(input, textarea) {
+    background: #1c241c;
+    color: #f1f3e8;
+}
+
+:root[data-theme="dark"] .recipe-card__description {
+    opacity: .88;
+}
+
+:root[data-theme="dark"] .recipe-detail__placeholder {
+    background: #252d24;
+    color: #f1f3e8;
+}
+
+:root[data-theme="dark"] .recipe-filter {
+    border-color: var(--line);
+    color: var(--accent-green);
+}
+
+:root[data-theme="dark"] .recipe-filter:is(.is-active, :hover) {
+    background: var(--dark-green);
+    color: #f1f3e8;
+}
+
+:root[data-theme="dark"] :is(.recipe-detail__back-link, .recipe-form-card h1) {
+    color: var(--accent-green);
+}
+
+:root[data-theme="dark"] .delete-modal__dialog {
+    color: #f1f3e8;
+}
+
+:root[data-theme="dark"] .delete-modal__dialog h2 {
+    color: var(--accent-green);
+}
