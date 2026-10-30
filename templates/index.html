@@ -25,8 +25,15 @@
       <img class="hero__image" src="{% static 'images/hero.png' %}" alt="Tempat sampah penuh sisa makanan">
       <p class="hero__text p2">SaveBite adalah platform untuk mengurangi food waste dengan menyelamatkan bahan makanan tersisa, menemukan resep kreatif, dan berbagi makanan bersama komunitas. Setiap langkah kecil berarti untuk masa depan yang lebih berkelanjutan.</p>
       <div class="hero__actions">
-        {% include 'components/button.html' with label="Join SaveBite" type="primary" icon_left="icons/join-savebite.svg" %}
-        {% include 'components/button.html' with label="Explore More" type="secondary" color="blue" %}
+        {% url 'food_rescue_planner:index' as planner_url %}
+        {% url 'register' as register_url %}
+
+        {% if user.is_authenticated %}
+          {% include 'components/button.html' with label="Mulai Planner" type="primary" icon_right="icons/arrow-right-stroke.svg" href=planner_url %}
+        {% else %}
+          {% include 'components/button.html' with label="Join SaveBite" type="primary" icon_right="icons/arrow-right-stroke.svg" href=register_url %}        
+        {% endif %}        
+        {% include 'components/button.html' with label="Explore More" type="secondary"  color="blue" href="#fitur" %}
       </div>
     </section>
 
@@ -61,26 +68,29 @@
     </section>
 
     <!-- FITUR -->
-    <section class="features">
+    <section id="fitur" class="features">
       <h2 class="h3 features__title">Semua yang Kamu Butuhkan untuk Menyelamatkan Makanan</h2>
       <div class="features__grid">
         <article class="feature">
           <span class="feature__icon" aria-hidden="true">✅</span>
           <h3 class="p2 feature__title">Food Rescue Planner</h3>
           <p class="p4 feature__text">Rencanakan penyelamatan makanan dengan target dan metode aksi.</p>
-          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+          {% url 'food_rescue_planner:index' as planner_url %}
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" href=planner_url %}
         </article>
         <article class="feature">
           <span class="feature__icon" aria-hidden="true">🍲</span>
           <h3 class="p2 feature__title">Katalog Resep</h3>
           <p class="p4 feature__text">Temukan resep dari bahan yang hampir kedaluwarsa.</p>
-          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+          {% url 'katalog:home' as catalog_url %}
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" href=catalog_url %}
         </article>
         <article class="feature">
           <span class="feature__icon" aria-hidden="true">👥</span>
           <h3 class="p2 feature__title">Resep Komunitas</h3>
           <p class="p4 feature__text">Bagikan dan temukan resep kreasi dari pengguna lain.</p>
-          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+          {% url 'resep_komunitas:recipe_list' as community_url %}
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" href=community_url %}
         </article>
         <article class="feature feature--wide feature--request-board">
           <span class="feature__icon" aria-hidden="true">🤝</span>
@@ -93,7 +103,8 @@
           <span class="feature__icon" aria-hidden="true">📋</span>
           <h3 class="p2 feature__title">Jurnal Jejak Makanan</h3>
           <p class="p4 feature__text">Catat makanan yang berhasil diselamatkan atau terbuang dan lihat progresmu.</p>
-          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" %}
+          {% url 'jurnal:index' as journal_url %}
+          {% include 'components/button.html' with label="Jelajahi" type="primary" icon_left="icons/folder-minus.svg" href=journal_url %}
         </article>
       </div>
 
@@ -102,7 +113,14 @@
           <h2 class="h4">Siap Menyelamatkan Makanan Hari Ini?</h2>
           <p class="p2">Mulai dari langkah kecil, selamatkan lebih banyak makanan.</p>
         </div>
-        {% include 'components/button.html' with label="Mulai Sekarang" type="secondary" color="light-green" icon_right="icons/arrow-right-stroke.svg" %}
+    {% url 'food_rescue_planner:index' as planner_url %}
+    {% url 'register' as register_url %}
+
+    {% if user.is_authenticated %}
+      {% include 'components/button.html' with label="Buat Rencana" type="secondary" color="green" icon_right="icons/arrow-right-stroke.svg" href=planner_url %}
+    {% else %}
+      {% include 'components/button.html' with label="Mulai Sekarang" type="secondary" color="green" icon_right="icons/arrow-right-stroke.svg" href=register_url %}
+    {% endif %}
       </div>
     </section>
   </main>

@@ -134,3 +134,5 @@ main h1, main h2, main h3, main p { margin: 0; }
   .cta .h4 { font-size: 12px; }
   .cta .p2 { font-size: 8px; }
 }
+html { scroll-behavior: smooth; }
+#fitur { scroll-margin-top: 90px; } /* sesuaikan dengan tinggi navbar */
