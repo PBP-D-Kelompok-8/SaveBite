@@ -85,6 +85,7 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
 
 ### 4. Food Rescue Request Board — Sandy
 **Deskripsi:** Papan interaktif bergaya forum bagi komunitas lokal untuk meminta sisa bahan makanan dalam jumlah kecil agar tidak perlu membeli baru.
+- **AI Disclosure:** [Pengungkapan penggunaan AI oleh Reshandy](request_board/ai_disclosure.md).
 - **Model Dasar:** Menyimpan detail permintaan bahan, relasi peminta, dan status pemenuhan (*Pending, Terpenuhi*).
 - **Fitur CRUD:**
   - **Create:** Memposting permintaan/kebutuhan sisa bahan makanan spesifik.
