@@ -284,6 +284,15 @@ dialog.request-board__delete-panel { position: fixed; inset: 0; overflow-y: auto
   color: #f1f3e8;
 }
 
+:root[data-theme="dark"] .request-board :is(.request-board__filter-trigger, .request-board__filter-apply) {
+  background: #35452f;
+  box-shadow: inset 0 0 0 1px #70834a;
+}
+
+:root[data-theme="dark"] .request-board :is(.request-board__filter-trigger, .request-board__filter-apply):hover {
+  background: #455b39;
+}
+
 :root[data-theme="dark"] .request-board[data-board-offers] .request-board__offer-back--outline {
   border-color: var(--accent-green);
   color: var(--accent-green);
