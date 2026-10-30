@@ -115,3 +115,11 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
 Untuk memenuhi ketentuan *deployment* awal, kelompok akan menyiapkan:
 - Berkas *fixture* Django (`fixtures/initial_data.json`) yang memuat minimal 50+ data awal.
 - Data ini meliputi variasi contoh *rescue plan*, beberapa resep komunitas awal, daftar log riwayat makanan, serta beberapa *post* permintaan di *board* agar platform langsung memiliki konten yang dapat dilihat dan diinteraksikan saat pertama kali dijalankan oleh *tester* atau dosen.
+
+---
+
+## 🤖 Ai Disclosure
+### 3. Resep Komunitas (Silvia Lalita D. | 2506621863)
+Saya menggunakan **ChatGPT** sebagai alat bantu selama pengembangan modul **Resep Komunitas** pada proyek SaveBite. AI digunakan untuk menghasilkan kode awal, membantu menyelesaikan masalah selama pengembangan, memahami error, serta membantu proses penggunaan Git. Kode yang dihasilkan AI tidak selalu langsung sesuai dengan kebutuhan modul. Oleh karena itu, saya melakukan penyesuaian dan modifikasi terhadap kode tersebut agar sesuai dengan kebutuhan dan implementasi yang saya inginkan.
+AI digunakan sebagai alat bantu dalam proses pengembangan, sedangkan implementasi akhir tetap disesuaikan dengan kebutuhan modul.
+- [ChatGPT — Percakapan terkait pengembangan modul Resep Komunitas](https://chatgpt.com/share/6ae37ce5-c9c4-83ec-9d0b-6db6d04505a2)
