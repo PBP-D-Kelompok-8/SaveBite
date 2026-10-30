@@ -5,7 +5,7 @@
 ---
 
 ## 🔗 Tautan Penting
-- **Deployment (PWS):** [Tautan Deployment PWS](reshandy-taftazani-savebite.pws.cs.ui.ac.id)
+- **Deployment (PWS):** [Tautan Deployment PWS](https://reshandy-taftazani-savebite.pws.cs.ui.ac.id)
 - **Desain UI/UX (Figma):** [Tautan Prototipe Desain Figma](https://www.figma.com/team_invite/redeem/woFR9NgdX8H0JKkRXPhlUH?t=ktOcTlt7UlLpleuI-21)
 - **Repositori Git:** [Tautan Repository Kelompok 8 PBP D](https://github.com/PBP-D-Kelompok-8/SaveBite)
 
@@ -56,6 +56,7 @@ Pemborosan makanan (*food waste*) merupakan salah satu isu lingkungan dan finans
 Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CRUD (*Create, Read, Update, Delete*) pada arsitektur Django (Model-View-Template):
 
 ### 1. Katalog Resep Bahan Sisa (TheMealDB API) — Ilham
+**Dokumentasi modul:** [README Katalog Resep Bahan Sisa](katalog/README.md).
 **Deskripsi:** Modul cerdas untuk mencari inspirasi resep masakan berdasarkan sisa bahan yang hampir kedaluwarsa.
 - **Model Dasar:** Menyimpan data resep favorit/bookmark dari API beserta catatan kustomisasi pengguna.
 - **Fitur CRUD:**
@@ -84,7 +85,10 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
   - **Delete:** Menghapus resep pribadi dari *feed* komunitas.
 
 ### 4. Food Rescue Request Board — Sandy
+**Dokumentasi modul:** [README Food Rescue Request Board](request_board/README.md).
+
 **Deskripsi:** Papan interaktif bergaya forum bagi komunitas lokal untuk meminta sisa bahan makanan dalam jumlah kecil agar tidak perlu membeli baru.
+- **AI Disclosure:** [AI Disclosure](request_board/ai_disclosure.md).
 - **Model Dasar:** Menyimpan detail permintaan bahan, relasi peminta, dan status pemenuhan (*Pending, Terpenuhi*).
 - **Fitur CRUD:**
   - **Create:** Memposting permintaan/kebutuhan sisa bahan makanan spesifik.
@@ -94,7 +98,7 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
 
 ### 5. Jurnal Jejak Makanan — Geo
 **Deskripsi:** Modul rekam jejak pribadi (*tracker*) untuk menghitung dan mengevaluasi persentase makanan yang berhasil diselamatkan atau terbuang.
-- **Model Dasar:** Menyimpan log harian berupa nama makanan, status konsumsi (*Habis/Terbuang*), dan catatan evaluasi.
+- **Model Dasar:** Menyimpan log harian berupa nama makanan, status konsumsi (*Terselamatkan/Terbuang*), dan catatan riwayat makanan.
 - **Fitur CRUD:**
   - **Create:** Mencatat log riwayat makanan harian beserta status akhirnya.
   - **Read:** Menampilkan log riwayat secara kronologis serta ringkasan persentase keberhasilan (*success rate*).
@@ -110,7 +114,42 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
 
 ---
 
-## 🗄️ Strategi Data Awal (Seeding Minimum)
-Untuk memenuhi ketentuan *deployment* awal, kelompok akan menyiapkan:
-- Berkas *fixture* Django (`fixtures/initial_data.json`) yang memuat minimal 50+ data awal.
-- Data ini meliputi variasi contoh *rescue plan*, beberapa resep komunitas awal, daftar log riwayat makanan, serta beberapa *post* permintaan di *board* agar platform langsung memiliki konten yang dapat dilihat dan diinteraksikan saat pertama kali dijalankan oleh *tester* atau dosen.
+## 🗄️ Data Awal
+
+Fixture [`fixtures/initial_data.json`](fixtures/initial_data.json) tersedia dengan **75 record**, termasuk **60 konten utama**:
+
+| Data | Jumlah |
+| --- | ---: |
+| Akun pengguna contoh | 5 |
+| Food Rescue Plan | 15 |
+| Jurnal makanan | 15 |
+| Resep komunitas | 15 |
+| Permintaan bahan | 15 |
+| Penawaran permintaan | 10 |
+
+Setelah dependensi terpasang, jalankan dari root repositori pada environment database yang ingin diisi:
+
+```sh
+python manage.py migrate
+python manage.py loaddata fixtures/initial_data.json
+```
+
+Untuk mencoba fitur pengguna login, atur password salah satu akun contoh:
+
+```sh
+python manage.py changepassword seed_ayu
+```
+
+Akun lain yang tersedia adalah `seed_bima`, `seed_citra`, `seed_dimas`, dan `seed_eka`. Semua akun contoh tidak memiliki hak staff atau superuser. Password awal tidak dapat dipakai login; atur password akun kedua untuk mencoba penawaran antar pengguna.
+
+Memuat fixture di komputer lokal hanya mengisi database lokal. Untuk PWS, jalankan pada environment aplikasi PWS; tidak perlu memuat ulang pada setiap deployment. Pemuatan ulang dapat menimpa konten contoh dengan ID yang sama dan menonaktifkan kembali password akun contoh.
+
+Fixture tidak berisi bookmark Katalog Resep; data resep eksternal dicari melalui fitur Katalog. Panduan rentang ID, relasi antarmodul, tanggal contoh, dan penggunaan database yang sudah berisi data tersedia di [dokumentasi data awal](fixtures/README.md).
+
+---
+
+## 🤖 Ai Disclosure
+### 3. Resep Komunitas (Silvia Lalita D. | 2506621863)
+Saya menggunakan **ChatGPT** sebagai alat bantu selama pengembangan modul **Resep Komunitas** pada proyek SaveBite. AI digunakan untuk menghasilkan kode awal, membantu menyelesaikan masalah selama pengembangan, memahami error, serta membantu proses penggunaan Git. Kode yang dihasilkan AI tidak selalu langsung sesuai dengan kebutuhan modul. Oleh karena itu, saya melakukan penyesuaian dan modifikasi terhadap kode tersebut agar sesuai dengan kebutuhan dan implementasi yang saya inginkan.
+AI digunakan sebagai alat bantu dalam proses pengembangan, sedangkan implementasi akhir tetap disesuaikan dengan kebutuhan modul.
+- [ChatGPT — Percakapan terkait pengembangan modul Resep Komunitas](https://chatgpt.com/share/6ae37ce5-c9c4-83ec-9d0b-6db6d04505a2)

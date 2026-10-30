@@ -13,5 +13,7 @@ __pycache__/
 .vscode/*
 !.vscode/settings.json
 .idea/
+docs/
+node_modules/
 
 .venv/
