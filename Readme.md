@@ -56,6 +56,7 @@ Pemborosan makanan (*food waste*) merupakan salah satu isu lingkungan dan finans
 Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CRUD (*Create, Read, Update, Delete*) pada arsitektur Django (Model-View-Template):
 
 ### 1. Katalog Resep Bahan Sisa (TheMealDB API) — Ilham
+**Dokumentasi modul:** [README Katalog Resep Bahan Sisa](katalog/README.md).
 **Deskripsi:** Modul cerdas untuk mencari inspirasi resep masakan berdasarkan sisa bahan yang hampir kedaluwarsa.
 - **Model Dasar:** Menyimpan data resep favorit/bookmark dari API beserta catatan kustomisasi pengguna.
 - **Fitur CRUD:**
@@ -84,8 +85,10 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
   - **Delete:** Menghapus resep pribadi dari *feed* komunitas.
 
 ### 4. Food Rescue Request Board — Sandy
+**Dokumentasi modul:** [README Food Rescue Request Board](request_board/README.md).
+
 **Deskripsi:** Papan interaktif bergaya forum bagi komunitas lokal untuk meminta sisa bahan makanan dalam jumlah kecil agar tidak perlu membeli baru.
-- **AI Disclosure:** [Pengungkapan penggunaan AI oleh Reshandy](request_board/ai_disclosure.md).
+- **AI Disclosure:** [AI Disclosure](request_board/ai_disclosure.md).
 - **Model Dasar:** Menyimpan detail permintaan bahan, relasi peminta, dan status pemenuhan (*Pending, Terpenuhi*).
 - **Fitur CRUD:**
   - **Create:** Memposting permintaan/kebutuhan sisa bahan makanan spesifik.
@@ -111,10 +114,37 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
 
 ---
 
-## 🗄️ Strategi Data Awal (Seeding Minimum)
-Untuk memenuhi ketentuan *deployment* awal, kelompok akan menyiapkan:
-- Berkas *fixture* Django (`fixtures/initial_data.json`) yang memuat minimal 50+ data awal.
-- Data ini meliputi variasi contoh *rescue plan*, beberapa resep komunitas awal, daftar log riwayat makanan, serta beberapa *post* permintaan di *board* agar platform langsung memiliki konten yang dapat dilihat dan diinteraksikan saat pertama kali dijalankan oleh *tester* atau dosen.
+## 🗄️ Data Awal
+
+Fixture [`fixtures/initial_data.json`](fixtures/initial_data.json) tersedia dengan **75 record**, termasuk **60 konten utama**:
+
+| Data | Jumlah |
+| --- | ---: |
+| Akun pengguna contoh | 5 |
+| Food Rescue Plan | 15 |
+| Jurnal makanan | 15 |
+| Resep komunitas | 15 |
+| Permintaan bahan | 15 |
+| Penawaran permintaan | 10 |
+
+Setelah dependensi terpasang, jalankan dari root repositori pada environment database yang ingin diisi:
+
+```sh
+python manage.py migrate
+python manage.py loaddata fixtures/initial_data.json
+```
+
+Untuk mencoba fitur pengguna login, atur password salah satu akun contoh:
+
+```sh
+python manage.py changepassword seed_ayu
+```
+
+Akun lain yang tersedia adalah `seed_bima`, `seed_citra`, `seed_dimas`, dan `seed_eka`. Semua akun contoh tidak memiliki hak staff atau superuser. Password awal tidak dapat dipakai login; atur password akun kedua untuk mencoba penawaran antar pengguna.
+
+Memuat fixture di komputer lokal hanya mengisi database lokal. Untuk PWS, jalankan pada environment aplikasi PWS; tidak perlu memuat ulang pada setiap deployment. Pemuatan ulang dapat menimpa konten contoh dengan ID yang sama dan menonaktifkan kembali password akun contoh.
+
+Fixture tidak berisi bookmark Katalog Resep; data resep eksternal dicari melalui fitur Katalog. Panduan rentang ID, relasi antarmodul, tanggal contoh, dan penggunaan database yang sudah berisi data tersedia di [dokumentasi data awal](fixtures/README.md).
 
 ---
 
