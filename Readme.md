@@ -56,6 +56,7 @@ Pemborosan makanan (*food waste*) merupakan salah satu isu lingkungan dan finans
 Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CRUD (*Create, Read, Update, Delete*) pada arsitektur Django (Model-View-Template):
 
 ### 1. Katalog Resep Bahan Sisa (TheMealDB API) — Ilham
+**Dokumentasi modul:** [README Katalog Resep Bahan Sisa](katalog/README.md).
 **Deskripsi:** Modul cerdas untuk mencari inspirasi resep masakan berdasarkan sisa bahan yang hampir kedaluwarsa.
 - **Model Dasar:** Menyimpan data resep favorit/bookmark dari API beserta catatan kustomisasi pengguna.
 - **Fitur CRUD:**
@@ -84,6 +85,8 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
   - **Delete:** Menghapus resep pribadi dari *feed* komunitas.
 
 ### 4. Food Rescue Request Board — Sandy
+**Dokumentasi modul:** [README Food Rescue Request Board](request_board/README.md).
+
 **Deskripsi:** Papan interaktif bergaya forum bagi komunitas lokal untuk meminta sisa bahan makanan dalam jumlah kecil agar tidak perlu membeli baru.
 - **AI Disclosure:** [AI Disclosure](request_board/ai_disclosure.md).
 - **Model Dasar:** Menyimpan detail permintaan bahan, relasi peminta, dan status pemenuhan (*Pending, Terpenuhi*).
