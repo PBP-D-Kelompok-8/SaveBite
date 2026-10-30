@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 
@@ -7,6 +7,30 @@ class AuthenticationTests(TestCase):
     def setUp(self):
         self.username = "pengguna_uji_auth"
         self.password = "SandiAman-PBP-2026!"
+
+    def test_register_accepts_deployed_https_origin_through_proxy(self):
+        host = "reshandy-taftazani-savebite.pws.cs.ui.ac.id"
+        client = Client(enforce_csrf_checks=True, HTTP_HOST=host)
+        client.get(reverse("register"))
+        data = {
+            "username": self.username,
+            "password1": self.password,
+            "password2": self.password,
+            "csrfmiddlewaretoken": client.cookies["csrftoken"].value,
+        }
+        response = client.post(reverse("register"), data, HTTP_ORIGIN=f"https://{host}")
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertTrue(User.objects.filter(username=self.username).exists())
+
+    def test_register_rejects_untrusted_origin(self):
+        client = Client(enforce_csrf_checks=True)
+        client.get(reverse("register"))
+        response = client.post(
+            reverse("register"),
+            {"csrfmiddlewaretoken": client.cookies["csrftoken"].value},
+            HTTP_ORIGIN="https://example.invalid",
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_register_creates_user_and_shows_success_message(self):
         response = self.client.post(
