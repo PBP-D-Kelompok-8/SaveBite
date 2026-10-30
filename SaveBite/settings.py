@@ -38,6 +38,7 @@ if not SECRET_KEY.strip() or (PRODUCTION and SECRET_KEY.strip() == _DEVELOPMENT_
 DEBUG = not PRODUCTION and os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "reshandy-taftazani-savebite.pws.cs.ui.ac.id"]
+CSRF_TRUSTED_ORIGINS = ["https://reshandy-taftazani-savebite.pws.cs.ui.ac.id"]
 
 
 # Application definition
