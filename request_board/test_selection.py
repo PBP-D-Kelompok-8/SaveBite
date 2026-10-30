@@ -163,7 +163,7 @@ class RequestSelectionTests(TestCase):
         self.assertContains(self.client.get('/board/'), self.donor.username)
         self.client.force_login(self.outsider)
         response = self.client.get('/board/')
-        self.assertContains(response, 'Penawaran sudah ditutup')
+        self.assertContains(response, 'Penawaran baru ditutup karena penawar sudah dipilih.')
         self.assertNotContains(response, self.donor.username)
         self.assertNotContains(response, f'/board/{self.item.pk}/offers/')
 

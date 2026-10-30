@@ -1,4 +1,5 @@
 import json
+from uuid import UUID
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 from functools import wraps
@@ -19,11 +20,13 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.contrib.auth.views import redirect_to_login
 from django.views.decorators.vary import vary_on_headers
+from django.views.decorators.cache import never_cache
 
 from request_board.forms import BoardFilterForm, RequestForm
-from request_board.models import Request, RequestOffer
+from request_board.models import Request, RequestCreationKey, RequestOffer
 from request_board.services import (
     create_request,
+    create_request_idempotent,
     delete_request,
     fulfill_request,
     get_board_page,
@@ -527,7 +530,7 @@ def request_board(request):
             for key, value in filter_form.cleaned_data.items() if value
         }),
         "filters_active": filters_active,
-        "show_filters": filters_active or bool(page_obj.paginator.count) or Request.objects.exists(),
+        "show_filters": True,
         "filter_status_label": dict([*Request.STATUS_CHOICES, (Request.STATUS_EXPIRED, "Kedaluwarsa")]).get(filter_form.cleaned_data["status"], "Semua status"),
         "filter_sort_label": "Terlama" if filter_form.cleaned_data["sort"] == "oldest" else "Terbaru",
     }
@@ -594,6 +597,23 @@ def request_create(request):
 
     form_data = request.POST if request.method == "POST" else None
     form = RequestForm(data=form_data)
+    key = None
+    if request.method == 'POST' and _is_ajax(request) and request.headers.get('Idempotency-Key'):
+        expected_owner = request.headers.get('X-Create-Owner')
+        if expected_owner and expected_owner != str(request.user.pk):
+            return JsonResponse({'ok': False, 'code': 'owner_mismatch', 'message': 'Masuk kembali dengan akun pembuat draft.'}, status=403)
+        try:
+            key = UUID(request.headers['Idempotency-Key'])
+        except (ValueError, AttributeError):
+            return _ajax_result('Kunci penyimpanan tidak valid.', '', 400)
+        try:
+            created = create_request_idempotent(actor=request.user, data=request.POST, key=key)
+        except ValidationError as exc:
+            if getattr(exc, 'code', None) in {'idempotency_conflict', 'idempotency_deleted'}:
+                return _ajax_result(str(exc.message), '', 409)
+            return JsonResponse({'ok': False, 'fields': exc.message_dict}, status=400)
+        return JsonResponse({'ok': True, 'message': 'Permintaan bantuan makanan berhasil dibuat.',
+                             'redirect_url': reverse('request_board:request_board'), 'request_id': created.pk})
     if request.method == "POST" and form.is_valid():
         try:
             create_request(actor=request.user, data=request.POST)
@@ -613,6 +633,20 @@ def request_create(request):
         return JsonResponse({"ok": False, "fields": {name: list(errors) for name, errors in form.errors.items()}}, status=400)
 
     return TemplateResponse(request, "request_board/request_form.html", {"form": form})
+
+
+@never_cache
+@_board_login_required
+def request_create_status(request, key):
+    if request.method != 'GET':
+        return HttpResponseNotAllowed(['GET'])
+    expected_owner = request.headers.get('X-Create-Owner')
+    if expected_owner and expected_owner != str(request.user.pk):
+        return JsonResponse({'ok': False, 'code': 'owner_mismatch', 'message': 'Masuk kembali dengan akun pembuat draft.'}, status=403)
+    record = RequestCreationKey.objects.filter(owner=request.user, key=key).first()
+    return JsonResponse({'ok': True, 'found': record is not None,
+                         'request_id': record.request_id if record else None,
+                         'deleted': record is not None and record.request_id is None})
 
 
 @_board_login_required

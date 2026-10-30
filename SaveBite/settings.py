@@ -89,6 +89,10 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 WHITENOISE_USE_FINDERS = True
+# Local DEBUG=False servers must refresh file sizes after CSS/JS edits.
+WHITENOISE_AUTOREFRESH = not PRODUCTION
+if not PRODUCTION:
+    WHITENOISE_MAX_AGE = 0
 
 
 # Database

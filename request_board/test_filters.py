@@ -180,7 +180,7 @@ class BoardFilterTests(TestCase):
                 self.assertTrue(response.context["filters_active"])
         response = self.client.get(self.board)
         self.assertContains(response, "Belum Ada Permintaan")
-        self.assertNotContains(response, 'aria-label="Filter permintaan"')
+        self.assertContains(response, 'aria-label="Filter permintaan"')
 
     def test_api_does_not_load_food_or_location_dropdown_options(self):
         self.item(food_item="Nasi")
@@ -314,10 +314,10 @@ class BoardFilterTests(TestCase):
                           else response.json()["error"]["fields"])
                 self.assertIn(field, errors)
 
-    def test_empty_board_hides_filters_but_filtered_empty_result_keeps_reset(self):
+    def test_empty_board_and_filtered_empty_result_keep_filters_and_reset(self):
         response = self.client.get(self.board)
         self.assertContains(response, "Belum Ada Permintaan")
-        self.assertNotContains(response, 'aria-label="Filter permintaan"')
+        self.assertContains(response, 'aria-label="Filter permintaan"')
         self.item()
         response = self.client.get(self.board, {"status": "fulfilled"})
         self.assertContains(response, 'aria-label="Filter permintaan"')

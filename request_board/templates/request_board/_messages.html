@@ -22,17 +22,18 @@
         </div>
       {% endfor %}
     </div>
+{% endif %}
   <script>
     (function () {
-      var region = document.querySelector('[data-toast-region]');
-      if (!region) return;
-      region.classList.add('request-board__toasts--dismissible');
-      region.querySelectorAll('.request-board__toast-close').forEach(function (button) {
-        var toast = button.closest('.request-board__toast');
+      function enhanceToast(toast) {
+        var region = toast.parentElement;
+        var button = toast.querySelector('.request-board__toast-close');
+        region.classList.add('request-board__toasts--dismissible');
         var lifetime = toast.classList.contains('request-board__alert--success') ? 4000 : 6000;
         var timer;
         function dismiss() {
           window.clearTimeout(timer);
+          if (!toast.isConnected) return;
           var hadFocus = toast.contains(document.activeElement);
           var adjacent = toast.nextElementSibling || toast.previousElementSibling;
           toast.remove();
@@ -63,7 +64,57 @@
           if (!toast.contains(event.relatedTarget)) resume();
         });
         resume();
-      });
+      }
+
+      document.querySelectorAll('[data-toast-region] .request-board__toast').forEach(enhanceToast);
+
+      // AJAX notices use the same markup and lifetime as server-rendered messages.
+      window.showRequestBoardToast = function (message, isError, loginUrl) {
+        var previous = document.querySelector('[data-toast-region] [data-ajax-notice]');
+        if (previous) previous.remove();
+        var region = document.querySelector('[data-toast-region]');
+        if (!region) {
+          region = document.createElement('div');
+          region.className = 'request-board__toasts';
+          region.setAttribute('aria-label', 'Notifikasi');
+          region.setAttribute('role', 'region');
+          region.dataset.toastRegion = '';
+          document.body.appendChild(region);
+        }
+        var toast = document.createElement('div');
+        toast.className = 'request-board__toast request-board__alert request-board__alert--' + (isError ? 'error' : 'success');
+        toast.dataset.ajaxNotice = '';
+        toast.setAttribute('role', isError ? 'alert' : 'status');
+        toast.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+        toast.tabIndex = -1;
+        var icon = document.createElement('span');
+        icon.className = 'request-board__toast-icon';
+        var image = document.createElement('img');
+        image.src = isError ? "{% static 'request-board/toast-error.svg' %}" : "{% static 'request-board/toast-success.svg' %}";
+        image.alt = '';
+        icon.appendChild(image);
+        var text = document.createElement('span');
+        text.textContent = message;
+        if (loginUrl) {
+          var link = document.createElement('a');
+          link.href = loginUrl;
+          link.textContent = ' Masuk';
+          text.appendChild(link);
+        }
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'request-board__toast-close';
+        close.setAttribute('aria-label', 'Tutup notifikasi');
+        var closeIcon = document.createElement('img');
+        closeIcon.src = "{% static 'request-board/close.svg' %}";
+        closeIcon.alt = '';
+        closeIcon.width = 24;
+        closeIcon.height = 24;
+        close.appendChild(closeIcon);
+        toast.append(icon, text, close);
+        region.appendChild(toast);
+        enhanceToast(toast);
+        return toast;
+      };
     })();
   </script>
-{% endif %}

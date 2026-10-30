@@ -74,6 +74,12 @@
       "variable": "imgIcons"
     },
     {
+      "name": "trash-mobile",
+      "file": "trash-mobile.svg",
+      "node": "467:3143",
+      "variable": "imgIcons"
+    },
+    {
       "name": "trash-large",
       "file": "trash-large.svg",
       "node": "479:1411",
