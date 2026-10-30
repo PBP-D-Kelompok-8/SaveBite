@@ -60,6 +60,14 @@
   --c-hover: #dce5cb;
 }
 
+:root[data-theme="dark"] .btn--secondary.btn--bright {
+  color: #171d17;
+}
+
+:root[data-theme="dark"] .btn--secondary.btn--bright:is(:hover, .is-hover):not(:disabled, [aria-disabled="true"]) {
+  background: #dce5cb;
+}
+
 :root[data-theme="dark"] .navbar__menu {
   background-color: var(--dark-green);
 }
