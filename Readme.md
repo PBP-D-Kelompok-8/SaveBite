@@ -114,10 +114,37 @@ Setiap modul dikembangkan secara independen dan memenuhi standar implementasi CR
 
 ---
 
-## 🗄️ Strategi Data Awal (Seeding Minimum)
-Untuk memenuhi ketentuan *deployment* awal, kelompok akan menyiapkan:
-- Berkas *fixture* Django (`fixtures/initial_data.json`) yang memuat minimal 50+ data awal.
-- Data ini meliputi variasi contoh *rescue plan*, beberapa resep komunitas awal, daftar log riwayat makanan, serta beberapa *post* permintaan di *board* agar platform langsung memiliki konten yang dapat dilihat dan diinteraksikan saat pertama kali dijalankan oleh *tester* atau dosen.
+## 🗄️ Data Awal
+
+Fixture [`fixtures/initial_data.json`](fixtures/initial_data.json) tersedia dengan **75 record**, termasuk **60 konten utama**:
+
+| Data | Jumlah |
+| --- | ---: |
+| Akun pengguna contoh | 5 |
+| Food Rescue Plan | 15 |
+| Jurnal makanan | 15 |
+| Resep komunitas | 15 |
+| Permintaan bahan | 15 |
+| Penawaran permintaan | 10 |
+
+Setelah dependensi terpasang, jalankan dari root repositori pada environment database yang ingin diisi:
+
+```sh
+python manage.py migrate
+python manage.py loaddata fixtures/initial_data.json
+```
+
+Untuk mencoba fitur pengguna login, atur password salah satu akun contoh:
+
+```sh
+python manage.py changepassword seed_ayu
+```
+
+Akun lain yang tersedia adalah `seed_bima`, `seed_citra`, `seed_dimas`, dan `seed_eka`. Semua akun contoh tidak memiliki hak staff atau superuser. Password awal tidak dapat dipakai login; atur password akun kedua untuk mencoba penawaran antar pengguna.
+
+Memuat fixture di komputer lokal hanya mengisi database lokal. Untuk PWS, jalankan pada environment aplikasi PWS; tidak perlu memuat ulang pada setiap deployment. Pemuatan ulang dapat menimpa konten contoh dengan ID yang sama dan menonaktifkan kembali password akun contoh.
+
+Fixture tidak berisi bookmark Katalog Resep; data resep eksternal dicari melalui fitur Katalog. Panduan rentang ID, relasi antarmodul, tanggal contoh, dan penggunaan database yang sudah berisi data tersedia di [dokumentasi data awal](fixtures/README.md).
 
 ---
 

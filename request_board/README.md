@@ -89,7 +89,9 @@ npm ci
 npm run css:build
 ```
 
-Perintah ini membangun `assets/css/request-board-tailwind.css` menjadi `static/css/request-board-tailwind.css`. CSS hasil build sudah tersedia dalam repositori untuk menjalankan modul biasa.
+Perintah ini membangun `assets/css/request-board-tailwind.css` menjadi `static/css/request-board-tailwind.css`. CSS hasil build sudah tersedia dalam repositori untuk menjalankan modul biasa. Sertakan perubahan sumber dan hasil build saat memperbarui utility Tailwind; jangan mengedit hasil build secara manual.
+
+Ketiga halaman modul memuat `request-board-tailwind.css` untuk utility berprefiks `tw:` dan `request-board.css` untuk gaya komponen. Sumber Tailwind membatasi pemindaian pada template Request Board dan script terkait agar utility tidak tercampur dengan modul lain. Saat merilis perubahan CSS/JavaScript bersama, perbarui `ASSET_VERSION` sesuai [panduan pemeliharaan](OPERATIONS.md#shared-asset-releases).
 
 ## Struktur dan sumber data
 

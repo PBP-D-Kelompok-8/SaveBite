@@ -11,8 +11,8 @@
 | Permintaan bahan | 15 |
 | Penawaran permintaan | 10 |
 
-Fixture mengikuti model yang tersedia di checkout ini. Katalog belum memiliki
-model terpasang sehingga tidak ada record katalog. `RequestCreationKey` merupakan
+Fixture tidak menyertakan bookmark Katalog Resep; pengguna dapat mencari resep
+melalui fitur Katalog lalu menyimpan bookmark sendiri. `RequestCreationKey` merupakan
 data teknis untuk retry pengiriman form, bukan konten awal yang perlu diisi.
 
 ## Memuat data
