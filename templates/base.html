@@ -1,20 +1,36 @@
-{% load static %}
+﻿{% load static %}
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{% block html_lang %}id{% endblock %}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SaveBite{% endblock %}</title>
     {% block meta %} {% endblock meta %}
-    
+
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+    <link rel="stylesheet" href="{% static 'css/badge.css' %}">
+    <link rel="stylesheet" href="{% static 'css/button.css' %}">
+    <link rel="stylesheet" href="{% static 'css/card.css' %}">
+    <link rel="stylesheet" href="{% static 'css/footer.css' %}">
+    <link rel="stylesheet" href="{% static 'css/landing.css' %}">
+    <link rel="stylesheet" href="{% static 'css/navbar.css' %}">
     <link rel="stylesheet" href="{% static 'css/static.css' %}">
+    <link rel="stylesheet" href="{% static 'css/delete-confirm.css' %}">
+    <link rel="stylesheet" href="{% static 'css/toast.css' %}">
+    <link rel="stylesheet" href="{% static 'css/paginator.css' %}">
+    <link rel="stylesheet" href="{% static 'css/search-bar.css' %}">
+    <link rel="stylesheet" href="{% static 'css/form-modal.css' %}">
+
+    <script src="{% static 'js/delete-confirm.js' %}" defer></script>
+    <script src="{% static 'js/form-modal.js' %}" defer></script>
+
 
     
 
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 
     <!-- Navbar Reusable -->
     {% include 'components/navbar.html' %}

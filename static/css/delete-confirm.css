@@ -1,0 +1,92 @@
+/* ==========================================================================
+   SaveBite — Delete Confirmation
+   Sumber: Figma > Design System > Delete Confirmation (node 264:587)
+   Butuh: button.css (token warna + .btn). Link button.css lebih dulu.
+   Mobile-first: ukuran mobile = default, ukuran desktop mulai 768px
+   ========================================================================== */
+
+.confirm {
+  /* Mode Mobile (Desktop=False) */
+  --confirm-w: 320px;
+  --confirm-pad: 24px;
+  --confirm-gap: 12px;
+  --confirm-radius: 24px;
+
+  box-sizing: border-box;
+  width: min(var(--confirm-w), calc(100vw - 32px));
+  padding: 0;
+  border: 0;
+  border-radius: var(--confirm-radius);
+  background: var(--ink-light);
+  color: var(--ink-dark);
+  box-shadow: inset 0 0 0 1px var(--dark-green); /* stroke 1px inside, seperti di Figma */
+  font-family: "Poppins", system-ui, sans-serif;
+}
+
+/* Mode Desktop (Desktop=True) */
+@media (min-width: 768px) {
+  .confirm {
+    --confirm-w: 480px;
+    --confirm-pad: 32px;
+    --confirm-gap: 16px;
+    --confirm-radius: 32px;
+  }
+}
+
+.confirm__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--confirm-gap);
+  margin: 0;
+  padding: var(--confirm-pad);
+}
+
+/* Lingkaran ikon merah */
+.confirm__icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: var(--ink-light);
+}
+.confirm__icon .btn__icon {
+  width: 28px;
+  height: 28px;
+}
+
+.confirm__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.confirm__desc {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Tombol: mobile bertumpuk (Hapus di atas), desktop berdampingan rata kanan.
+   Urutan DOM: Batal, Hapus — Batal dulu supaya urutan fokus keyboard aman. */
+.confirm__actions {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .confirm__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+  }
+}
+
+/* Dipakai kalau .confirm adalah <dialog> */
+dialog.confirm::backdrop {
+  background: rgb(35 54 26 / 0.55); /* tidak ada di Figma — pilihan sendiri */
+} 

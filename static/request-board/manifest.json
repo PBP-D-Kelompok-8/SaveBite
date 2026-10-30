@@ -1,0 +1,113 @@
+{
+  "source": "https://www.figma.com/design/Qz00q3qJVwqCvgUgkwAJ8A/Design-System?node-id=347-860",
+  "assets": [
+    {
+      "name": "create",
+      "file": "create.svg",
+      "node": "353:918",
+      "variable": "imgIcons6"
+    },
+    {
+      "name": "pending",
+      "file": "pending.svg",
+      "node": "353:918",
+      "variable": "imgBxTimerSvg1"
+    },
+    {
+      "name": "offered",
+      "file": "offered.svg",
+      "node": "353:918",
+      "variable": "imgBxTimerSvg"
+    },
+    {
+      "name": "fulfilled",
+      "file": "fulfilled.svg",
+      "node": "353:918",
+      "variable": "imgBxTimerSvg2"
+    },
+    {
+      "name": "next",
+      "file": "next.svg",
+      "node": "353:918",
+      "variable": "imgIcons7"
+    },
+    {
+      "name": "create-mobile",
+      "file": "create-mobile.svg",
+      "node": "353:923",
+      "variable": "imgIcons1"
+    },
+    {
+      "name": "pending-mobile",
+      "file": "pending-mobile.svg",
+      "node": "353:923",
+      "variable": "imgBxTimerSvg"
+    },
+    {
+      "name": "offered-mobile",
+      "file": "offered-mobile.svg",
+      "node": "353:923",
+      "variable": "imgBxTimerSvg1"
+    },
+    {
+      "name": "save",
+      "file": "save.svg",
+      "node": "353:919",
+      "variable": "imgIcons5"
+    },
+    {
+      "name": "select",
+      "file": "select.svg",
+      "node": "353:919",
+      "variable": "imgIcons4"
+    },
+    {
+      "name": "select-mobile",
+      "file": "select-mobile.svg",
+      "node": "353:926",
+      "variable": "imgIcons5"
+    },
+    {
+      "name": "trash",
+      "file": "trash.svg",
+      "node": "479:1411",
+      "variable": "imgIcons"
+    },
+    {
+      "name": "trash-mobile",
+      "file": "trash-mobile.svg",
+      "node": "467:3143",
+      "variable": "imgIcons"
+    },
+    {
+      "name": "trash-large",
+      "file": "trash-large.svg",
+      "node": "479:1411",
+      "variable": "imgProperty1Trash"
+    },
+    {
+      "name": "toast-success",
+      "file": "toast-success.svg",
+      "node": "493:1374",
+      "variable": "imgIcons"
+    },
+    {
+      "name": "close",
+      "file": "close.svg",
+      "node": "493:1374",
+      "variable": "imgIcons1"
+    },
+    {
+      "name": "toast-warning",
+      "file": "toast-warning.svg",
+      "node": "493:1410",
+      "variable": "imgIcons"
+    },
+    {
+      "name": "toast-error",
+      "file": "toast-error.svg",
+      "node": "493:1419",
+      "variable": "imgIcons"
+    }
+  ]
+}

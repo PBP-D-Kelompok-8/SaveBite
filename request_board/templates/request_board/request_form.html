@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% load static request_board_assets %}
+
+{% block html_lang %}id{% endblock %}
+{% block body_class %}request-board-page{% endblock %}
+
+{% block title %}Buat Permintaan — Food Rescue Request Board | SaveBite{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% board_static 'css/request-board-tailwind.css' %}">
+  <link rel="stylesheet" href="{% static 'css/button.css' %}">
+  <link rel="stylesheet" href="{% static 'css/navbar.css' %}">
+  <link rel="stylesheet" href="{% static 'css/footer.css' %}">
+  <link rel="stylesheet" href="{% board_static 'css/request-board.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="request-board tw:mx-auto tw:w-full tw:max-w-[1440px] tw:px-5 tw:pt-7 tw:pb-10 tw:min-[769px]:px-10 tw:min-[769px]:pt-[52px] tw:min-[769px]:pb-20 tw:min-[1251px]:px-20" lang="id" data-create-owner="{{ user.pk }}">
+  {% include 'request_board/_messages.html' %}
+
+  <div class="request-board__form-card tw:mx-auto tw:w-full tw:max-w-[960px]">
+    <header class="request-board__form-header">
+      <h1 class="request-board__title">Buat Permintaan Bantuan Makanan</h1>
+      <p class="request-board__subtitle">Isi rincian bahan makanan yang Anda butuhkan agar donatur dapat membantu.</p>
+    </header>
+    <p class="request-board__form-hint">* Wajib diisi</p>
+
+    {% if form.errors %}
+      <div class="request-board__alert request-board__alert--error request-board__error-summary" role="alert" aria-labelledby="error-summary-title">
+        <h2 id="error-summary-title" class="request-board__error-summary-heading">Terdapat kesalahan pada formulir:</h2>
+        {% if form.non_field_errors %}
+          <ul class="request-board__non-field-errors errorlist">
+            {% for error in form.non_field_errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        <ul class="request-board__error-summary-list">
+          {% for field in form %}
+            {% if field.errors %}
+              {% for error in field.errors %}
+                <li>
+                  <a href="#{{ field.id_for_label }}" class="request-board__error-link">
+                    {% if field.name == 'title' %}Judul Permintaan{% elif field.name == 'food_item' %}Bahan Makanan{% elif field.name == 'quantity' %}Jumlah{% elif field.name == 'unit' %}Satuan{% elif field.name == 'description' %}Deskripsi{% elif field.name == 'location' %}Lokasi{% else %}{{ field.label }}{% endif %}: {{ error }}
+                  </a>
+                </li>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'request_board:request_create' %}" class="request-board__form tw:flex tw:flex-col tw:gap-6" data-board-create novalidate>
+      {% csrf_token %}
+
+      <div class="request-board__form-group">
+        <label for="{{ form.title.id_for_label }}" class="request-board__label">
+          Judul Permintaan <span class="request-board__required">*</span>
+        </label>
+        {{ form.title }}
+        <p id="id_title_hint" class="request-board__field-hint">Maksimal 120 karakter.</p>
+        {% if form.title.errors %}
+          <div class="request-board__field-errors">
+            {{ form.title.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="request-board__form-group">
+        <label for="{{ form.food_item.id_for_label }}" class="request-board__label">
+          Bahan Makanan <span class="request-board__required">*</span>
+        </label>
+        {{ form.food_item }}
+        <p id="id_food_item_hint" class="request-board__field-hint">Maksimal 120 karakter.</p>
+        {% if form.food_item.errors %}
+          <div class="request-board__field-errors">
+            {{ form.food_item.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="request-board__form-row tw:flex tw:flex-col tw:gap-4 tw:min-[769px]:flex-row">
+        <div class="request-board__form-group request-board__form-group--half tw:flex-1">
+          <label for="{{ form.quantity.id_for_label }}" class="request-board__label">
+            Jumlah <span class="request-board__required">*</span>
+          </label>
+          {{ form.quantity }}
+          <p id="id_quantity_hint" class="request-board__field-hint">Minimal 0,01; maksimal 2 angka desimal.</p>
+          {% if form.quantity.errors %}
+            <div class="request-board__field-errors">
+              {{ form.quantity.errors }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="request-board__form-group request-board__form-group--half tw:flex-1">
+          <label for="{{ form.unit.id_for_label }}" class="request-board__label">
+            Satuan <span class="request-board__required">*</span>
+          </label>
+          {{ form.unit }}
+          {% if form.unit.errors %}
+            <div class="request-board__field-errors">
+              {{ form.unit.errors }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="request-board__form-group">
+        <label for="{{ form.expires_at.id_for_label }}" class="request-board__label">Batas waktu permintaan <span class="request-board__required">*</span></label>
+        {{ form.expires_at }}
+        <p id="id_expires_at_hint" class="request-board__field-hint">Waktu Indonesia Barat (WIB). Setelah batas waktu, permintaan ditutup.</p>
+        {% if form.expires_at.errors %}<div class="request-board__field-errors">{{ form.expires_at.errors }}</div>{% endif %}
+      </div>
+
+      <div class="request-board__form-group">
+        <label for="{{ form.description.id_for_label }}" class="request-board__label">
+          Deskripsi <span class="request-board__optional">(opsional)</span>
+        </label>
+        <textarea name="description" id="{{ form.description.id_for_label }}" maxlength="1000" aria-describedby="id_description_hint{% if form.description.errors %} id_description_error{% endif %}"{% if form.description.errors %} aria-invalid="true"{% endif %}>{{ form.description.value|default_if_none:"" }}</textarea>
+        <p id="id_description_hint" class="request-board__field-hint">Maksimal 1.000 karakter.</p>
+        {% if form.description.errors %}
+          <div class="request-board__field-errors">
+            {{ form.description.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="request-board__form-group">
+        <label for="{{ form.location.id_for_label }}" class="request-board__label">
+          Lokasi <span class="request-board__optional">(opsional)</span>
+        </label>
+        {{ form.location }}
+        <p id="id_location_hint" class="request-board__field-hint">Maksimal 120 karakter. Jangan cantumkan kontak pribadi.</p>
+        {% if form.location.errors %}
+          <div class="request-board__field-errors">
+            {{ form.location.errors }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="request-board__form-actions tw:flex tw:flex-col tw:flex-wrap tw:items-start tw:gap-4 tw:min-[769px]:flex-row">
+        <button type="submit" class="btn btn--primary">
+          <img src="{% static 'request-board/save.svg' %}" alt="" width="18" height="18">
+          Simpan Permintaan
+        </button>
+        <a href="{% url 'request_board:request_board' %}" class="btn btn--tertiary btn--dark-green">
+          Batal
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="{% board_static 'js/request-board.js' %}" defer></script>{% endblock %}

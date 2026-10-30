@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 import os
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 
@@ -26,13 +27,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-v6jenirx$=v6b(u=)ls*xr@l4-xc3yqq_qh%knsgw)v9l3x73p'
+PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
+_DEVELOPMENT_SECRET_KEY = 'django-insecure-fallback-key-for-dev-only'
+# Missing keys may use the public fallback only for local development.
+SECRET_KEY = os.getenv('SECRET_KEY', '' if PRODUCTION else _DEVELOPMENT_SECRET_KEY)
+if not SECRET_KEY.strip() or (PRODUCTION and SECRET_KEY.strip() == _DEVELOPMENT_SECRET_KEY):
+    raise ImproperlyConfigured('Set the SECRET_KEY environment variable to a new random key.')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = not PRODUCTION and os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "reshandy-taftazani-savebite.pws.cs.ui.ac.id"]
-PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 
 
 # Application definition
@@ -44,6 +49,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'main.apps.MainConfig',
+    'request_board.apps.RequestBoardConfig',
+    'food_rescue_planner',
+    'jurnal',
+    "resep_komunitas.apps.ResepKomunitasConfig",
+    "katalog.apps.KatalogConfig",
 ]
 
 MIDDLEWARE = [
@@ -79,6 +90,10 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 WHITENOISE_USE_FINDERS = True
+# Local DEBUG=False servers must refresh file sizes after CSS/JS edits.
+WHITENOISE_AUTOREFRESH = not PRODUCTION
+if not PRODUCTION:
+    WHITENOISE_MAX_AGE = 0
 
 
 # Database
@@ -126,13 +141,16 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'landing_page'
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Jakarta'
 
 USE_I18N = True
 

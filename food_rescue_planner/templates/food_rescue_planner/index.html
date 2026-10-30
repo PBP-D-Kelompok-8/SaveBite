@@ -1,0 +1,586 @@
+{% extends 'base.html' %}
+
+{% block title %}Food Rescue Planner | SaveBite{% endblock %}
+
+{% block body_class %}frp-page{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Footer nempel di dasar layar (khusus halaman Planner, lewat body_class) */
+    body.frp-page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.frp-page > main {
+        flex: 1;
+    }
+
+    .frp-container {
+        --frp-paper: #eff4bd;
+        --frp-ink-light: #fcffe6;
+        --frp-line: #556f30;
+        --frp-ink-dark: #362f22;
+        --frp-dark-green: #23361a;
+        --frp-green: #a2b448;
+        --frp-blue: #52707b;
+        --frp-danger: #ff8888;
+        --frp-danger-hover: #f26b6b;
+        --frp-muted: #716d57;
+
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        padding: clamp(24px, 4vw, 48px) clamp(16px, 4vw, 32px) clamp(40px, 6vw, 64px);
+        box-sizing: border-box;
+        background: var(--frp-paper);
+        color: var(--frp-ink-dark);
+        font-family: "Poppins", Arial, sans-serif;
+    }
+
+    .frp-container *,
+    .frp-container *::before,
+    .frp-container *::after {
+        box-sizing: border-box;
+    }
+
+    .frp-header,
+    .frp-message,
+    .frp-guest-card,
+    .frp-user-content {
+        width: 100%;
+        max-width: 1000px;
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .frp-header {
+        margin-bottom: 34px;
+    }
+
+    .frp-header h1 {
+        margin: 0 0 6px;
+        color: var(--frp-ink-dark);
+        font-size: clamp(1.65rem, 3vw, 2.2rem);
+        line-height: 1.3;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
+    .frp-header p {
+        margin: 0;
+        color: var(--frp-muted);
+        font-size: 1rem;
+        line-height: 1.7;
+    }
+
+    .frp-message {
+        margin-bottom: 18px;
+        padding: 12px 16px;
+        border: 1px solid #d8e3b5;
+        border-radius: 12px;
+        background: var(--frp-ink-light);
+        color: var(--frp-dark-green);
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+    }
+
+    .frp-message.error {
+        border-color: #f2c5c5;
+        background: #fff0f0;
+        color: #9f3434;
+    }
+
+    .frp-guest-card {
+        padding: clamp(22px, 3vw, 32px) 24px;
+        border: 1px solid rgba(85, 111, 48, 0.15);
+        border-radius: 24px;
+        background: var(--frp-ink-light);
+        color: var(--frp-ink-dark);
+        text-align: center;
+        overflow-wrap: anywhere;
+    }
+
+    .frp-guest-card h2 {
+        margin: 0 0 6px;
+        color: var(--frp-ink-dark);
+        font-size: clamp(1.05rem, 2vw, 1.25rem);
+        line-height: 1.5;
+    }
+
+    .frp-guest-card p {
+        margin: 0;
+        color: var(--frp-muted);
+        font-size: 0.9rem;
+        line-height: 1.7;
+    }
+
+    .frp-section {
+        width: 100%;
+        min-width: 0;
+        margin-bottom: 28px;
+        padding: clamp(18px, 3vw, 28px);
+        border: 1px solid rgba(85, 111, 48, 0.25);
+        border-radius: 20px;
+        background: var(--frp-ink-light);
+    }
+
+    .frp-section h2 {
+        margin: 0 0 20px;
+        color: var(--frp-dark-green);
+        font-size: clamp(1.15rem, 2vw, 1.4rem);
+        line-height: 1.5;
+    }
+
+    .frp-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .frp-field {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        min-width: 0;
+    }
+
+    .frp-field-full {
+        grid-column: 1 / -1;
+    }
+
+    .frp-field label {
+        color: var(--frp-ink-dark);
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .frp-field input,
+    .frp-field select,
+    .frp-field textarea {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        padding: 11px 12px;
+        border: 1px solid #c4cda4;
+        border-radius: 10px;
+        background: #fffef5;
+        color: var(--frp-ink-dark);
+        font-family: inherit;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .frp-field input:focus,
+    .frp-field select:focus,
+    .frp-field textarea:focus {
+        outline: 2px solid var(--frp-green);
+        outline-offset: 2px;
+        border-color: var(--frp-line);
+    }
+
+    .frp-field textarea {
+        min-height: 110px;
+        resize: vertical;
+    }
+
+    .frp-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        max-width: 100%;
+        padding: 10px 16px;
+        border: 1px solid var(--frp-dark-green);
+        border-radius: 10px;
+        background: var(--frp-dark-green);
+        color: var(--frp-ink-light);
+        font-family: inherit;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.4;
+        text-align: center;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+        cursor: pointer;
+        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .frp-button:hover {
+        border-color: #354d29;
+        background: #354d29;
+        color: #fff;
+    }
+
+    .frp-button:focus-visible {
+        outline: 2px solid var(--frp-blue);
+        outline-offset: 3px;
+    }
+
+    .frp-button-secondary {
+        border-color: var(--frp-line);
+        background: var(--frp-ink-light);
+        color: var(--frp-dark-green);
+    }
+
+    .frp-button-secondary:hover {
+        background: #e3eabd;
+        color: var(--frp-dark-green);
+    }
+
+    .frp-button-danger {
+        border-color: var(--frp-danger);
+        background: var(--frp-danger);
+        color: var(--frp-ink-dark);
+    }
+
+    .frp-button-danger:hover {
+        border-color: var(--frp-danger-hover);
+        background: var(--frp-danger-hover);
+        color: var(--frp-ink-dark);
+    }
+
+    .frp-submit {
+        margin-top: 20px;
+    }
+
+    .frp-plan-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .frp-plan-card {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        padding: 20px;
+        border: 1px solid #23361a;
+        border-radius: 16px;
+        background: #556f30;
+        color: var(--frp-ink-light);
+        overflow-wrap: anywhere;
+    }
+
+    .frp-plan-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .frp-plan-top h3 {
+        margin: 0;
+    }
+
+    .frp-plan-top .frp-status {
+        flex-shrink: 0;
+        margin-top: 0;
+        white-space: nowrap;
+    }
+
+    .frp-plan-meta {
+        margin: 4px 0 0;
+        color: var(--frp-ink-light);
+        font-size: 0.9rem;
+        font-weight: 600;
+        line-height: 1.6;
+    }
+
+    .frp-plan-notes {
+        margin: 10px 0 0;
+        color: var(--frp-ink-light);
+        font-size: 0.85rem;
+        line-height: 1.6;
+        opacity: 0.9;
+    }
+
+    .frp-plan-card h3 {
+        margin: 0 0 14px;
+        color: var(--frp-ink-light);
+        font-size: 1.15rem;
+        line-height: 1.5;
+    }
+
+    .frp-status {
+        display: inline-block;
+        margin-top: 4px;
+        padding: 5px 10px;
+        border-radius: 20px;
+        background: #f6eac4; /* On Going (default) */
+        color: #633806;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .frp-status-success {
+        background: #d8e3b5;
+        color: #23361a;
+    }
+
+    .frp-status-failed {
+        background: #fdeaea;
+        color: #a33333;
+    }
+
+    .frp-plan-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: auto;
+        padding-top: 18px;
+    }
+
+    .frp-plan-actions form {
+        display: inline-flex;
+        margin: 0;
+    }
+
+    .frp-plan-card .frp-button-secondary {
+        border-color: var(--frp-ink-light);
+        background: var(--frp-ink-light);
+        color: var(--frp-dark-green);
+    }
+
+    .frp-plan-card .frp-button-secondary:hover {
+        background: #e3eabd;
+    }
+
+    .frp-empty {
+        padding: 24px 18px;
+        border: 1px dashed var(--frp-line);
+        border-radius: 14px;
+        background: #fffef5;
+        color: var(--frp-muted);
+        text-align: center;
+        line-height: 1.7;
+        overflow-wrap: anywhere;
+    }
+
+    /* Navbar compact khusus layar desktop berukuran menengah */
+    @media (min-width: 769px) and (max-width: 1100px) {
+        .navbar__inner {
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            gap: 12px;
+            padding-right: 16px;
+            padding-left: 16px;
+        }
+
+        .navbar__logo img {
+            height: 32px;
+            max-width: 150px;
+        }
+
+        .navbar__links {
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .navbar__links a,
+        .navbar__links button {
+            font-size: 13px;
+        }
+
+        .navbar__actions {
+            gap: 4px;
+        }
+
+        .navbar__username {
+            min-height: 40px;
+            padding: 0 4px;
+            font-size: 13px;
+        }
+
+        .navbar__actions .btn {
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+    }
+
+    @media (max-width: 760px) {
+        .frp-form-grid,
+        .frp-plan-list {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .frp-field-full {
+            grid-column: auto;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .frp-container {
+            padding: 24px 14px 36px;
+        }
+
+        .frp-header {
+            margin-bottom: 24px;
+        }
+
+        .frp-header h1 {
+            font-size: 1.6rem;
+        }
+
+        .frp-header p {
+            font-size: 0.9rem;
+        }
+
+        .frp-section {
+            margin-bottom: 20px;
+            padding: 16px;
+            border-radius: 16px;
+        }
+
+        .frp-section h2 {
+            margin-bottom: 16px;
+        }
+
+        .frp-guest-card {
+            padding: 22px 16px;
+            border-radius: 18px;
+        }
+
+        .frp-plan-card {
+            padding: 16px;
+        }
+
+        .frp-plan-actions {
+            align-items: stretch;
+        }
+
+        .frp-plan-actions .frp-button,
+        .frp-plan-actions form {
+            max-width: 100%;
+        }
+
+        .frp-plan-actions form .frp-button {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="frp-container">
+    <header class="frp-header">
+        <h1>Food Rescue Planner</h1>
+        <p>Atur rencana penyelamatan makananmu di sini.</p>
+    </header>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="frp-message{% if message.tags == 'error' %} error{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if user.is_authenticated %}
+        <div class="frp-user-content">
+            <section class="frp-section">
+                <h2>Buat Rencana</h2>
+
+                <form method="POST" action="{% url 'food_rescue_planner:create' %}">
+                    {% csrf_token %}
+
+                    <div class="frp-form-grid">
+                        <div class="frp-field frp-field-full">
+                            <label for="nama_bahan">Nama Bahan Makanan</label>
+                            <input type="text" id="nama_bahan" name="nama_bahan" maxlength="100" placeholder="Contoh: Pisang" required>
+                        </div>
+
+                        <div class="frp-field">
+                            <label for="jumlah">Jumlah</label>
+                            <input type="number" id="jumlah" name="jumlah" min="1" max="2147483647" value="1" required>
+                        </div>
+
+                        <div class="frp-field">
+                            <label for="satuan">Satuan</label>
+                            <select id="satuan" name="satuan" required>
+                                <option value="pcs">Pieces</option>
+                                <option value="kg">Kilogram</option>
+                                <option value="gr">Gram</option>
+                                <option value="porsi">Porsi</option>
+                                <option value="liter">Liter</option>
+                            </select>
+                        </div>
+
+                        <div class="frp-field">
+                            <label for="target_date">Target Tanggal</label>
+                            <input type="date" id="target_date" name="target_date" required>
+                        </div>
+
+                        <div class="frp-field frp-field-full">
+                            <label for="metode_aksi">Metode Penyelamatan</label>
+                            <select id="metode_aksi" name="metode_aksi" required>
+                                <option value="cook">Cook (Dimasak)</option>
+                                <option value="preserve">Preserve (Diawetkan)</option>
+                                <option value="share">Share (Dibagikan)</option>
+                            </select>
+                        </div>
+
+                        <div class="frp-field frp-field-full">
+                            <label for="notes">Catatan (Opsional)</label>
+                            <textarea id="notes" name="notes" placeholder="Tulis rencana atau catatan tambahan..."></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="frp-button frp-submit">Buat Rencana</button>
+                </form>
+            </section>
+
+            <section class="frp-section">
+                <h2>Daftar Rencana Saya</h2>
+
+                {% if plans %}
+                    <div class="frp-plan-list">
+                        {% for plan in plans %}
+                            <article class="frp-plan-card">
+                                <div class="frp-plan-top">
+                                    <h3>{{ plan.nama_bahan }}</h3>
+                                    <span class="frp-status{% if plan.status == 'success' %} frp-status-success{% elif plan.status == 'failed' %} frp-status-failed{% endif %}">
+                                        {{ plan.get_status_display }}
+                                    </span>
+                                </div>
+
+                                <p class="frp-plan-meta">{{ plan.target_date|date:"d M Y" }} · {{ plan.jumlah }} {{ plan.get_satuan_display }}</p>
+                                <p class="frp-plan-meta">Metode: {{ plan.get_metode_aksi_display }}</p>
+
+                                {% if plan.notes %}
+                                    <p class="frp-plan-notes">{{ plan.notes|linebreaksbr }}</p>
+                                {% endif %}
+
+                                <div class="frp-plan-actions">
+                                    <a class="frp-button frp-button-secondary" href="{% url 'food_rescue_planner:edit' plan.id %}">Edit</a>
+
+                                    <form method="POST" action="{% url 'food_rescue_planner:delete' plan.id %}" onsubmit="return confirm('Yakin ingin menghapus rencana ini?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="frp-button frp-button-danger">Hapus</button>
+                                    </form>
+
+                                    {% if plan.metode_aksi == 'cook' %}
+                                        <a class="frp-button frp-button-secondary" href="{% url 'resep_komunitas:recipe_list' %}?q={{ plan.nama_bahan|urlencode }}">Cari Resep Komunitas</a>
+                                    {% endif %}
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="frp-empty">
+                        Belum ada rencana penyelamatan makanan. Yuk, buat rencana pertamamu!
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+    {% else %}
+        <section class="frp-guest-card">
+            <h2>Login untuk Mulai Merencanakan</h2>
+            <p>Kelola rencana penyelamatan makananmu dengan mudah.</p>
+        </section>
+    {% endif %}
+</div>
+{% endblock content %}

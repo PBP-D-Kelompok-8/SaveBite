@@ -1,0 +1,31 @@
+<div class="request-board__filter-section">
+<div class="request-board__filter-heading">
+  <h2 class="request-board__section-title">Daftar Permintaan</h2>
+
+</div>
+<details class="request-board__filter-panel" data-filter-panel{% if filter_form.errors %} open{% endif %}>
+  <summary role="button" class="request-board__filter-trigger" data-filter-open aria-controls="board-filter-form">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9L3 4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Filter
+  </summary>
+  <form id="board-filter-form" method="get" action="{% url 'request_board:request_board' %}" class="request-board__filters" aria-label="Filter permintaan" data-filter-form>
+    <div class="request-board__filter-header">
+      <h2 id="board-filter-title">Filter permintaan</h2>
+      <a href="{% url 'request_board:request_board' %}" data-board-reset class="request-board__filter-reset">Reset</a>
+    </div>
+    <div class="request-board__filter-body">
+      {% include 'request_board/_filter_field.html' with field=filter_form.title dropdown=False %}
+      <div class="request-board__filter-grid">
+        {% include 'request_board/_filter_field.html' with field=filter_form.status dropdown=True %}
+        {% include 'request_board/_filter_field.html' with field=filter_form.food_item dropdown=True %}
+        {% include 'request_board/_filter_field.html' with field=filter_form.location dropdown=True %}
+        {% include 'request_board/_filter_field.html' with field=filter_form.sort dropdown=True %}
+        <button type="submit" class="request-board__filter-apply">Terapkan</button>
+      </div>
+      <input type="hidden" name="q" value="{{ filter_form.q.value|default:'' }}">
+      <input type="hidden" name="mine" value="{% if filter_form.mine.value %}on{% endif %}">
+      {{ filter_form.q.errors }}{{ filter_form.mine.errors }}
+    </div>
+  </form>
+</details>
+</div>

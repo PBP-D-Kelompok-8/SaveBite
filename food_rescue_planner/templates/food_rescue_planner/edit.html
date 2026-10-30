@@ -1,0 +1,372 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Rencana | SaveBite{% endblock %}
+
+{% block body_class %}frp-page{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Footer nempel di dasar layar (khusus halaman Planner, lewat body_class) */
+    body.frp-page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.frp-page > main {
+        flex: 1;
+    }
+
+    .frp-container {
+        --frp-paper: #eff4bd;
+        --frp-ink-light: #fcffe6;
+        --frp-line: #556f30;
+        --frp-ink-dark: #362f22;
+        --frp-dark-green: #23361a;
+        --frp-green: #a2b448;
+        --frp-blue: #52707b;
+        --frp-muted: #716d57;
+
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        padding: clamp(24px, 4vw, 48px) clamp(16px, 4vw, 32px) clamp(40px, 6vw, 64px);
+        box-sizing: border-box;
+        background: var(--frp-paper);
+        color: var(--frp-ink-dark);
+        font-family: "Poppins", Arial, sans-serif;
+    }
+
+    .frp-container *,
+    .frp-container *::before,
+    .frp-container *::after {
+        box-sizing: border-box;
+    }
+
+    .frp-header,
+    .frp-section {
+        width: 100%;
+        max-width: 760px;
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .frp-header {
+        margin-bottom: 28px;
+    }
+
+    .frp-header h1 {
+        margin: 0 0 6px;
+        color: var(--frp-ink-dark);
+        font-size: clamp(1.65rem, 3vw, 2.2rem);
+        line-height: 1.3;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
+    .frp-header p {
+        margin: 0;
+        color: var(--frp-muted);
+        font-size: 1rem;
+        line-height: 1.7;
+    }
+
+    .frp-section {
+        min-width: 0;
+        padding: clamp(18px, 3vw, 28px);
+        border: 1px solid rgba(85, 111, 48, 0.25);
+        border-radius: 20px;
+        background: var(--frp-ink-light);
+    }
+
+    .frp-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .frp-field {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        min-width: 0;
+    }
+
+    .frp-field-full {
+        grid-column: 1 / -1;
+    }
+
+    .frp-field label {
+        color: var(--frp-ink-dark);
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .frp-field input,
+    .frp-field select,
+    .frp-field textarea {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        padding: 11px 12px;
+        border: 1px solid #c4cda4;
+        border-radius: 10px;
+        background: #fffef5;
+        color: var(--frp-ink-dark);
+        font-family: inherit;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .frp-field input:focus,
+    .frp-field select:focus,
+    .frp-field textarea:focus {
+        outline: 2px solid var(--frp-green);
+        outline-offset: 2px;
+        border-color: var(--frp-line);
+    }
+
+    .frp-field textarea {
+        min-height: 110px;
+        resize: vertical;
+    }
+
+    .frp-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        max-width: 100%;
+        padding: 10px 16px;
+        border: 1px solid var(--frp-dark-green);
+        border-radius: 10px;
+        background: var(--frp-dark-green);
+        color: var(--frp-ink-light);
+        font-family: inherit;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.4;
+        text-align: center;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+        cursor: pointer;
+        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .frp-button:hover {
+        border-color: #354d29;
+        background: #354d29;
+        color: #fff;
+    }
+
+    .frp-button:focus-visible {
+        outline: 2px solid var(--frp-blue);
+        outline-offset: 3px;
+    }
+
+    .frp-button-secondary {
+        border-color: var(--frp-line);
+        background: var(--frp-ink-light);
+        color: var(--frp-dark-green);
+    }
+
+    .frp-button-secondary:hover {
+        background: #e3eabd;
+        color: var(--frp-dark-green);
+    }
+
+    .frp-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: 4px;
+    }
+
+    /* Navbar compact khusus layar desktop berukuran menengah */
+    @media (min-width: 769px) and (max-width: 1100px) {
+        .navbar__inner {
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            gap: 12px;
+            padding-right: 16px;
+            padding-left: 16px;
+        }
+
+        .navbar__logo img {
+            height: 32px;
+            max-width: 150px;
+        }
+
+        .navbar__links {
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .navbar__links a,
+        .navbar__links button {
+            font-size: 13px;
+        }
+
+        .navbar__actions {
+            gap: 4px;
+        }
+
+        .navbar__username {
+            min-height: 40px;
+            padding: 0 4px;
+            font-size: 13px;
+        }
+
+        .navbar__actions .btn {
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .frp-form {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .frp-field-full {
+            grid-column: auto;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .frp-container {
+            padding: 24px 14px 36px;
+        }
+
+        .frp-header {
+            margin-bottom: 20px;
+        }
+
+        .frp-header h1 {
+            font-size: 1.6rem;
+        }
+
+        .frp-header p {
+            font-size: 0.9rem;
+        }
+
+        .frp-section {
+            padding: 16px;
+            border-radius: 16px;
+        }
+
+        .frp-actions .frp-button {
+            flex: 1 1 100%;
+        }
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="frp-container">
+    <header class="frp-header">
+        <h1>Edit Rencana Penyelamatan</h1>
+        <p>Perbarui detail dan status rencana makananmu.</p>
+    </header>
+
+    <section class="frp-section">
+        <form
+            class="frp-form"
+            method="POST"
+            action="{% url 'food_rescue_planner:edit' plan.id %}"
+        >
+            {% csrf_token %}
+
+            <div class="frp-field frp-field-full">
+                <label for="nama_bahan">Nama bahan makanan</label>
+                <input
+                    type="text"
+                    id="nama_bahan"
+                    name="nama_bahan"
+                    maxlength="100"
+                    value="{{ plan.nama_bahan }}"
+                    required
+                >
+            </div>
+
+            <div class="frp-field">
+                <label for="jumlah">Jumlah</label>
+                <input
+                    type="number"
+                    id="jumlah"
+                    name="jumlah"
+                    min="1"
+                    step="1"
+                    value="{{ plan.jumlah }}"
+                    required
+                >
+            </div>
+
+            <div class="frp-field">
+                <label for="satuan">Satuan</label>
+                <select id="satuan" name="satuan" required>
+                    {% for value, label in unit_choices %}
+                        <option value="{{ value }}"
+                            {% if plan.satuan == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="frp-field">
+                <label for="target_date">Tanggal target</label>
+                <input
+                    type="date"
+                    id="target_date"
+                    name="target_date"
+                    value="{{ plan.target_date|date:'Y-m-d' }}"
+                    required
+                >
+            </div>
+
+            <div class="frp-field">
+                <label for="metode_aksi">Metode penyelamatan</label>
+                <select id="metode_aksi" name="metode_aksi" required>
+                    {% for value, label in action_choices %}
+                        <option value="{{ value }}"
+                            {% if plan.metode_aksi == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="frp-field">
+                <label for="status">Status</label>
+                <select id="status" name="status" required>
+                    {% for value, label in status_choices %}
+                        <option value="{{ value }}"
+                            {% if plan.status == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="frp-field frp-field-full">
+                <label for="notes">Catatan (opsional)</label>
+                <textarea id="notes" name="notes" rows="3">{{ plan.notes }}</textarea>
+            </div>
+
+            <div class="frp-field-full frp-actions">
+                <button class="frp-button" type="submit">
+                    Simpan Perubahan
+                </button>
+                <a
+                    class="frp-button frp-button-secondary"
+                    href="{% url 'food_rescue_planner:index' %}"
+                >
+                    Batal
+                </a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock content %}

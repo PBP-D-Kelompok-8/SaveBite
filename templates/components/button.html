@@ -1,18 +1,18 @@
-{% load static %}
-
-<a href="{{ href|default:'#' }}" 
-   class="btn btn--{{ type|default:'primary' }} btn--{{ color|default:'dark-green' }}" 
-   {% if disabled %} aria-disabled="true" tabindex="-1"{% endif %}>
-    
-    {% if icon_left %}
-        <span class="btn__icon" style="--icon: url('{% static icon_left %}')" aria-hidden="true"></span>
-    {% elif icon %}
-        <span class="btn__icon" style="--icon: url('{% static icon %}')" aria-hidden="true"></span>
-    {% endif %}
-
-    {{ label }}
-
-    {% if icon_right %}
-        <span class="btn__icon" style="--icon: url('{% static icon_right %}')" aria-hidden="true"></span>
-    {% endif %}
-</a>
+﻿{% load static %}
+{% comment %}
+Reusable button component.
+Parameters: label, type (primary|secondary|tertiary|quaternary|danger),
+color (dark-green|green|light-green|blue|bright), icon_left, icon_right,
+href, submit, disabled, name, value, and extra_class.
+{% endcomment %}
+{% with button_type=type|default:'secondary' button_color=color|default:'dark-green' %}
+{% if href %}
+<a class="btn btn--{{ button_type }} btn--{{ button_color }}{% if extra_class %} {{ extra_class }}{% endif %}{% if disabled %} is-disabled{% endif %}" href="{% if not disabled %}{{ href }}{% else %}#{% endif %}"{% if disabled %} aria-disabled="true" tabindex="-1"{% endif %}{% if target %} target="{{ target }}"{% endif %}>
+{% else %}
+<button class="btn btn--{{ button_type }} btn--{{ button_color }}{% if extra_class %} {{ extra_class }}{% endif %}" type="{% if submit %}submit{% else %}button{% endif %}"{% if name %} name="{{ name }}"{% endif %}{% if value %} value="{{ value }}"{% endif %}{% if disabled %} disabled{% endif %}>
+{% endif %}
+  {% if icon_left %}<span class="btn__icon" style="--icon: url('{% static icon_left %}')" aria-hidden="true"></span>{% endif %}
+  {{ label|default:'Button' }}
+  {% if icon_right %}<span class="btn__icon" style="--icon: url('{% static icon_right %}')" aria-hidden="true"></span>{% endif %}
+{% if href %}</a>{% else %}</button>{% endif %}
+{% endwith %}
