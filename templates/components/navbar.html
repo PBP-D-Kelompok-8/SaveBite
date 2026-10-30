@@ -27,6 +27,10 @@
 
       </ul>
       <div class="navbar__actions">
+        <button class="theme-toggle" type="button" data-theme-toggle
+                aria-label="Aktifkan mode gelap" aria-pressed="false">
+          <span data-theme-label>Gelap</span>
+        </button>
         {% if user.is_authenticated %}
           <span class="navbar__username">{{ user.username }}</span>
           <form class="navbar__logout-form" method="post" action="{% url 'logout' %}">
