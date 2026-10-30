@@ -1,0 +1,7 @@
+from django.apps import AppConfig
+
+
+class KatalogConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "katalog"
+    verbose_name = "Katalog Resep Bahan Sisa"

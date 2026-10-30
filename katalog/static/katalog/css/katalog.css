@@ -1,0 +1,458 @@
+/* Tata letak halaman katalog */
+.kat-page {
+  width: calc(100% - 48px);
+  max-width: 1280px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 40px 0 28px;
+  --card-radius: 32px;
+  --gap-card: 16px;
+}
+
+.kat-header {
+  max-width: 760px;
+  margin: 0 auto 28px;
+  text-align: center;
+}
+
+.kat-eyebrow {
+  margin: 0 0 10px;
+  color: var(--line);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.kat-header h1,
+.kat-detail h1,
+.kat-form-page h1 {
+  margin: 0;
+  color: var(--accent-dark-green);
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.15;
+}
+
+.kat-header > p:not(.kat-eyebrow) {
+  max-width: 700px;
+  margin: 14px auto 20px;
+  color: var(--ink-dark);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+/* Gunakan komponen tombol bersama dari static/css/button.css. */
+.kat-button {
+  max-width: 100%;
+  text-align: center;
+  text-decoration: none;
+}
+
+.kat-button:disabled {
+  cursor: not-allowed;
+}
+
+.kat-button--small {
+  padding: 8px 12px;
+  font-size: 16px;
+  white-space: normal;
+}
+
+/* Panel pencarian dan panel informasi */
+.kat-search-panel,
+.kat-panel {
+  padding: clamp(18px, 3vw, 28px);
+  border: 2px solid var(--line);
+  border-radius: var(--card-radius, 32px);
+  background: var(--ink-light);
+}
+
+.kat-search-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 18px;
+}
+
+.kat-field-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kat-field-group label {
+  margin-bottom: 0;
+}
+
+.kat-field-group .input__field {
+  min-width: 0;
+}
+
+.kat-field-group textarea.input__field,
+.kat-textarea {
+  height: 100px;
+  min-height: 100px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.kat-search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-button, 12px);
+  grid-column: 1 / -1;
+}
+
+.kat-results-section {
+  margin-top: 34px;
+}
+
+.kat-results-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.kat-results-heading h2 {
+  margin: 0;
+  color: var(--accent-dark-green);
+  font-size: clamp(22px, 2.6vw, 30px);
+}
+
+.kat-muted {
+  margin: 0;
+  color: var(--ink-dark);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Warna dan sudut kartu mengikuti design system. Teks dibuat ringkas agar
+   beberapa resep bisa ditampilkan dalam satu halaman. */
+.kat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap-card, 16px);
+}
+
+.kat-recipe-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 2px solid var(--line);
+  border-radius: var(--card-radius, 32px);
+  background: var(--accent-dark-green);
+}
+
+.kat-card-image {
+  display: block;
+  width: calc(100% - 32px);
+  aspect-ratio: 4 / 3;
+  box-sizing: border-box;
+  margin: 16px auto 0;
+  border: 2px solid var(--line);
+  border-radius: var(--card-radius, 32px);
+  object-fit: cover;
+  background: var(--paper);
+}
+
+.kat-image-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--accent-dark-green);
+  font-weight: 700;
+}
+
+.kat-card-body {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 20px 22px;
+}
+
+.kat-card-body h2 {
+  margin: 0;
+  color: var(--ink-light);
+  font-size: 24px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.kat-card-meta {
+  margin: 0;
+  color: var(--ink-light);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.kat-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-button, 12px);
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.kat-card-actions form {
+  margin: 0;
+}
+
+.kat-note {
+  margin: 0;
+  color: var(--ink-light);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+/* Tombol hapus memakai komponen konfirmasi bersama dari SaveBite. */
+.kat-delete-button {
+  margin-top: 4px;
+}
+
+.kat-empty-state {
+  text-align: center;
+}
+
+.kat-empty-state h2,
+.kat-error-state h2 {
+  margin-top: 0;
+  color: var(--accent-dark-green);
+  font-size: 24px;
+}
+
+.kat-panel > h1 {
+  margin-top: 0;
+  color: var(--accent-dark-green);
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.15;
+}
+
+.kat-empty-state p,
+.kat-error-state p,
+.kat-panel > p {
+  margin-bottom: 20px;
+  color: var(--ink-dark);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.kat-error-state {
+  border-color: var(--error, #AD0003);
+}
+
+.kat-form-error {
+  margin: 0;
+  color: var(--error, #AD0003);
+  font-size: 13px;
+}
+
+.kat-credit {
+  margin: 38px 0 0;
+  color: var(--ink-dark);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.kat-credit a,
+.kat-source a,
+.kat-back-link {
+  color: var(--accent-dark-green);
+}
+
+.kat-messages {
+  margin-bottom: 18px;
+}
+
+.kat-message {
+  margin: 0 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 14px;
+  background: var(--paper);
+  color: var(--accent-dark-green);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.kat-back-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.kat-back-link:hover {
+  text-decoration: underline;
+}
+
+/* Detail resep */
+.kat-detail {
+  display: grid;
+  grid-template-columns: minmax(260px, .9fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: clamp(22px, 4vw, 42px);
+}
+
+.kat-detail-image {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  border: 2px solid var(--line);
+  border-radius: var(--card-radius, 32px);
+  object-fit: cover;
+}
+
+.kat-detail-content h1 {
+  margin-bottom: 18px;
+}
+
+.kat-detail-content h2 {
+  margin: 28px 0 10px;
+  color: var(--accent-dark-green);
+  font-size: 24px;
+}
+
+.kat-ingredient-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.kat-ingredient-list li {
+  margin: 7px 0;
+  color: var(--ink-dark);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.kat-ingredient-list li span + span {
+  margin-left: 8px;
+  color: var(--ink-dark);
+}
+
+.kat-instructions {
+  color: var(--ink-dark);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.8;
+}
+
+.kat-source {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* Form catatan resep */
+.kat-form-page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.kat-form-page .kat-panel h1 {
+  margin: 0 0 18px;
+  color: var(--accent-dark-green);
+  font-size: 34px;
+}
+
+.kat-form-page .kat-panel h2 {
+  margin: 0 0 22px;
+  color: var(--ink-dark);
+  font-size: 20px;
+}
+
+.kat-edit-form {
+  display: grid;
+  gap: 14px;
+}
+
+/* Tablet */
+@media (max-width: 1000px) {
+  .kat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kat-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .kat-detail-image {
+    max-height: 460px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  /* Breakpoint katalog mencakup 768px; samakan ukuran tombol dengan mode mobile. */
+  .kat-page .btn {
+    gap: 6px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+
+  .kat-page .btn__icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .kat-page {
+    width: calc(100% - 32px);
+    padding-top: 28px;
+    --card-radius: 28px;
+    --gap-card: 12px;
+  }
+
+  .kat-search-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .kat-search-actions {
+    grid-column: auto;
+  }
+
+  .kat-results-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .kat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kat-recipe-card {
+    border-radius: 28px;
+  }
+
+  .kat-card-image {
+    width: calc(100% - 24px);
+    margin-top: 12px;
+  }
+
+  .kat-card-body {
+    padding: 14px 16px 20px;
+  }
+
+  .kat-card-body h2 {
+    font-size: 20px;
+  }
+
+  .kat-header > p:not(.kat-eyebrow) {
+    font-size: 14px;
+  }
+
+  .kat-field-group textarea.input__field,
+  .kat-textarea {
+    height: 84px;
+    min-height: 84px;
+  }
+}
