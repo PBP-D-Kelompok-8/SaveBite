@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'food_rescue_planner',
     'jurnal',
     "resep_komunitas.apps.ResepKomunitasConfig",
+    "katalog.apps.KatalogConfig",
 ]
 
 MIDDLEWARE = [

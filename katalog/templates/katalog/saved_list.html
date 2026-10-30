@@ -1,0 +1,45 @@
+{% extends "katalog/base_katalog.html" %}
+
+{% block katalog_content %}
+<header class="kat-header">
+  <p class="kat-eyebrow">KOLEKSI PRIBADI</p>
+  <h1>Resep Tersimpan</h1>
+  <p>Daftar resep yang kamu simpan, beserta catatan pribadi.</p>
+  <a class="btn btn--tertiary btn--dark-green kat-button" href="{% url 'katalog:home' %}">Cari resep lagi</a>
+  <p class="kat-muted">{{ recipes|length }} resep tersimpan</p>
+</header>
+
+{% if recipes %}
+  <div class="kat-grid kat-saved-grid">
+    {% for recipe in recipes %}
+      <article class="kat-recipe-card">
+        {% if recipe.thumbnail %}<img class="kat-card-image" src="{{ recipe.thumbnail }}" alt="Foto {{ recipe.name }}" loading="lazy">{% else %}<div class="kat-card-image kat-image-placeholder" aria-hidden="true">SaveBite</div>{% endif %}
+        <div class="kat-card-body">
+          <h2>{{ recipe.name }}</h2>
+          <p class="kat-card-meta">{{ recipe.category|default:"Kategori tidak tersedia" }}{% if recipe.area %} · {{ recipe.area }}{% endif %}</p>
+          <p class="kat-note">{{ recipe.note|default:"Belum ada catatan pribadi." }}</p>
+          <div class="kat-card-actions">
+            <a class="btn btn--secondary btn--blue kat-button kat-button--small" href="{% url 'katalog:meal_detail' recipe.meal_id %}">Lihat resep</a>
+            <a class="btn btn--tertiary btn--bright kat-button kat-button--small" href="{% url 'katalog:saved_update' recipe.pk %}">Edit catatan</a>
+          </div>
+          <button
+            class="btn btn--danger kat-button kat-button--small kat-delete-button"
+            type="button"
+            data-confirm-open="#kat-delete-confirm"
+            data-name="{{ recipe.name }}"
+            data-action="{% url 'katalog:saved_delete' recipe.pk %}">
+            Hapus dari daftar
+          </button>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+  {% include "components/delete-confirm.html" with id="kat-delete-confirm" %}
+{% else %}
+  <section class="kat-panel kat-empty-state">
+    <h2>Belum ada resep tersimpan</h2>
+    <p>Cari resep dari bahan yang tersedia, lalu tekan tombol “Simpan resep”.</p>
+    <a class="btn btn--primary btn--dark-green kat-button" href="{% url 'katalog:home' %}">Mulai mencari</a>
+  </section>
+{% endif %}
+{% endblock %}
