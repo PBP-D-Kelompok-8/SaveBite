@@ -1,0 +1,1247 @@
+[
+  {
+    "model": "auth.user",
+    "fields": {
+      "username": "seed_ayu",
+      "password": "!seed-no-login",
+      "first_name": "Ayu",
+      "last_name": "Pratama",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "is_superuser": false,
+      "last_login": null,
+      "date_joined": "2026-10-10T03:00:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "auth.user",
+    "fields": {
+      "username": "seed_bima",
+      "password": "!seed-no-login",
+      "first_name": "Bima",
+      "last_name": "Saputra",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "is_superuser": false,
+      "last_login": null,
+      "date_joined": "2026-10-10T03:00:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "auth.user",
+    "fields": {
+      "username": "seed_citra",
+      "password": "!seed-no-login",
+      "first_name": "Citra",
+      "last_name": "Lestari",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "is_superuser": false,
+      "last_login": null,
+      "date_joined": "2026-10-10T03:00:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "auth.user",
+    "fields": {
+      "username": "seed_dimas",
+      "password": "!seed-no-login",
+      "first_name": "Dimas",
+      "last_name": "Nugraha",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "is_superuser": false,
+      "last_login": null,
+      "date_joined": "2026-10-10T03:00:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "auth.user",
+    "fields": {
+      "username": "seed_eka",
+      "password": "!seed-no-login",
+      "first_name": "Eka",
+      "last_name": "Putri",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "is_superuser": false,
+      "last_login": null,
+      "date_joined": "2026-10-10T03:00:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_ayu"
+      ],
+      "nama_bahan": "Bayam",
+      "jumlah": 2,
+      "satuan": "pcs",
+      "target_date": "2026-11-01",
+      "metode_aksi": "cook",
+      "status": "ongoing",
+      "notes": "Olah menjadi sayur bening untuk makan siang.",
+      "created_at": "2026-10-10T03:00:00Z",
+      "completed_at": null
+    },
+    "pk": 910001
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_ayu"
+      ],
+      "food_name": "Apel",
+      "quantity": 2,
+      "unit": "pcs",
+      "status": "terselamatkan",
+      "notes": "Catatan mandiri: dibagikan kepada teman kos saat masih layak konsumsi.",
+      "completed_at": "2026-10-10T03:00:00Z",
+      "rescue_plan_id": null
+    },
+    "pk": 910001
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_bima"
+      ],
+      "nama_bahan": "Pisang matang",
+      "jumlah": 6,
+      "satuan": "pcs",
+      "target_date": "2026-10-12",
+      "metode_aksi": "cook",
+      "status": "success",
+      "notes": "Gunakan untuk pancake tanpa tambahan gula.",
+      "created_at": "2026-10-11T03:00:00Z",
+      "completed_at": "2026-10-12T03:00:00Z"
+    },
+    "pk": 910002
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_bima"
+      ],
+      "food_name": "Pisang matang",
+      "quantity": 6,
+      "unit": "pcs",
+      "status": "terselamatkan",
+      "notes": "Otomatis dari Rescue Plan (cook)",
+      "completed_at": "2026-10-12T03:00:00Z",
+      "rescue_plan_id": 910002
+    },
+    "pk": 910002
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_citra"
+      ],
+      "nama_bahan": "Tomat",
+      "jumlah": 500,
+      "satuan": "gr",
+      "target_date": "2026-10-13",
+      "metode_aksi": "preserve",
+      "status": "failed",
+      "notes": "Masak menjadi saus lalu simpan dalam wadah bersih.",
+      "created_at": "2026-10-12T03:00:00Z",
+      "completed_at": "2026-10-13T03:00:00Z"
+    },
+    "pk": 910003
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_citra"
+      ],
+      "food_name": "Tomat",
+      "quantity": 500,
+      "unit": "gr",
+      "status": "terbuang",
+      "notes": "Otomatis dari Rescue Plan (preserve)",
+      "completed_at": "2026-10-13T03:00:00Z",
+      "rescue_plan_id": 910003
+    },
+    "pk": 910003
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_dimas"
+      ],
+      "nama_bahan": "Nasi matang",
+      "jumlah": 3,
+      "satuan": "porsi",
+      "target_date": "2026-11-04",
+      "metode_aksi": "cook",
+      "status": "ongoing",
+      "notes": "Nasi yang segera didinginkan dan disimpan di kulkas untuk nasi goreng.",
+      "created_at": "2026-10-13T03:00:00Z",
+      "completed_at": null
+    },
+    "pk": 910004
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_dimas"
+      ],
+      "food_name": "Selada",
+      "quantity": 2,
+      "unit": "pcs",
+      "status": "terselamatkan",
+      "notes": "Catatan mandiri: dibagikan kepada teman kos saat masih layak konsumsi.",
+      "completed_at": "2026-10-13T03:00:00Z",
+      "rescue_plan_id": null
+    },
+    "pk": 910004
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_eka"
+      ],
+      "nama_bahan": "Wortel",
+      "jumlah": 1,
+      "satuan": "kg",
+      "target_date": "2026-10-15",
+      "metode_aksi": "share",
+      "status": "success",
+      "notes": "Bagikan wortel segar kepada tetangga kos.",
+      "created_at": "2026-10-14T03:00:00Z",
+      "completed_at": "2026-10-15T03:00:00Z"
+    },
+    "pk": 910005
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_eka"
+      ],
+      "food_name": "Wortel",
+      "quantity": 1,
+      "unit": "kg",
+      "status": "terselamatkan",
+      "notes": "Otomatis dari Rescue Plan (share)",
+      "completed_at": "2026-10-15T03:00:00Z",
+      "rescue_plan_id": 910005
+    },
+    "pk": 910005
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_ayu"
+      ],
+      "nama_bahan": "Roti tawar",
+      "jumlah": 5,
+      "satuan": "pcs",
+      "target_date": "2026-10-16",
+      "metode_aksi": "cook",
+      "status": "failed",
+      "notes": "Roti mengering tanpa jamur untuk puding roti.",
+      "created_at": "2026-10-15T03:00:00Z",
+      "completed_at": "2026-10-16T03:00:00Z"
+    },
+    "pk": 910006
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_ayu"
+      ],
+      "food_name": "Roti tawar",
+      "quantity": 5,
+      "unit": "pcs",
+      "status": "terbuang",
+      "notes": "Otomatis dari Rescue Plan (cook)",
+      "completed_at": "2026-10-16T03:00:00Z",
+      "rescue_plan_id": 910006
+    },
+    "pk": 910006
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_bima"
+      ],
+      "nama_bahan": "Tahu putih",
+      "jumlah": 8,
+      "satuan": "pcs",
+      "target_date": "2026-11-07",
+      "metode_aksi": "cook",
+      "status": "ongoing",
+      "notes": "Masak tahu yang masih segar menjadi perkedel.",
+      "created_at": "2026-10-16T03:00:00Z",
+      "completed_at": null
+    },
+    "pk": 910007
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_bima"
+      ],
+      "food_name": "Sup sayuran",
+      "quantity": 2,
+      "unit": "porsi",
+      "status": "terselamatkan",
+      "notes": "Catatan mandiri: dibagikan kepada teman kos saat masih layak konsumsi.",
+      "completed_at": "2026-10-16T03:00:00Z",
+      "rescue_plan_id": null
+    },
+    "pk": 910007
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_citra"
+      ],
+      "nama_bahan": "Mentimun",
+      "jumlah": 4,
+      "satuan": "pcs",
+      "target_date": "2026-10-18",
+      "metode_aksi": "preserve",
+      "status": "success",
+      "notes": "Buat acar dan simpan di kulkas.",
+      "created_at": "2026-10-17T03:00:00Z",
+      "completed_at": "2026-10-18T03:00:00Z"
+    },
+    "pk": 910008
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_citra"
+      ],
+      "food_name": "Mentimun",
+      "quantity": 4,
+      "unit": "pcs",
+      "status": "terselamatkan",
+      "notes": "Otomatis dari Rescue Plan (preserve)",
+      "completed_at": "2026-10-18T03:00:00Z",
+      "rescue_plan_id": 910008
+    },
+    "pk": 910008
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_dimas"
+      ],
+      "nama_bahan": "Susu pasteurisasi",
+      "jumlah": 1,
+      "satuan": "liter",
+      "target_date": "2026-10-19",
+      "metode_aksi": "cook",
+      "status": "failed",
+      "notes": "Susu masih dalam masa simpan untuk puding.",
+      "created_at": "2026-10-18T03:00:00Z",
+      "completed_at": "2026-10-19T03:00:00Z"
+    },
+    "pk": 910009
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_dimas"
+      ],
+      "food_name": "Susu pasteurisasi",
+      "quantity": 1,
+      "unit": "liter",
+      "status": "terbuang",
+      "notes": "Otomatis dari Rescue Plan (cook)",
+      "completed_at": "2026-10-19T03:00:00Z",
+      "rescue_plan_id": 910009
+    },
+    "pk": 910009
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_eka"
+      ],
+      "nama_bahan": "Kentang",
+      "jumlah": 1,
+      "satuan": "kg",
+      "target_date": "2026-11-10",
+      "metode_aksi": "share",
+      "status": "ongoing",
+      "notes": "Bagikan kentang yang masih layak kepada dapur komunitas.",
+      "created_at": "2026-10-19T03:00:00Z",
+      "completed_at": null
+    },
+    "pk": 910010
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_eka"
+      ],
+      "food_name": "Pepaya",
+      "quantity": 2,
+      "unit": "pcs",
+      "status": "terselamatkan",
+      "notes": "Catatan mandiri: dibagikan kepada teman kos saat masih layak konsumsi.",
+      "completed_at": "2026-10-19T03:00:00Z",
+      "rescue_plan_id": null
+    },
+    "pk": 910010
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_ayu"
+      ],
+      "nama_bahan": "Tempe",
+      "jumlah": 2,
+      "satuan": "pcs",
+      "target_date": "2026-10-21",
+      "metode_aksi": "cook",
+      "status": "success",
+      "notes": "Masak menjadi orek untuk bekal.",
+      "created_at": "2026-10-20T03:00:00Z",
+      "completed_at": "2026-10-21T03:00:00Z"
+    },
+    "pk": 910011
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_ayu"
+      ],
+      "food_name": "Tempe",
+      "quantity": 2,
+      "unit": "pcs",
+      "status": "terselamatkan",
+      "notes": "Otomatis dari Rescue Plan (cook)",
+      "completed_at": "2026-10-21T03:00:00Z",
+      "rescue_plan_id": 910011
+    },
+    "pk": 910011
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_bima"
+      ],
+      "nama_bahan": "Labu kuning",
+      "jumlah": 750,
+      "satuan": "gr",
+      "target_date": "2026-10-22",
+      "metode_aksi": "preserve",
+      "status": "failed",
+      "notes": "Kukus, haluskan, lalu bekukan per porsi.",
+      "created_at": "2026-10-21T03:00:00Z",
+      "completed_at": "2026-10-22T03:00:00Z"
+    },
+    "pk": 910012
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_bima"
+      ],
+      "food_name": "Labu kuning",
+      "quantity": 750,
+      "unit": "gr",
+      "status": "terbuang",
+      "notes": "Otomatis dari Rescue Plan (preserve)",
+      "completed_at": "2026-10-22T03:00:00Z",
+      "rescue_plan_id": 910012
+    },
+    "pk": 910012
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_citra"
+      ],
+      "nama_bahan": "Jeruk",
+      "jumlah": 8,
+      "satuan": "pcs",
+      "target_date": "2026-11-13",
+      "metode_aksi": "share",
+      "status": "ongoing",
+      "notes": "Bagikan buah segar untuk kegiatan belajar bersama.",
+      "created_at": "2026-10-22T03:00:00Z",
+      "completed_at": null
+    },
+    "pk": 910013
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_citra"
+      ],
+      "food_name": "Telur rebus",
+      "quantity": 2,
+      "unit": "pcs",
+      "status": "terselamatkan",
+      "notes": "Catatan mandiri: dibagikan kepada teman kos saat masih layak konsumsi.",
+      "completed_at": "2026-10-22T03:00:00Z",
+      "rescue_plan_id": null
+    },
+    "pk": 910013
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_dimas"
+      ],
+      "nama_bahan": "Buncis",
+      "jumlah": 300,
+      "satuan": "gr",
+      "target_date": "2026-10-24",
+      "metode_aksi": "cook",
+      "status": "success",
+      "notes": "Tumis bersama bawang putih untuk makan malam.",
+      "created_at": "2026-10-23T03:00:00Z",
+      "completed_at": "2026-10-24T03:00:00Z"
+    },
+    "pk": 910014
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_dimas"
+      ],
+      "food_name": "Buncis",
+      "quantity": 300,
+      "unit": "gr",
+      "status": "terselamatkan",
+      "notes": "Otomatis dari Rescue Plan (cook)",
+      "completed_at": "2026-10-24T03:00:00Z",
+      "rescue_plan_id": 910014
+    },
+    "pk": 910014
+  },
+  {
+    "model": "food_rescue_planner.foodrescueplan",
+    "fields": {
+      "user": [
+        "seed_eka"
+      ],
+      "nama_bahan": "Jagung pipil",
+      "jumlah": 500,
+      "satuan": "gr",
+      "target_date": "2026-10-25",
+      "metode_aksi": "preserve",
+      "status": "failed",
+      "notes": "Blansir dan bekukan dalam porsi kecil.",
+      "created_at": "2026-10-24T03:00:00Z",
+      "completed_at": "2026-10-25T03:00:00Z"
+    },
+    "pk": 910015
+  },
+  {
+    "model": "jurnal.foodlog",
+    "fields": {
+      "user": [
+        "seed_eka"
+      ],
+      "food_name": "Jagung pipil",
+      "quantity": 500,
+      "unit": "gr",
+      "status": "terbuang",
+      "notes": "Otomatis dari Rescue Plan (preserve)",
+      "completed_at": "2026-10-25T03:00:00Z",
+      "rescue_plan_id": 910015
+    },
+    "pk": 910015
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_ayu"
+      ],
+      "title": "Sayur Bening Bayam",
+      "main_ingred": "Bayam",
+      "image_url": "",
+      "description": "Bayam segar dan jagung menjadi lauk ringan.",
+      "ingredients": "2 ikat bayam\n1 buah jagung\n2 siung bawang merah\n600 ml air\nGaram secukupnya",
+      "steps": "1. Cuci bayam dan potong jagung.\n2. Didihkan air bersama irisan bawang dan jagung sampai jagung empuk.\n3. Masukkan bayam dan garam, masak hingga matang lalu sajikan.",
+      "last_edited": "2026-10-10T03:00:00Z"
+    },
+    "pk": 910001
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_bima"
+      ],
+      "title": "Pancake Pisang Matang",
+      "main_ingred": "Pisang",
+      "image_url": "",
+      "description": "Pisang yang sangat matang memberi rasa manis alami.",
+      "ingredients": "2 buah pisang matang\n1 butir telur\n5 sdm tepung terigu\n50 ml susu\n1 sdt minyak",
+      "steps": "1. Lumatkan pisang lalu campur dengan telur, tepung, dan susu.\n2. Panaskan wajan dengan sedikit minyak.\n3. Tuang adonan per sendok sayur dan masak kedua sisi hingga matang.",
+      "last_edited": "2026-10-11T03:00:00Z"
+    },
+    "pk": 910002
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_citra"
+      ],
+      "title": "Saus Tomat Rumahan",
+      "main_ingred": "Tomat",
+      "image_url": "",
+      "description": "Olah tomat matang yang masih layak menjadi saus serbaguna.",
+      "ingredients": "500 gr tomat\n2 siung bawang putih\n1 sdm minyak\nGaram secukupnya",
+      "steps": "1. Cuci dan cincang tomat serta bawang.\n2. Tumis bawang lalu tambahkan tomat dan garam.\n3. Masak hingga lunak dan kental. Dinginkan segera dan simpan di kulkas.",
+      "last_edited": "2026-10-12T03:00:00Z"
+    },
+    "pk": 910003
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_dimas"
+      ],
+      "title": "Nasi Goreng Sayuran",
+      "main_ingred": "Nasi",
+      "image_url": "",
+      "description": "Manfaatkan nasi yang sebelumnya segera didinginkan dan disimpan di kulkas.",
+      "ingredients": "2 porsi nasi dingin dari kulkas\n1 buah wortel\n1 butir telur\n2 siung bawang putih\n1 sdm kecap\n1 sdm minyak",
+      "steps": "1. Potong wortel kecil dan cincang bawang.\n2. Tumis bawang, masukkan telur dan wortel sampai matang.\n3. Tambahkan nasi dan kecap, aduk hingga panas merata lalu sajikan segera.",
+      "last_edited": "2026-10-13T03:00:00Z"
+    },
+    "pk": 910004
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_eka"
+      ],
+      "title": "Sup Wortel Kentang",
+      "main_ingred": "Wortel",
+      "image_url": "",
+      "description": "Potongan sayur yang masih segar menjadi sup hangat.",
+      "ingredients": "2 buah wortel\n1 buah kentang\n2 siung bawang putih\n700 ml air\nGaram dan lada secukupnya",
+      "steps": "1. Kupas dan potong wortel serta kentang.\n2. Didihkan air dengan bawang cincang.\n3. Rebus sayuran hingga empuk dan bumbui sebelum disajikan.",
+      "last_edited": "2026-10-14T03:00:00Z"
+    },
+    "pk": 910005
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_ayu"
+      ],
+      "title": "Puding Roti Kukus",
+      "main_ingred": "Roti tawar",
+      "image_url": "",
+      "description": "Gunakan roti yang mengering tetapi tidak berjamur.",
+      "ingredients": "4 lembar roti tawar\n250 ml susu\n1 butir telur\n2 sdm gula",
+      "steps": "1. Sobek roti dan rendam dalam susu.\n2. Kocok telur dengan gula lalu campurkan ke roti.\n3. Tuang ke wadah tahan panas dan kukus hingga adonan matang serta padat.",
+      "last_edited": "2026-10-15T03:00:00Z"
+    },
+    "pk": 910006
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_bima"
+      ],
+      "title": "Perkedel Tahu",
+      "main_ingred": "Tahu",
+      "image_url": "",
+      "description": "Tahu segar menjadi lauk sederhana untuk bekal.",
+      "ingredients": "4 buah tahu putih\n1 butir telur\n2 sdm tepung\n1 batang daun bawang\nGaram secukupnya\nMinyak untuk menggoreng",
+      "steps": "1. Haluskan tahu dan iris daun bawang.\n2. Campur dengan telur, tepung, dan garam lalu bentuk pipih.\n3. Goreng hingga kedua sisi kecokelatan dan bagian dalam matang.",
+      "last_edited": "2026-10-16T03:00:00Z"
+    },
+    "pk": 910007
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_citra"
+      ],
+      "title": "Acar Mentimun Segar",
+      "main_ingred": "Mentimun",
+      "image_url": "",
+      "description": "Pelengkap makan dari mentimun dan wortel yang masih segar.",
+      "ingredients": "2 buah mentimun\n1 buah wortel\n2 sdm cuka makan\n1 sdm gula\n100 ml air matang\nGaram secukupnya",
+      "steps": "1. Cuci dan potong mentimun serta wortel.\n2. Larutkan gula dan garam dalam air matang, lalu tambahkan cuka.\n3. Campurkan dengan sayur dan simpan di kulkas dalam wadah bersih; bukan untuk penyimpanan suhu ruang.",
+      "last_edited": "2026-10-17T03:00:00Z"
+    },
+    "pk": 910008
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_dimas"
+      ],
+      "title": "Puding Susu Vanila",
+      "main_ingred": "Susu",
+      "image_url": "",
+      "description": "Gunakan susu yang masih layak dan dalam masa simpan.",
+      "ingredients": "500 ml susu\n1 bungkus agar-agar sesuai takaran kemasan\n3 sdm gula\nVanila secukupnya",
+      "steps": "1. Campur susu, agar-agar, gula, dan vanila.\n2. Masak sambil diaduk hingga mendidih sesuai petunjuk agar-agar.\n3. Tuang ke cetakan, dinginkan, lalu simpan di kulkas.",
+      "last_edited": "2026-10-18T03:00:00Z"
+    },
+    "pk": 910009
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_eka"
+      ],
+      "title": "Kentang Panggang Bawang",
+      "main_ingred": "Kentang",
+      "image_url": "",
+      "description": "Kentang tanpa bagian hijau atau tunas menjadi lauk renyah.",
+      "ingredients": "3 buah kentang\n2 siung bawang putih\n1 sdm minyak\nGaram dan lada secukupnya",
+      "steps": "1. Cuci kentang lalu potong menjadi beberapa bagian.\n2. Campur dengan bawang cincang, minyak, garam, dan lada.\n3. Panggang pada 200 derajat Celsius sekitar 30 menit sampai empuk, balik di pertengahan waktu.",
+      "last_edited": "2026-10-19T03:00:00Z"
+    },
+    "pk": 910010
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_ayu"
+      ],
+      "title": "Orek Tempe Kecap",
+      "main_ingred": "Tempe",
+      "image_url": "",
+      "description": "Tempe segar diolah menjadi lauk bekal yang praktis.",
+      "ingredients": "1 papan tempe\n2 siung bawang putih\n2 sdm kecap manis\n50 ml air\n1 sdm minyak",
+      "steps": "1. Potong tempe kecil lalu goreng hingga matang dan tiriskan.\n2. Tumis bawang, tambahkan kecap dan air.\n3. Masukkan tempe, aduk hingga bumbu meresap.",
+      "last_edited": "2026-10-20T03:00:00Z"
+    },
+    "pk": 910011
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_bima"
+      ],
+      "title": "Sup Labu Kuning",
+      "main_ingred": "Labu kuning",
+      "image_url": "",
+      "description": "Labu kukus sisa persiapan masak menjadi sup lembut.",
+      "ingredients": "400 gr labu kuning kukus\n1/2 buah bawang bombai\n400 ml air\n100 ml susu\n1 sdm minyak\nGaram secukupnya",
+      "steps": "1. Tumis bawang bombai cincang sampai harum.\n2. Tambahkan labu dan air lalu masak sampai panas.\n3. Haluskan dengan hati-hati, tambahkan susu dan garam, lalu panaskan kembali.",
+      "last_edited": "2026-10-21T03:00:00Z"
+    },
+    "pk": 910012
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_citra"
+      ],
+      "title": "Salad Buah Jeruk",
+      "main_ingred": "Jeruk",
+      "image_url": "",
+      "description": "Potongan buah segar untuk camilan bersama.",
+      "ingredients": "2 buah jeruk\n1 buah apel\n1 buah pisang\n100 gr yoghurt tawar",
+      "steps": "1. Cuci apel, kupas jeruk dan pisang.\n2. Potong buah lalu campur dalam mangkuk bersih.\n3. Tambahkan yoghurt dan sajikan segera atau simpan di kulkas.",
+      "last_edited": "2026-10-22T03:00:00Z"
+    },
+    "pk": 910013
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_dimas"
+      ],
+      "title": "Tumis Buncis Bawang",
+      "main_ingred": "Buncis",
+      "image_url": "",
+      "description": "Buncis segar menjadi lauk cepat untuk makan malam.",
+      "ingredients": "250 gr buncis\n3 siung bawang putih\n1 sdm minyak\n50 ml air\nGaram secukupnya",
+      "steps": "1. Cuci buncis dan potong ujungnya.\n2. Tumis bawang cincang hingga harum lalu masukkan buncis.\n3. Tambahkan air dan garam, masak hingga matang.",
+      "last_edited": "2026-10-23T03:00:00Z"
+    },
+    "pk": 910014
+  },
+  {
+    "model": "resep_komunitas.communityrecipe",
+    "fields": {
+      "author": [
+        "seed_eka"
+      ],
+      "title": "Bakwan Jagung",
+      "main_ingred": "Jagung",
+      "image_url": "",
+      "description": "Jagung pipil yang tersisa menjadi lauk untuk dibagikan.",
+      "ingredients": "200 gr jagung pipil\n6 sdm tepung terigu\n1 butir telur\n1 batang daun bawang\n50 ml air\nGaram secukupnya\nMinyak untuk menggoreng",
+      "steps": "1. Campur jagung, tepung, telur, irisan daun bawang, air, dan garam.\n2. Panaskan minyak lalu tuang adonan sesendok demi sesendok.\n3. Goreng sampai kecokelatan dan matang, kemudian tiriskan.",
+      "last_edited": "2026-10-24T03:00:00Z"
+    },
+    "pk": 910015
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_ayu"
+      ],
+      "title": "Bayam untuk dapur kos",
+      "food_item": "Bayam",
+      "quantity": "2.00",
+      "unit": "ikat",
+      "description": "Mencari bayam yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Kukusan, Beji, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Kukusan, Beji, Depok",
+      "status": "pending",
+      "selected_offer": null,
+      "expires_at": "2026-10-12T03:00:00Z",
+      "created_at": "2026-10-10T03:00:00Z",
+      "updated_at": "2026-10-10T05:00:00Z"
+    },
+    "pk": 910001
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_bima"
+      ],
+      "title": "Pisang matang untuk pancake bersama",
+      "food_item": "Pisang",
+      "quantity": "6.00",
+      "unit": "buah",
+      "description": "Mencari pisang yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Pondok Cina, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Pondok Cina, Depok",
+      "status": "offered",
+      "selected_offer": null,
+      "expires_at": null,
+      "created_at": "2026-10-11T03:00:00Z",
+      "updated_at": "2026-10-11T05:00:00Z"
+    },
+    "pk": 910002
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910002,
+      "offered_by": [
+        "seed_citra"
+      ],
+      "created_at": "2026-10-11T04:00:00Z"
+    },
+    "pk": 910002
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_citra"
+      ],
+      "title": "Tomat untuk saus pasta",
+      "food_item": "Tomat",
+      "quantity": "500.00",
+      "unit": "gram",
+      "description": "Mencari tomat yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Margonda, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Margonda, Depok",
+      "status": "fulfilled",
+      "selected_offer": 910003,
+      "expires_at": null,
+      "created_at": "2026-10-12T03:00:00Z",
+      "updated_at": "2026-10-12T05:00:00Z"
+    },
+    "pk": 910003
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910003,
+      "offered_by": [
+        "seed_dimas"
+      ],
+      "created_at": "2026-10-12T04:00:00Z"
+    },
+    "pk": 910003
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_dimas"
+      ],
+      "title": "Nasi untuk makan malam komunitas",
+      "food_item": "Nasi matang",
+      "quantity": "4.00",
+      "unit": "porsi",
+      "description": "Mencari nasi matang yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Kukusan Teknik, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Kukusan Teknik, Depok",
+      "status": "pending",
+      "selected_offer": null,
+      "expires_at": null,
+      "created_at": "2026-10-13T03:00:00Z",
+      "updated_at": "2026-10-13T05:00:00Z"
+    },
+    "pk": 910004
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_eka"
+      ],
+      "title": "Wortel untuk sup kegiatan belajar",
+      "food_item": "Wortel",
+      "quantity": "1.50",
+      "unit": "kg",
+      "description": "Mencari wortel yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Srengseng Sawah, Jakarta Selatan; waktu disepakati setelah penawaran dipilih.",
+      "location": "Srengseng Sawah, Jakarta Selatan",
+      "status": "offered",
+      "selected_offer": null,
+      "expires_at": null,
+      "created_at": "2026-10-14T03:00:00Z",
+      "updated_at": "2026-10-14T05:00:00Z"
+    },
+    "pk": 910005
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910005,
+      "offered_by": [
+        "seed_ayu"
+      ],
+      "created_at": "2026-10-14T04:00:00Z"
+    },
+    "pk": 910005
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_ayu"
+      ],
+      "title": "Roti tawar untuk puding",
+      "food_item": "Roti tawar",
+      "quantity": "8.00",
+      "unit": "buah",
+      "description": "Mencari roti tawar yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Kukusan, Beji, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Kukusan, Beji, Depok",
+      "status": "fulfilled",
+      "selected_offer": 910006,
+      "expires_at": null,
+      "created_at": "2026-10-15T03:00:00Z",
+      "updated_at": "2026-10-15T05:00:00Z"
+    },
+    "pk": 910006
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910006,
+      "offered_by": [
+        "seed_bima"
+      ],
+      "created_at": "2026-10-15T04:00:00Z"
+    },
+    "pk": 910006
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_bima"
+      ],
+      "title": "Tahu untuk lauk makan siang",
+      "food_item": "Tahu putih",
+      "quantity": "10.00",
+      "unit": "buah",
+      "description": "Mencari tahu putih yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Pondok Cina, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Pondok Cina, Depok",
+      "status": "pending",
+      "selected_offer": null,
+      "expires_at": null,
+      "created_at": "2026-10-16T03:00:00Z",
+      "updated_at": "2026-10-16T05:00:00Z"
+    },
+    "pk": 910007
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_citra"
+      ],
+      "title": "Mentimun untuk acar",
+      "food_item": "Mentimun",
+      "quantity": "4.00",
+      "unit": "buah",
+      "description": "Mencari mentimun yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Margonda, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Margonda, Depok",
+      "status": "offered",
+      "selected_offer": null,
+      "expires_at": null,
+      "created_at": "2026-10-17T03:00:00Z",
+      "updated_at": "2026-10-17T05:00:00Z"
+    },
+    "pk": 910008
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910008,
+      "offered_by": [
+        "seed_dimas"
+      ],
+      "created_at": "2026-10-17T04:00:00Z"
+    },
+    "pk": 910008
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_dimas"
+      ],
+      "title": "Susu untuk puding bersama",
+      "food_item": "Susu pasteurisasi",
+      "quantity": "500.00",
+      "unit": "ml",
+      "description": "Mencari susu pasteurisasi yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Kukusan Teknik, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Kukusan Teknik, Depok",
+      "status": "fulfilled",
+      "selected_offer": 910009,
+      "expires_at": null,
+      "created_at": "2026-10-18T03:00:00Z",
+      "updated_at": "2026-10-18T05:00:00Z"
+    },
+    "pk": 910009
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910009,
+      "offered_by": [
+        "seed_eka"
+      ],
+      "created_at": "2026-10-18T04:00:00Z"
+    },
+    "pk": 910009
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_eka"
+      ],
+      "title": "Kentang untuk dapur berbagi",
+      "food_item": "Kentang",
+      "quantity": "2.00",
+      "unit": "kg",
+      "description": "Mencari kentang yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Srengseng Sawah, Jakarta Selatan; waktu disepakati setelah penawaran dipilih.",
+      "location": "Srengseng Sawah, Jakarta Selatan",
+      "status": "pending",
+      "selected_offer": null,
+      "expires_at": null,
+      "created_at": "2026-10-19T03:00:00Z",
+      "updated_at": "2026-10-19T05:00:00Z"
+    },
+    "pk": 910010
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_ayu"
+      ],
+      "title": "Tempe untuk bekal relawan",
+      "food_item": "Tempe",
+      "quantity": "3.00",
+      "unit": "buah",
+      "description": "Mencari tempe yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Kukusan, Beji, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Kukusan, Beji, Depok",
+      "status": "offered",
+      "selected_offer": null,
+      "expires_at": null,
+      "created_at": "2026-10-20T03:00:00Z",
+      "updated_at": "2026-10-20T05:00:00Z"
+    },
+    "pk": 910011
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910011,
+      "offered_by": [
+        "seed_bima"
+      ],
+      "created_at": "2026-10-20T04:00:00Z"
+    },
+    "pk": 910011
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_bima"
+      ],
+      "title": "Labu untuk sup komunitas",
+      "food_item": "Labu kuning",
+      "quantity": "750.00",
+      "unit": "gram",
+      "description": "Mencari labu kuning yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Pondok Cina, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Pondok Cina, Depok",
+      "status": "fulfilled",
+      "selected_offer": 910012,
+      "expires_at": null,
+      "created_at": "2026-10-21T03:00:00Z",
+      "updated_at": "2026-10-21T05:00:00Z"
+    },
+    "pk": 910012
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910012,
+      "offered_by": [
+        "seed_citra"
+      ],
+      "created_at": "2026-10-21T04:00:00Z"
+    },
+    "pk": 910012
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_citra"
+      ],
+      "title": "Jeruk untuk teman belajar",
+      "food_item": "Jeruk",
+      "quantity": "12.00",
+      "unit": "buah",
+      "description": "Mencari jeruk yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Margonda, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Margonda, Depok",
+      "status": "pending",
+      "selected_offer": null,
+      "expires_at": null,
+      "created_at": "2026-10-22T03:00:00Z",
+      "updated_at": "2026-10-22T05:00:00Z"
+    },
+    "pk": 910013
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_dimas"
+      ],
+      "title": "Buncis untuk tumisan",
+      "food_item": "Buncis",
+      "quantity": "300.00",
+      "unit": "gram",
+      "description": "Mencari buncis yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Kukusan Teknik, Depok; waktu disepakati setelah penawaran dipilih.",
+      "location": "Kukusan Teknik, Depok",
+      "status": "offered",
+      "selected_offer": null,
+      "expires_at": null,
+      "created_at": "2026-10-23T03:00:00Z",
+      "updated_at": "2026-10-23T05:00:00Z"
+    },
+    "pk": 910014
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910014,
+      "offered_by": [
+        "seed_eka"
+      ],
+      "created_at": "2026-10-23T04:00:00Z"
+    },
+    "pk": 910014
+  },
+  {
+    "model": "request_board.request",
+    "fields": {
+      "owner": [
+        "seed_eka"
+      ],
+      "title": "Telur untuk bakwan jagung",
+      "food_item": "Telur",
+      "quantity": "5.00",
+      "unit": "butir",
+      "description": "Mencari telur yang masih layak konsumsi untuk kegiatan bersama. Pengambilan di area Srengseng Sawah, Jakarta Selatan; waktu disepakati setelah penawaran dipilih.",
+      "location": "Srengseng Sawah, Jakarta Selatan",
+      "status": "fulfilled",
+      "selected_offer": 910015,
+      "expires_at": null,
+      "created_at": "2026-10-24T03:00:00Z",
+      "updated_at": "2026-10-24T05:00:00Z"
+    },
+    "pk": 910015
+  },
+  {
+    "model": "request_board.requestoffer",
+    "fields": {
+      "request": 910015,
+      "offered_by": [
+        "seed_ayu"
+      ],
+      "created_at": "2026-10-24T04:00:00Z"
+    },
+    "pk": 910015
+  }
+]
