@@ -153,3 +153,52 @@ Fixture tidak berisi bookmark Katalog Resep; data resep eksternal dicari melalui
 Saya menggunakan **ChatGPT** sebagai alat bantu selama pengembangan modul **Resep Komunitas** pada proyek SaveBite. AI digunakan untuk menghasilkan kode awal, membantu menyelesaikan masalah selama pengembangan, memahami error, serta membantu proses penggunaan Git. Kode yang dihasilkan AI tidak selalu langsung sesuai dengan kebutuhan modul. Oleh karena itu, saya melakukan penyesuaian dan modifikasi terhadap kode tersebut agar sesuai dengan kebutuhan dan implementasi yang saya inginkan.
 AI digunakan sebagai alat bantu dalam proses pengembangan, sedangkan implementasi akhir tetap disesuaikan dengan kebutuhan modul.
 - [ChatGPT — Percakapan terkait pengembangan modul Resep Komunitas](https://chatgpt.com/share/6ae37ce5-c9c4-83ec-9d0b-6db6d04505a2)
+
+
+### 5. Jurnal Jejak Makanan (Georgius Satria Adibrata)
+
+Tool: ***Claude***
+
+Dipakai Untuk Figma:
+
+Membantu menentukan apa saja yang harus dibuat dalam modul saya, lalu saya membuat sendiri design halaman jurnal dalam Figma.
+
+Mengajarkan saya cara untuk memakai Figma (auto layout, corner radius, dll)
+
+Membuat versi mobile dari desain desktop yang saya kerjakan
+
+Mengerjakan ulang desain desktop saya karena tidak memakai auto layout
+
+Membuat beberapa komponen (cth: form modal, delete confirmation modal) untuk modul saya
+
+Strategi:
+
+Mengirim screenshot lalu saya tanyakan apakah sudah bagus atau belom designnya
+
+Link Chatlog AI: [Claude — Percakapan Figma & Design](https://claude.ai/share/60c08d53-5524-445a-b6bb-a15f2311bd6e)
+
+
+Tool: ***ChatGPT***
+
+Dipakai Untuk Figma:
+
+Membantu saya dalam mengkonversi dari figma ke HTML dan CSS
+
+Strategi:
+
+Memakai aplikasinya agar bisa langsung ngedit file projectnya
+
+Link Chatlog AI: [ChatGPT — Konversi Figma ke HTML & CSS](https://chatgpt.com/s/cx_6adf2c8aa03c8191b02507c6b16234d4)
+
+
+Tool: ***ChatGPT***
+
+Dipakai untuk membuat CRUD:
+
+Mencari jika ada bug dalam project
+
+Strategi:
+
+Memakai aplikasinya agar bisa langsung ngedit file projectnya
+
+Link Chatlog AI: [ChatGPT — CRUD & Bug Fixing](https://chatgpt.com/s/cx_6ae4948d4c648191aba2769a9ebe6f86)
