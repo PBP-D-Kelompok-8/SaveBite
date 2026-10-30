@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static request_board_assets %}
 
 {% block html_lang %}id{% endblock %}
 {% block body_class %}request-board-page{% endblock %}
@@ -7,11 +7,11 @@
 {% block title %}Food Rescue Request Board — SaveBite{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/request-board-tailwind.css' %}">
+  <link rel="stylesheet" href="{% board_static 'css/request-board-tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'css/button.css' %}">
   <link rel="stylesheet" href="{% static 'css/navbar.css' %}">
   <link rel="stylesheet" href="{% static 'css/footer.css' %}">
-  <link rel="stylesheet" href="{% static 'css/request-board.css' %}">
+  <link rel="stylesheet" href="{% board_static 'css/request-board.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -38,10 +38,16 @@
   </header>
 
   {% if show_filters %}{% include 'request_board/_filters.html' %}{% endif %}
-  <div data-board-results>{% if page_obj is not None %}{% include 'request_board/_board_results.html' %}{% endif %}</div>
+  <div class="request-board__sr-only" data-board-status role="status" aria-live="polite" aria-atomic="true"></div>
+  {% if user.is_authenticated %}
+    <div data-create-pending data-create-card-slot role="status" aria-live="polite" hidden></div>
+    {% include 'request_board/_pending_request_card.html' %}
+    <dialog class="request-board__create-dialog" data-create-dialog data-create-owner="{{ user.pk }}" data-create-owner-name="{{ user.get_username }}" aria-label="Buat Permintaan Bantuan Makanan"></dialog>
+  {% endif %}
+  <div data-board-results aria-busy="false">{% if page_obj is not None %}{% include 'request_board/_board_results.html' %}{% endif %}</div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'js/request-board.js' %}" defer></script>
+  <script src="{% board_static 'js/request-board.js' %}" defer></script>
 {% endblock %}

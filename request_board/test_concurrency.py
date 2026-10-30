@@ -3,15 +3,17 @@ from queue import Queue
 from threading import Event, Thread
 from time import monotonic
 from unittest import skipUnless
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import connection, connections, transaction
 from django.test import Client, TransactionTestCase
+from django.http import QueryDict
 from django.urls import reverse
 
 from request_board.models import Request, RequestOffer
-from request_board.services import delete_request, fulfill_request, offer_request, select_request_offer
+from request_board.services import create_request_idempotent, delete_request, fulfill_request, offer_request, select_request_offer
 
 
 @skipUnless(connection.vendor == "postgresql", "Requires isolated PostgreSQL and real row locks")
@@ -37,6 +39,25 @@ class RequestConcurrencyTests(TransactionTestCase):
         self.assertTrue(database.startswith("test_savebite_t4_"))
         self.assertEqual(isolation, "read committed")
         return pid
+
+    def test_concurrent_create_same_key_creates_only_one_request(self):
+        key = uuid4()
+        payload = QueryDict('', mutable=True)
+        payload.update({'title': 'Race create', 'food_item': 'Nasi', 'quantity': '1', 'unit': 'porsi'})
+
+        def create():
+            item = create_request_idempotent(actor=self.owner, data=payload, key=key)
+            return {'id': item.pk}
+
+        def snapshot(role, result):
+            return result
+
+        def committed():
+            return list(Request.objects.filter(owner=self.owner, title='Race create').values_list('pk', flat=True))
+
+        leader, contender = self._run_race(create, create, snapshot, committed)
+        self.assertEqual(leader['id'], contender['id'])
+        self.assertEqual(committed(), [leader['id']])
 
     def _run_race(self, leader_action, contender_action, snapshot, committed):
         """Run the leader, then the contender, and prove a real row-lock wait.

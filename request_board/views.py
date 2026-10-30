@@ -1,4 +1,5 @@
 import json
+from uuid import UUID
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 from functools import wraps
@@ -19,11 +20,13 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.contrib.auth.views import redirect_to_login
 from django.views.decorators.vary import vary_on_headers
+from django.views.decorators.cache import never_cache
 
 from request_board.forms import BoardFilterForm, RequestForm
-from request_board.models import Request, RequestOffer
+from request_board.models import Request, RequestCreationKey, RequestOffer
 from request_board.services import (
     create_request,
+    create_request_idempotent,
     delete_request,
     fulfill_request,
     get_board_page,
@@ -147,7 +150,8 @@ def serialize_request(food_request: Request) -> dict:
         "description": food_request.description or "",
         "location": food_request.location or "",
         "owner": {"display_name": owner_username},
-        "status": food_request.status,
+        "status": food_request.effective_status,
+        "expires_at": food_request.expires_at.isoformat() if food_request.expires_at else None,
         "created_at": food_request.created_at.isoformat(),
         "updated_at": food_request.updated_at.isoformat(),
         "offer_count": int(offer_count),
@@ -381,7 +385,7 @@ def api_request_offer(request, request_id: int) -> JsonResponse:
     try:
         _offer, created = offer_request(actor=request.user, request_id=request_id)
     except (Request.DoesNotExist, PermissionDenied, ValidationError) as exc:
-        return _api_service_error(exc, conflict_codes=("request_fulfilled", "offers_closed"))
+        return _api_service_error(exc, conflict_codes=("request_fulfilled", "offers_closed", "request_expired"))
 
     try:
         persisted_request = get_request_for_display(
@@ -436,7 +440,7 @@ def api_request_status(request, request_id: int) -> JsonResponse:
     try:
         fulfill_request(actor=request.user, request_id=request_id)
     except (Request.DoesNotExist, PermissionDenied, ValidationError) as exc:
-        return _api_service_error(exc, conflict_code="offer_selection_required")
+        return _api_service_error(exc, conflict_codes=("offer_selection_required", "request_expired"))
 
     try:
         persisted_request = get_request_for_display(
@@ -493,6 +497,7 @@ def request_board(request):
 
     filter_form = BoardFilterForm(request.GET)
     filter_form.populate_locations()
+    filter_form.populate_food_items()
     if not filter_form.is_valid():
         return TemplateResponse(request, "request_board/index.html", {"filter_form": filter_form, "show_filters": True}, status=400)
     if filter_form.cleaned_data["mine"] and not request.user.is_authenticated:
@@ -512,6 +517,10 @@ def request_board(request):
         requests=page_items,
     )
 
+    filters_active = (
+        any(filter_form.cleaned_data.get(key) for key in ("q", "title", "food_item", "status", "location", "mine"))
+        or filter_form.cleaned_data["sort"] == "oldest"
+    )
     context = {
         "page_obj": page_obj,
         "owner_offer_previews": owner_offer_previews,
@@ -520,9 +529,9 @@ def request_board(request):
             key: ("on" if key == "mine" else value)
             for key, value in filter_form.cleaned_data.items() if value
         }),
-        "filters_active": any(filter_form.cleaned_data.get(key) for key in ("q", "status", "location", "mine")),
-        "show_filters": bool(page_obj.paginator.count) or Request.objects.exists(),
-        "filter_status_label": dict(Request.STATUS_CHOICES).get(filter_form.cleaned_data["status"], "Semua status"),
+        "filters_active": filters_active,
+        "show_filters": True,
+        "filter_status_label": dict([*Request.STATUS_CHOICES, (Request.STATUS_EXPIRED, "Kedaluwarsa")]).get(filter_form.cleaned_data["status"], "Semua status"),
         "filter_sort_label": "Terlama" if filter_form.cleaned_data["sort"] == "oldest" else "Terbaru",
     }
     template = "request_board/_board_results.html" if _is_ajax(request) else "request_board/index.html"
@@ -569,7 +578,7 @@ def request_select_offer(request, request_id: int, offer_id: int):
             return _ajax_result(str(exc), "", 403)
         return HttpResponseForbidden(str(exc))
     except ValidationError as exc:
-        if exc.code != "request_fulfilled":
+        if exc.code not in {"request_fulfilled", "request_expired"}:
             raise
         if _is_ajax(request):
             return _ajax_result(str(exc.message), "", 409)
@@ -588,17 +597,56 @@ def request_create(request):
 
     form_data = request.POST if request.method == "POST" else None
     form = RequestForm(data=form_data)
+    key = None
+    if request.method == 'POST' and _is_ajax(request) and request.headers.get('Idempotency-Key'):
+        expected_owner = request.headers.get('X-Create-Owner')
+        if expected_owner and expected_owner != str(request.user.pk):
+            return JsonResponse({'ok': False, 'code': 'owner_mismatch', 'message': 'Masuk kembali dengan akun pembuat draft.'}, status=403)
+        try:
+            key = UUID(request.headers['Idempotency-Key'])
+        except (ValueError, AttributeError):
+            return _ajax_result('Kunci penyimpanan tidak valid.', '', 400)
+        try:
+            created = create_request_idempotent(actor=request.user, data=request.POST, key=key)
+        except ValidationError as exc:
+            if getattr(exc, 'code', None) in {'idempotency_conflict', 'idempotency_deleted'}:
+                return _ajax_result(str(exc.message), '', 409)
+            return JsonResponse({'ok': False, 'fields': exc.message_dict}, status=400)
+        return JsonResponse({'ok': True, 'message': 'Permintaan bantuan makanan berhasil dibuat.',
+                             'redirect_url': reverse('request_board:request_board'), 'request_id': created.pk})
     if request.method == "POST" and form.is_valid():
-        create_request(actor=request.user, data=request.POST)
-        if _is_ajax(request):
-            return _ajax_result("Permintaan bantuan makanan berhasil dibuat.", reverse("request_board:request_board"))
-        messages.success(request, "Permintaan bantuan makanan berhasil dibuat.")
-        return HttpResponseRedirect(reverse("request_board:request_board"))
+        try:
+            create_request(actor=request.user, data=request.POST)
+        except ValidationError as exc:
+            if hasattr(exc, "error_dict"):
+                for name, errors in exc.error_dict.items():
+                    form.add_error(name if name in form.fields else None, errors)
+            else:
+                form.add_error(None, exc)
+        else:
+            if _is_ajax(request):
+                return _ajax_result("Permintaan bantuan makanan berhasil dibuat.", reverse("request_board:request_board"))
+            messages.success(request, "Permintaan bantuan makanan berhasil dibuat.")
+            return HttpResponseRedirect(reverse("request_board:request_board"))
 
     if request.method == "POST" and _is_ajax(request):
         return JsonResponse({"ok": False, "fields": {name: list(errors) for name, errors in form.errors.items()}}, status=400)
 
     return TemplateResponse(request, "request_board/request_form.html", {"form": form})
+
+
+@never_cache
+@_board_login_required
+def request_create_status(request, key):
+    if request.method != 'GET':
+        return HttpResponseNotAllowed(['GET'])
+    expected_owner = request.headers.get('X-Create-Owner')
+    if expected_owner and expected_owner != str(request.user.pk):
+        return JsonResponse({'ok': False, 'code': 'owner_mismatch', 'message': 'Masuk kembali dengan akun pembuat draft.'}, status=403)
+    record = RequestCreationKey.objects.filter(owner=request.user, key=key).first()
+    return JsonResponse({'ok': True, 'found': record is not None,
+                         'request_id': record.request_id if record else None,
+                         'deleted': record is not None and record.request_id is None})
 
 
 @_board_login_required
@@ -626,8 +674,8 @@ def request_action(request, request_id: int, action: str):
         return HttpResponseForbidden(str(exc) or "Izin ditolak.")
     except ValidationError as exc:
         expected_conflicts = {
-            "offer": {"request_fulfilled", "offers_closed"},
-            "fulfill": {"offer_selection_required"},
+            "offer": {"request_fulfilled", "offers_closed", "request_expired"},
+            "fulfill": {"offer_selection_required", "request_expired"},
         }
         expected_code = expected_conflicts.get(action)
         if expected_code is None or getattr(exc, "code", None) not in expected_code:

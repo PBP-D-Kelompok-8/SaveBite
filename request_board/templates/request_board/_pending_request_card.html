@@ -1,0 +1,40 @@
+{% load static %}
+<template data-create-card-template>
+  <article class="request-board__card tw:flex tw:min-w-0 tw:flex-col tw:gap-4" data-create-card>
+    <div class="request-board__card-header">
+      <span class="request-board__badge request-board__badge--pending" data-create-card-badge>
+        <picture class="request-board__status-icon">
+          <source media="(max-width: 768px)" srcset="{% static 'request-board/pending-mobile.svg' %}">
+          <img src="{% static 'request-board/pending.svg' %}" alt="">
+        </picture>
+        <span data-create-card-state>Sedang menyimpan…</span>
+      </span>
+    </div>
+
+    <h2 class="request-board__card-title" data-create-card-title></h2>
+
+    <div class="request-board__card-meta">
+      <div class="request-board__meta-item request-board__meta-item--primary">
+        <span class="request-board__meta-label">Bahan</span>
+        <span class="request-board__meta-value" data-create-card-food></span>
+      </div>
+      <div class="request-board__meta-item request-board__meta-item--primary">
+        <span class="request-board__meta-label">Jumlah</span>
+        <span class="request-board__meta-value" data-create-card-quantity></span>
+      </div>
+      <div class="request-board__meta-item request-board__meta-item--owner">
+        <span class="request-board__meta-label">Pemohon</span>
+        <span class="request-board__meta-value"><span data-create-card-owner></span> <span class="request-board__owner-indicator">(Anda)</span></span>
+      </div>
+      <div class="request-board__meta-item" data-create-card-location-row hidden>
+        <span class="request-board__meta-label">Lokasi</span>
+        <span class="request-board__meta-value" data-create-card-location></span>
+      </div>
+    </div>
+
+    <div class="request-board__card-desc" data-create-card-description-row hidden>
+      <p data-create-card-description></p>
+    </div>
+    <time class="request-board__card-time" data-create-card-expires hidden></time>
+  </article>
+</template>

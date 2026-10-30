@@ -20,11 +20,34 @@ class SecuritySettingsTests(TestCase):
         self.assertEqual(settings['SECRET_KEY'], 'test-only-environment-key')
         self.assertFalse(settings.get('SECRET_KEY_FALLBACKS', []))
 
-    def test_missing_or_blank_secret_key_prevents_startup(self):
-        for environment in ({}, {'SECRET_KEY': ''}, {'SECRET_KEY': '   '}):
-            with self.subTest(environment=environment):
+    def test_missing_secret_key_uses_development_fallback(self):
+        settings = self.load_settings()
+        self.assertFalse(settings['PRODUCTION'])
+        self.assertEqual(settings['SECRET_KEY'], 'django-insecure-fallback-key-for-dev-only')
+
+    def test_blank_secret_key_prevents_startup_in_all_environments(self):
+        for production in ('False', 'True'):
+            for key in ('', '   '):
+                with self.subTest(production=production, key=key):
+                    with self.assertRaises(ImproperlyConfigured):
+                        self.load_settings(PRODUCTION=production, SECRET_KEY=key)
+
+    def test_missing_secret_key_prevents_production_startup(self):
+        with self.assertRaises(ImproperlyConfigured):
+            self.load_settings(PRODUCTION='True')
+
+    def test_development_fallback_prevents_production_startup(self):
+        fallback = 'django-insecure-fallback-key-for-dev-only'
+        for key in (fallback, f'  {fallback}  '):
+            with self.subTest(key=key):
                 with self.assertRaises(ImproperlyConfigured):
-                    self.load_settings(**environment)
+                    self.load_settings(PRODUCTION='True', SECRET_KEY=key)
+
+    def test_production_uses_configured_secret_key(self):
+        settings = self.load_settings(PRODUCTION='True', SECRET_KEY='production-test-only-key')
+        self.assertTrue(settings['PRODUCTION'])
+        self.assertEqual(settings['SECRET_KEY'], 'production-test-only-key')
+        self.assertFalse(settings.get('SECRET_KEY_FALLBACKS', []))
 
     def test_debug_is_disabled_by_default(self):
         settings = self.load_settings(SECRET_KEY='test-only-key')
@@ -43,3 +66,10 @@ class SecuritySettingsTests(TestCase):
         )
         self.assertTrue(settings['PRODUCTION'])
         self.assertFalse(settings['DEBUG'])
+
+    def test_local_static_assets_refresh_even_when_debug_is_disabled(self):
+        local = self.load_settings(SECRET_KEY='test-only-key', DEBUG='false')
+        self.assertIs(local.get('WHITENOISE_AUTOREFRESH'), True)
+        self.assertEqual(local.get('WHITENOISE_MAX_AGE'), 0)
+        production = self.load_settings(SECRET_KEY='production-test-only-key', PRODUCTION='true')
+        self.assertIs(production.get('WHITENOISE_AUTOREFRESH'), False)

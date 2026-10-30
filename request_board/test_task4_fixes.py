@@ -85,7 +85,7 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
         self.assertTrue(alert.evaluate('el => el.closest("dialog").matches(":modal")'))
         self.assertTrue(alert.evaluate('el => document.activeElement === el'))
 
-    def test_delete_bottom_card_errors_are_in_active_dialog_and_retryable(self):
+    def test_delete_bottom_card_errors_allow_safe_recovery(self):
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
             try:
@@ -108,11 +108,16 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
                             page.route('**/delete/', lambda route: route.abort())
                         button = dialog.get_by_role('button', name='Ya, hapus')
                         button.click()
-                        self.assert_visible_alert(page, dialog, {'csrf': 'CSRF', 'session': 'masuk', 'network': 'Gagal'}[error])
-                        expect(button).to_be_enabled()
+                        alert = page.locator('[data-ajax-notice][role=alert]')
+                        expect(alert).to_contain_text({'csrf': 'CSRF', 'session': 'masuk', 'network': 'belum dapat dipastikan'}[error])
                         expect(page.locator('.request-board__card')).to_have_count(8 - index)
                         if error == 'session':
-                            expect(dialog.get_by_role('link', name='Masuk')).to_be_visible()
+                            expect(alert.get_by_role('link', name='Masuk')).to_have_count(1)
+                        page.locator('.request-board__delete-summary').last.click()
+                        dialog = page.locator('dialog:modal')
+                        token = dialog.locator('[name=csrfmiddlewaretoken]')
+                        button = dialog.get_by_role('button', name='Ya, hapus')
+                        expect(button).to_be_enabled()
                         if error == 'csrf':
                             self.assertEqual(token.input_value(), 'invalid')
                             token.evaluate('(el, value) => el.value = value', original_token)
@@ -126,7 +131,7 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
             finally:
                 browser.close()
 
-    def test_mobile_filter_errors_are_in_sheet_and_preserve_inputs_for_retry(self):
+    def test_mobile_inline_filter_errors_preserve_inputs_for_retry(self):
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(channel=os.environ.get('PLAYWRIGHT_CHROMIUM_CHANNEL') or None)
             try:
@@ -135,13 +140,11 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
                         context = browser.new_context(viewport={'width': 375, 'height': 812})
                         context.add_cookies([{'name': 'sessionid', 'value': self.session, 'url': self.live_server_url}])
                         page = context.new_page()
-                        page.goto(self.live_server_url + reverse('request_board:request_board'))
-                        page.locator('[data-filter-open]').click()
-                        dialog = page.locator('#board-filter-dialog')
-                        dialog.locator('summary').click()
-                        dialog.locator('[name=q]').fill('Kartu')
+                        page.goto(self.live_server_url + reverse('request_board:request_board') + ('?mine=on' if error == 'session' else ''))
+                        page.get_by_role('button', name='Filter', exact=True).click()
+                        dialog = page.locator('[data-filter-form]')
+                        dialog.locator('[name=title]').fill('Kartu')
                         if error == 'session':
-                            dialog.locator('[name=mine]').check()
                             context.clear_cookies(name='sessionid')
                         elif error == 'network':
                             page.route('**/board/?*', lambda route: route.abort())
@@ -149,17 +152,20 @@ class ModalErrorRecoveryTests(StaticLiveServerTestCase):
                             page.route('**/board/?*', lambda route: route.fulfill(status=403, body='CSRF'))
                         button = dialog.get_by_role('button', name='Terapkan')
                         button.click()
-                        self.assert_visible_alert(page, dialog, {'forbidden': 'tidak valid', 'session': 'masuk', 'network': 'Gagal'}[error])
+                        alert = page.locator('[data-ajax-notice][role=alert]')
+                        expect(alert).to_contain_text({'forbidden': 'tidak valid', 'session': 'masuk', 'network': 'Gagal'}[error])
+                        expect(alert).to_be_visible()
                         expect(button).to_be_enabled()
-                        expect(dialog.locator('[name=q]')).to_have_value('Kartu')
+                        expect(dialog.locator('[name=title]')).to_have_value('Kartu')
                         if error == 'session':
-                            expect(dialog.locator('[name=mine]')).to_be_checked()
+                            expect(dialog.locator('[name=mine]')).to_have_value('on')
                             context.add_cookies([{'name': 'sessionid', 'value': self.session, 'url': self.live_server_url}])
                         else:
                             page.unroute('**/board/?*')
                         button.click()
-                        expect(dialog).not_to_be_visible()
-                        self.assertIn('q=Kartu', page.url)
+                        page.wait_for_url('**/*title=Kartu*')
+                        expect(dialog).to_be_visible()
+                        self.assertIn('title=Kartu', page.url)
                         context.close()
             finally:
                 browser.close()

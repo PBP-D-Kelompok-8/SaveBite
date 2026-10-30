@@ -1,6 +1,11 @@
+import hashlib
+import json
+
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import transaction
+from django.utils import timezone
 from django.db.models import (
     BooleanField,
     Count,
@@ -13,7 +18,7 @@ from django.db.models import (
 )
 
 from request_board.forms import RequestForm
-from request_board.models import Request, RequestOffer
+from request_board.models import Request, RequestCreationKey, RequestOffer
 
 PAGE_SIZE = 20
 OFFER_PREVIEW_LIMIT = 20
@@ -42,6 +47,30 @@ def create_request(*, actor, data) -> Request:
     return food_request
 
 
+def create_request_idempotent(*, actor, data, key) -> Request:
+    """Serialize each owner's create keys, including retries concurrent with commit."""
+    _require_saved_user(actor)
+    payload = {name: data.getlist(name) for name in RequestForm.Meta.fields}
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
+    with transaction.atomic():
+        get_user_model().objects.select_for_update().get(pk=actor.pk)
+        previous = RequestCreationKey.objects.filter(owner=actor, key=key).first()
+        if previous:
+            if previous.payload_digest != digest:
+                raise ValidationError('Kunci penyimpanan sudah digunakan untuk draft lain.', code='idempotency_conflict')
+            if previous.request_id is None:
+                raise ValidationError('Permintaan untuk kunci ini sudah dihapus.', code='idempotency_deleted')
+            return previous.request
+        food_request = create_request(actor=actor, data=data)
+        RequestCreationKey.objects.create(owner=actor, key=key, payload_digest=digest, request=food_request)
+        return food_request
+
+
+def _require_not_expired(food_request):
+    if food_request.effective_status == Request.STATUS_EXPIRED:
+        raise ValidationError("Permintaan sudah kedaluwarsa.", code="request_expired")
+
+
 def offer_request(*, actor, request_id: int) -> tuple[RequestOffer, bool]:
     _require_saved_user(actor)
 
@@ -57,6 +86,7 @@ def offer_request(*, actor, request_id: int) -> tuple[RequestOffer, bool]:
                 code="request_fulfilled",
             )
 
+        _require_not_expired(locked_request)
         existing = RequestOffer.objects.filter(request=locked_request, offered_by=actor).first()
         if locked_request.selected_offer_id and existing is None:
             raise ValidationError("Penawaran sudah ditutup.", code="offers_closed")
@@ -81,6 +111,7 @@ def select_request_offer(*, actor, request_id: int, offer_id: int) -> Request:
             raise PermissionDenied("Hanya pemilik request yang dapat memilih penawar.")
         if locked_request.status == Request.STATUS_FULFILLED:
             raise ValidationError("Request sudah terpenuhi.", code="request_fulfilled")
+        _require_not_expired(locked_request)
         offer = RequestOffer.objects.get(pk=offer_id, request=locked_request)
         if locked_request.selected_offer_id != offer.pk:
             locked_request.selected_offer = offer
@@ -97,6 +128,7 @@ def fulfill_request(*, actor, request_id: int) -> Request:
         if locked_request.owner_id != actor.pk:
             raise PermissionDenied("Hanya pemilik request yang dapat memenuhi request.")
 
+        _require_not_expired(locked_request)
         if locked_request.status != Request.STATUS_FULFILLED and not locked_request.selected_offer_id:
             raise ValidationError(
                 "Pilih penawar sebelum menandai request terpenuhi.",
@@ -146,8 +178,16 @@ def get_board_page(*, actor=None, page_value: str | int | None = None, filters=N
         queryset = queryset.filter(
             Q(title__icontains=term) | Q(food_item__icontains=term) | Q(location__icontains=term)
         )
+    if filters.get("title"):
+        queryset = queryset.filter(title__icontains=filters["title"])
+    if filters.get("food_item"):
+        queryset = queryset.filter(food_item__iexact=filters["food_item"])
     if filters.get("status"):
-        queryset = queryset.filter(status=filters["status"])
+        expired = Q(status__in=[Request.STATUS_PENDING, Request.STATUS_OFFERED], expires_at__lte=timezone.now())
+        if filters["status"] == Request.STATUS_EXPIRED:
+            queryset = queryset.filter(expired)
+        else:
+            queryset = queryset.filter(status=filters["status"]).exclude(expired)
     if filters.get("location"):
         queryset = queryset.filter(location__iexact=filters["location"])
     if filters.get("mine"):

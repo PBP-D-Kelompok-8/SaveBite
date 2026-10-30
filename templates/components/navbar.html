@@ -13,10 +13,18 @@
 
     <nav class="navbar__menu" id="navMenu" aria-label="Navigasi utama">
       <ul class="navbar__links">
-        <li>{% include 'components/button.html' with label="Page 1" type="quaternary" color="bright" %}</li>
-        <li>{% include 'components/button.html' with label="Page 2" type="quaternary" color="bright" %}</li>
-        <li>{% include 'components/button.html' with label="Page 3" type="quaternary" color="bright" %}</li>
-        <li>{% include 'components/button.html' with label="Page 4" type="quaternary" color="bright" %}</li>
+        {% url 'food_rescue_planner:index' as planner_url %}
+        {% url 'katalog:home' as catalog_url %}
+        {% url 'resep_komunitas:recipe_list' as community_url %}
+        {% url 'request_board:request_board' as requests_url %}
+        {% url 'jurnal:index' as journal_url %}
+
+        <li>{% include 'components/button.html' with label="Planner" type="quaternary" color="bright" href=planner_url %}</li>
+        <li>{% include 'components/button.html' with label="Resep" type="quaternary" color="bright" href=catalog_url %}</li>
+        <li>{% include 'components/button.html' with label="Komunitas" type="quaternary" color="bright" href=community_url %}</li>
+        <li>{% include 'components/button.html' with label="Request" type="quaternary" color="bright" href=requests_url %}</li>
+        <li>{% include 'components/button.html' with label="Jurnal" type="quaternary" color="bright" href=journal_url %}</li>
+
       </ul>
       <div class="navbar__actions">
         {% if user.is_authenticated %}

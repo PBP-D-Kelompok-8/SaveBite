@@ -461,6 +461,27 @@ class BoardMarkup(HTMLParser):
                 and (within is None or any(parent is within for parent in node["parents"]))]
 
 
+class OffersSummaryRenderingTests(TestCase):
+    def test_offers_escape_user_content_and_omit_empty_location_separator(self):
+        owner = get_user_model().objects.create_user(username='summary-owner')
+        donor = get_user_model().objects.create_user(username='summary-donor')
+        payload = '<script>alert("x")</script> & test'
+        get_user_model().objects.filter(pk=donor.pk).update(username=payload)
+        donor.refresh_from_db()
+        item = Request.objects.create(owner=owner, title=payload, food_item=payload,
+                                      quantity=Decimal('2.50'), unit='kg', location='')
+        offer_request(actor=donor, request_id=item.pk)
+        self.client.force_login(owner)
+        response = self.client.get(reverse('request_board:request_offers', args=[item.pk]))
+        markup = BoardMarkup(response.content.decode())
+        root, = [node for node in markup.nodes if 'data-board-offers' in node['attrs']]
+        self.assertGreaterEqual(root['text'].count(payload), 3)
+        self.assertFalse(markup.select('script', within=root))
+        self.assertContains(response, escape(payload))
+        self.assertIn('2.50 kg', root['text'])
+        self.assertNotRegex(root['text'], r'kg\s*·')
+
+
 class PublicBoardRenderingTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -710,11 +731,11 @@ class RequestCreateRenderingTests(TestCase):
         for node in markup.nodes:
             if node["tag"] in {"input", "select", "textarea"}:
                 name = node["attrs"].get("name")
-                if name in {"title", "food_item", "quantity", "unit", "description", "location"}:
+                if name in {"title", "food_item", "quantity", "unit", "description", "location", "expires_at"}:
                     self.assertNotIn(name, controls, "Field tidak boleh terduplikasi")
                     controls[name] = node
         self.assertEqual(set(controls),
-                         {"title", "food_item", "quantity", "unit", "description", "location"})
+                         {"title", "food_item", "quantity", "unit", "description", "location", "expires_at"})
         ids = [node["attrs"].get("id") for node in markup.nodes if node["attrs"].get("id")]
         self.assertEqual(len(ids), len(set(ids)), "ID dokumen harus unik untuk association")
         for name, control in controls.items():
@@ -754,7 +775,7 @@ class RequestCreateRenderingTests(TestCase):
                             and re.search(r"batal|kembali", node["text"], re.I)
                             for node in markup.select("a", within=markup.select("main")[0])))
 
-    def test_six_labelled_fields_required_optional_and_existing_units(self):
+    def test_labelled_fields_required_optional_and_existing_units(self):
         _, markup, form_node, _ = self.create_page()
         controls = self.controls(markup)
         names = [node["attrs"].get("name") for node in markup.nodes
@@ -900,6 +921,39 @@ class RequestCreateRenderingTests(TestCase):
 
                 self.assertEqual(response.status_code, 403)
                 self.assertEqual(self.snapshot(), before)
+
+
+class PendingCreateCardRenderingTests(TestCase):
+    def test_pending_template_is_authenticated_inert_unique_and_outside_results(self):
+        url = reverse('request_board:request_board')
+        guest = BoardMarkup(self.client.get(url).content.decode())
+        self.assertFalse(any('data-create-card-template' in node['attrs']
+                             or 'data-create-pending' in node['attrs'] for node in guest.nodes))
+        owner = get_user_model().objects.create_user(username='<b>Pemohon & aman</b>')
+        self.client.force_login(owner)
+        response = self.client.get(url)
+        markup = BoardMarkup(response.content.decode())
+        template, = [node for node in markup.nodes if 'data-create-card-template' in node['attrs']]
+        slot, = [node for node in markup.nodes if 'data-create-pending' in node['attrs']]
+        results, = [node for node in markup.nodes if 'data-board-results' in node['attrs']]
+        self.assertEqual(template['tag'], 'template')
+        self.assertIn('hidden', slot['attrs'])
+        self.assertNotIn(results, template['parents'])
+        self.assertNotIn(results, slot['parents'])
+        cards = markup.select('article', within=template)
+        self.assertEqual(len(cards), 1)
+        self.assertIn('data-create-card', cards[0]['attrs'])
+        for tag in ('form', 'button', 'a', 'input', 'script'):
+            self.assertFalse(markup.select(tag, within=template), tag)
+        slots = [key for node in markup.nodes if template in node['parents']
+                 for key in node['attrs'] if key.startswith('data-create-card')]
+        self.assertEqual(len(slots), len(set(slots)))
+        ids = [node['attrs']['id'] for node in markup.nodes if node['attrs'].get('id')]
+        self.assertEqual(len(ids), len(set(ids)))
+        dialog, = [node for node in markup.nodes if 'data-create-dialog' in node['attrs']]
+        self.assertEqual(dialog['attrs']['data-create-owner-name'], owner.username)
+        self.assertContains(response, escape(owner.username))
+        self.assertFalse(markup.select('b', within=dialog))
 
 
 class ToastNotificationRenderingTests(TestCase):
@@ -1477,7 +1531,7 @@ class BoardActionRenderingTests(TestCase):
         select_request_offer(actor=self.owner, request_id=self.offered.pk, offer_id=self.offered.offers.get(offered_by=self.donor).pk)
         self.client.force_login(self.owner)
         _, markup = self.board()
-        self.assert_latest_card(markup, self.offered, "Ditawarkan", 2)
+        self.assert_latest_card(markup, self.offered, "Menunggu pemenuhan", 2)
         url, payload = self.fulfill_form(markup, self.offered)
         before = self.snapshot()
 
@@ -1534,7 +1588,7 @@ class BoardActionRenderingTests(TestCase):
                 self.assertEqual(self.snapshot(), before)
                 board, markup = self.board()
                 self.assertEqual(list(board.context["messages"]), [])
-                self.assert_latest_card(markup, self.offered, "Ditawarkan", 1)
+                self.assert_latest_card(markup, self.offered, "Menunggu pemenuhan", 1)
                 self.fulfill_form(markup, self.offered)
 
     def test_forged_fulfill_valid_token_enforces_actor_state_and_missing_target_guards(self):
@@ -1943,6 +1997,11 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                     ).encode()
                     self.assertEqual(content.count(own_navbar), 1)
                     content = content.replace(own_navbar, b"", 1)
+                    # Optimistic create needs only the signed-in user's own public
+                    # display name, not any donor identities from offer previews.
+                    own_draft_name = ('data-create-owner-name="' + escape(actor.username) + '"').encode()
+                    self.assertEqual(content.count(own_draft_name), 1)
+                    content = content.replace(own_draft_name, b"", 1)
                 self.assertNotIn(b"DONOR_SENTINEL_", content)
                 self.assert_private_fields_absent(response)
                 for item in self.items:
@@ -2088,7 +2147,9 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertTrue(response.is_rendered)
                 self.assertTemplateUsed(response, "request_board/_request_card.html")
-                self.assertEqual(len(BoardMarkup(content.decode()).select("article")), count)
+                markup = BoardMarkup(content.decode())
+                results, = [node for node in markup.nodes if 'data-board-results' in node['attrs']]
+                self.assertEqual(len(markup.select("article", within=results)), count)
                 auth, builder = [], []
                 for query in captured:
                     sql = query["sql"]
@@ -2103,8 +2164,8 @@ class OwnerOfferPrivacyRenderingTests(TestCase):
                 print(f"PRIVACY_QUERY actor={actor} cards={count} total={len(captured)} "
                       f"auth_session={len(auth)} builder_render={len(builder)}")
                 self.assertEqual(len(auth), 0 if actor == "guest" else 2)
-                # One constant lookup supplies location choices, independent of card count.
-                self.assertEqual(len(builder), 4 if actor == "owner" else 3)
+                # Location and ingredient choices each use one constant lookup (Task 1).
+                self.assertEqual(len(builder), 5 if actor == "owner" else 4)
         for actor in clients:
             with self.subTest(actor=actor):
                 self.assertEqual(profiles[(actor, 1)], profiles[(actor, 20)])
