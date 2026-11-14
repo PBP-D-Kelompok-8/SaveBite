@@ -277,6 +277,7 @@ def _handle_request_offer_list_post(request, food_request: Request):
     )
 
 
+@never_cache
 @api_view(["GET", "POST"])
 @authentication_classes([SessionAuthentication])
 @permission_classes([CanAccessRequestOffers])
@@ -292,6 +293,7 @@ def request_offer_list(request, request_id: int):
     return _handle_request_offer_list_post(request, food_request)
 
 
+@never_cache
 @api_view(["GET"])
 @authentication_classes([SessionAuthentication])
 @permission_classes([IsRequestOwner])

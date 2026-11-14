@@ -1701,6 +1701,9 @@ class RequestOfferAndFulfillmentAPITests(APITestCase):
                 with self.subTest(actor=getattr(actor, "username", "anon"), url=url):
                     resp = client.get(url)
                     self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+                    cache_control = resp.headers.get("Cache-Control", "")
+                    self.assertIn("private", cache_control)
+                    self.assertIn("no-store", cache_control)
                     self.assertNotIn(self.donor.username, resp.content.decode("utf-8"))
                     self.assertNotIn(self.second_donor.username, resp.content.decode("utf-8"))
 
@@ -1715,6 +1718,8 @@ class RequestOfferAndFulfillmentAPITests(APITestCase):
 
         detail_resp = owner_client.get(detail_url)
         self.assertEqual(detail_resp.status_code, status.HTTP_200_OK)
+        self.assertIn("private", detail_resp.headers.get("Cache-Control", ""))
+        self.assertIn("no-store", detail_resp.headers.get("Cache-Control", ""))
         self.assert_offer_payload(detail_resp.json(), offer_one, is_selected=True)
         self.assert_no_user_secrets(detail_resp.content.decode("utf-8"))
 
@@ -1727,6 +1732,8 @@ class RequestOfferAndFulfillmentAPITests(APITestCase):
         with CaptureQueriesContext(connection) as small_queries:
             small_resp = owner_client.get(list_url)
         self.assertEqual(small_resp.status_code, status.HTTP_200_OK)
+        self.assertIn("private", small_resp.headers.get("Cache-Control", ""))
+        self.assertIn("no-store", small_resp.headers.get("Cache-Control", ""))
         self.assertEqual(small_resp.json()["count"], 2)
 
         extra_offers = []
