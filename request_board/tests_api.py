@@ -2020,3 +2020,427 @@ class RequestOfferAndFulfillmentAPITests(APITestCase):
         )
         self.assertEqual(ok_st.status_code, status.HTTP_200_OK)
         self.assertEqual(ok_st.json()["status"], Request.STATUS_FULFILLED)
+
+
+class RequestBoardCrossEndpointAndCSRFIntegrationTests(APITestCase):
+    """T06 cross-endpoint contract, real-page CSRF, Browsable API, and lifecycle tests."""
+
+    @classmethod
+    def setUpTestData(cls):
+        User = get_user_model()
+        cls.password = "t06-integration-pass-123"
+        cls.owner = User.objects.create_user(
+            username="t06_owner",
+            password=cls.password,
+            email="t06-owner@example.invalid",
+            first_name="T06",
+            last_name="Owner",
+        )
+        cls.donor = User.objects.create_user(
+            username="t06_donor",
+            password=cls.password,
+            email="t06-donor@example.invalid",
+            first_name="T06",
+            last_name="Donor",
+        )
+        cls.other = User.objects.create_user(
+            username="t06_other",
+            password=cls.password,
+            email="t06-other@example.invalid",
+            first_name="T06",
+            last_name="Other",
+        )
+
+    def database_snapshot(self):
+        return {
+            "requests": list(Request.objects.order_by("pk").values()),
+            "offers": list(RequestOffer.objects.order_by("pk").values()),
+            "keys": list(RequestCreationKey.objects.order_by("key").values()),
+        }
+
+    def _csrf_client(self, user, page_url):
+        client = APIClient(enforce_csrf_checks=True)
+        self.assertTrue(client.login(username=user.username, password=self.password))
+        page_resp = client.get(page_url)
+        self.assertEqual(page_resp.status_code, status.HTTP_200_OK)
+        self.assertIn("csrftoken", client.cookies)
+        return client, client.cookies["csrftoken"].value
+
+    def _assert_csrf_rejected(self, fn):
+        before = self.database_snapshot()
+        no_tok = fn(None)
+        self.assertEqual(no_tok.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("csrf", no_tok.json()["detail"].lower())
+        self.assertEqual(self.database_snapshot(), before)
+
+        bad_tok = fn("wrong-csrf-token-value")
+        self.assertEqual(bad_tok.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("csrf", bad_tok.json()["detail"].lower())
+        self.assertEqual(self.database_snapshot(), before)
+
+    def test_real_page_csrf_across_all_mutating_endpoints(self):
+        create_url = reverse("request_board_api:request_list")
+        create_key = str(uuid4())
+        payload = {
+            "title": "Butuh sayur segar",
+            "food_item": "Bayam",
+            "quantity": "3.00",
+            "unit": "ikat",
+            "location": "Jakarta",
+        }
+
+        owner_create_client, owner_create_tok = self._csrf_client(
+            self.owner,
+            reverse("request_board:request_create"),
+        )
+        self._assert_csrf_rejected(
+            lambda tok: owner_create_client.post(
+                create_url,
+                data=payload,
+                format="json",
+                HTTP_IDEMPOTENCY_KEY=create_key,
+                **({"HTTP_X_CSRFTOKEN": tok} if tok else {}),
+            )
+        )
+        created = owner_create_client.post(
+            create_url,
+            data=payload,
+            format="json",
+            HTTP_IDEMPOTENCY_KEY=create_key,
+            HTTP_X_CSRFTOKEN=owner_create_tok,
+        )
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        req_id = created.json()["id"]
+
+        donor_client, donor_tok = self._csrf_client(
+            self.donor,
+            reverse("request_board:request_board"),
+        )
+        offer_list_url = reverse("request_board_api:request_offer_list", args=[req_id])
+        self._assert_csrf_rejected(
+            lambda tok: donor_client.post(
+                offer_list_url,
+                data={},
+                format="json",
+                **({"HTTP_X_CSRFTOKEN": tok} if tok else {}),
+            )
+        )
+        offered = donor_client.post(
+            offer_list_url,
+            data={},
+            format="json",
+            HTTP_X_CSRFTOKEN=donor_tok,
+        )
+        self.assertEqual(offered.status_code, status.HTTP_201_CREATED)
+        offer_id = offered.json()["id"]
+
+        owner_offers_client, owner_offers_tok = self._csrf_client(
+            self.owner,
+            reverse("request_board:request_offers", args=[req_id]),
+        )
+        selection_url = reverse("request_board_api:request_selection", args=[req_id])
+        self._assert_csrf_rejected(
+            lambda tok: owner_offers_client.patch(
+                selection_url,
+                data={"offer_id": offer_id},
+                format="json",
+                **({"HTTP_X_CSRFTOKEN": tok} if tok else {}),
+            )
+        )
+        selected = owner_offers_client.patch(
+            selection_url,
+            data={"offer_id": offer_id},
+            format="json",
+            HTTP_X_CSRFTOKEN=owner_offers_tok,
+        )
+        self.assertEqual(selected.status_code, status.HTTP_200_OK)
+        self.assertEqual(selected.json()["selected_offer_id"], offer_id)
+
+        status_url = reverse("request_board_api:request_status", args=[req_id])
+        self._assert_csrf_rejected(
+            lambda tok: owner_offers_client.patch(
+                status_url,
+                data={"status": "fulfilled"},
+                format="json",
+                **({"HTTP_X_CSRFTOKEN": tok} if tok else {}),
+            )
+        )
+        fulfilled = owner_offers_client.patch(
+            status_url,
+            data={"status": "fulfilled"},
+            format="json",
+            HTTP_X_CSRFTOKEN=owner_offers_tok,
+        )
+        self.assertEqual(fulfilled.status_code, status.HTTP_200_OK)
+        self.assertEqual(fulfilled.json()["status"], Request.STATUS_FULFILLED)
+
+        owner_board_client, owner_board_tok = self._csrf_client(
+            self.owner,
+            reverse("request_board:request_board"),
+        )
+        detail_url = reverse("request_board_api:request_detail", args=[req_id])
+        self._assert_csrf_rejected(
+            lambda tok: owner_board_client.delete(
+                detail_url,
+                **({"HTTP_X_CSRFTOKEN": tok} if tok else {}),
+            )
+        )
+        deleted = owner_board_client.delete(detail_url, HTTP_X_CSRFTOKEN=owner_board_tok)
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(deleted.content, b"")
+        self.assertFalse(Request.objects.filter(pk=req_id).exists())
+
+    def test_anonymous_403_messages_include_auth_keyword_and_nonexistent_offer_returns_403(self):
+        target = Request.objects.create(
+            owner=self.owner,
+            title="Bantuan beras",
+            food_item="Beras",
+            quantity=Decimal("2.00"),
+            unit="kg",
+        )
+        offer = RequestOffer.objects.create(request=target, offered_by=self.donor)
+        before = self.database_snapshot()
+        anon = APIClient()
+
+        calls = [
+            ("post", reverse("request_board_api:request_list"), {"title": "x"}),
+            ("delete", reverse("request_board_api:request_detail", args=[target.pk]), None),
+            ("get", reverse("request_board_api:request_offer_list", args=[target.pk]), None),
+            ("post", reverse("request_board_api:request_offer_list", args=[target.pk]), {}),
+            ("get", reverse("request_board_api:request_offer_detail", args=[target.pk, offer.pk]), None),
+            ("get", reverse("request_board_api:request_offer_detail", args=[target.pk, 999999]), None),
+            ("patch", reverse("request_board_api:request_selection", args=[target.pk]), {"offer_id": offer.pk}),
+            ("patch", reverse("request_board_api:request_status", args=[target.pk]), {"status": "fulfilled"}),
+            ("get", reverse("request_board_api:request_creation_status", args=[uuid4()]), None),
+        ]
+        for method, url, payload in calls:
+            with self.subTest(method=method, url=url):
+                resp = getattr(anon, method)(url, data=payload, format="json")
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+                detail = resp.json()["detail"].lower()
+                self.assertTrue(
+                    "autentikasi" in detail or "authentication" in detail,
+                    f"Unexpected auth detail for {method} {url}: {detail}",
+                )
+        self.assertEqual(self.database_snapshot(), before)
+
+        other_client = APIClient()
+        other_client.force_authenticate(user=self.other)
+        non_owner_missing_offer = other_client.get(
+            reverse("request_board_api:request_offer_detail", args=[target.pk, 999999])
+        )
+        self.assertEqual(non_owner_missing_offer.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_selection_and_status_reject_415_and_malformed_json_without_db_writes(self):
+        target = Request.objects.create(
+            owner=self.owner,
+            title="Bantuan susu",
+            food_item="Susu",
+            quantity=Decimal("1.00"),
+            unit="liter",
+            status=Request.STATUS_OFFERED,
+        )
+        offer = RequestOffer.objects.create(request=target, offered_by=self.donor)
+        owner_client = APIClient()
+        owner_client.force_authenticate(user=self.owner)
+        before = self.database_snapshot()
+
+        endpoints = [
+            (reverse("request_board_api:request_selection", args=[target.pk]), {"offer_id": offer.pk}),
+            (reverse("request_board_api:request_status", args=[target.pk]), {"status": "fulfilled"}),
+        ]
+        for url, valid_payload in endpoints:
+            for bad_ct in ("text/plain", "application/x-www-form-urlencoded"):
+                with self.subTest(url=url, bad_ct=bad_ct):
+                    resp = owner_client.patch(url, data=json.dumps(valid_payload), content_type=bad_ct)
+                    self.assertEqual(resp.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+                    self.assertEqual(self.database_snapshot(), before)
+
+            for raw_body, content_type in (
+                (b"", "application/json"),
+                (b"null", "application/json"),
+                (b"[]", "application/json"),
+                (b"{bad", "application/json"),
+                (b'{"offer_id": NaN}', "application/json"),
+                (b'{"offer_id": 1, "offer_id": 2}', "application/json"),
+                (b"\xff\xfe", "application/json"),
+                (b"\xff\xfe", "application/json; charset=latin-1"),
+            ):
+                with self.subTest(url=url, raw_body=raw_body, content_type=content_type):
+                    resp = owner_client.patch(url, data=raw_body, content_type=content_type)
+                    self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+                    self.assertEqual(self.database_snapshot(), before)
+
+    def test_browsable_api_html_renders_and_auth_login_available(self):
+        target = Request.objects.create(
+            owner=self.owner,
+            title="Bantuan roti",
+            food_item="Roti",
+            quantity=Decimal("5.00"),
+            unit="buah",
+            status=Request.STATUS_OFFERED,
+        )
+        offer = RequestOffer.objects.create(request=target, offered_by=self.donor)
+
+        anon = APIClient()
+        owner_client = APIClient()
+        owner_client.force_authenticate(user=self.owner)
+        donor_client = APIClient()
+        donor_client.force_authenticate(user=self.donor)
+
+        expectations = [
+            (anon, reverse("request_board_api:request_list"), status.HTTP_200_OK),
+            (owner_client, reverse("request_board_api:request_detail", args=[target.pk]), status.HTTP_200_OK),
+            (anon, reverse("request_board_api:request_offer_list", args=[target.pk]), status.HTTP_403_FORBIDDEN),
+            (donor_client, reverse("request_board_api:request_offer_list", args=[target.pk]), status.HTTP_403_FORBIDDEN),
+            (owner_client, reverse("request_board_api:request_offer_list", args=[target.pk]), status.HTTP_200_OK),
+            (anon, reverse("request_board_api:request_offer_detail", args=[target.pk, offer.pk]), status.HTTP_403_FORBIDDEN),
+            (owner_client, reverse("request_board_api:request_offer_detail", args=[target.pk, offer.pk]), status.HTTP_200_OK),
+            (anon, reverse("request_board_api:request_selection", args=[target.pk]), status.HTTP_403_FORBIDDEN),
+            (owner_client, reverse("request_board_api:request_selection", args=[target.pk]), status.HTTP_405_METHOD_NOT_ALLOWED),
+            (anon, reverse("request_board_api:request_status", args=[target.pk]), status.HTTP_403_FORBIDDEN),
+            (owner_client, reverse("request_board_api:request_status", args=[target.pk]), status.HTTP_405_METHOD_NOT_ALLOWED),
+            (anon, reverse("request_board_api:request_creation_status", args=[uuid4()]), status.HTTP_403_FORBIDDEN),
+            (owner_client, reverse("request_board_api:request_creation_status", args=[uuid4()]), status.HTTP_404_NOT_FOUND),
+        ]
+        for client, url, expected_status in expectations:
+            with self.subTest(url=url, expected_status=expected_status):
+                resp = client.get(url, HTTP_ACCEPT="text/html")
+                self.assertEqual(resp.status_code, expected_status)
+                self.assertIn("text/html", resp["Content-Type"])
+
+        login_resp = anon.get("/api-auth/login/")
+        self.assertEqual(login_resp.status_code, status.HTTP_200_OK)
+        self.assertIn("text/html", login_resp["Content-Type"])
+        self.assertIn("csrftoken", login_resp.cookies)
+
+    def test_end_to_end_multi_actor_lifecycle_and_legacy_adapter_coexistence(self):
+        owner_client = APIClient()
+        owner_client.force_authenticate(user=self.owner)
+        donor_client = APIClient()
+        donor_client.force_authenticate(user=self.donor)
+        other_client = APIClient()
+        other_client.force_authenticate(user=self.other)
+
+        key = str(uuid4())
+        create_resp = owner_client.post(
+            reverse("request_board_api:request_list"),
+            data={
+                "title": "Butuh nasi kotak",
+                "food_item": "Nasi Kotak",
+                "quantity": "10.00",
+                "unit": "porsi",
+                "description": "Private description test",
+                "location": "Bandung",
+            },
+            format="json",
+            HTTP_IDEMPOTENCY_KEY=key,
+        )
+        self.assertEqual(create_resp.status_code, status.HTTP_201_CREATED)
+        req_id = create_resp.json()["id"]
+
+        key_status_created = owner_client.get(
+            reverse("request_board_api:request_creation_status", args=[key])
+        )
+        self.assertEqual(key_status_created.status_code, status.HTTP_200_OK)
+        self.assertEqual(key_status_created.json(), {"state": "created", "request_id": req_id})
+
+        offer_resp = donor_client.post(
+            reverse("request_board_api:request_offer_list", args=[req_id]),
+            data={},
+            format="json",
+        )
+        self.assertEqual(offer_resp.status_code, status.HTTP_201_CREATED)
+        offer_id = offer_resp.json()["id"]
+
+        other_detail = other_client.get(reverse("request_board_api:request_detail", args=[req_id]))
+        self.assertEqual(other_detail.status_code, status.HTTP_200_OK)
+        other_json = other_detail.json()
+        self.assertEqual(other_json["offer_count"], 1)
+        self.assertIs(other_json["has_offered"], False)
+        self.assertNotIn("offered_by", other_detail.content.decode("utf-8"))
+        self.assertNotIn(self.donor.email, other_detail.content.decode("utf-8"))
+
+        self.assertEqual(
+            other_client.get(reverse("request_board_api:request_offer_list", args=[req_id])).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+        owner_offers = owner_client.get(reverse("request_board_api:request_offer_list", args=[req_id]))
+        self.assertEqual(owner_offers.status_code, status.HTTP_200_OK)
+        self.assertEqual(owner_offers.json()["count"], 1)
+
+        owner_offer_detail = owner_client.get(
+            reverse("request_board_api:request_offer_detail", args=[req_id, offer_id])
+        )
+        self.assertEqual(owner_offer_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(owner_offer_detail.json()["id"], offer_id)
+
+        sel_resp = owner_client.patch(
+            reverse("request_board_api:request_selection", args=[req_id]),
+            data={"offer_id": offer_id},
+            format="json",
+        )
+        self.assertEqual(sel_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(sel_resp.json()["selected_offer_id"], offer_id)
+
+        closed_offer = other_client.post(
+            reverse("request_board_api:request_offer_list", args=[req_id]),
+            data={},
+            format="json",
+        )
+        self.assertEqual(closed_offer.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(closed_offer.json()["code"], "offers_closed")
+
+        self.assertEqual(
+            donor_client.patch(
+                reverse("request_board_api:request_status", args=[req_id]),
+                data={"status": "fulfilled"},
+                format="json",
+            ).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+        fulfill_resp = owner_client.patch(
+            reverse("request_board_api:request_status", args=[req_id]),
+            data={"status": "fulfilled"},
+            format="json",
+        )
+        self.assertEqual(fulfill_resp.status_code, status.HTTP_200_OK)
+        replay_fulfill = owner_client.patch(
+            reverse("request_board_api:request_status", args=[req_id]),
+            data={"status": "fulfilled"},
+            format="json",
+        )
+        self.assertEqual(replay_fulfill.status_code, status.HTTP_200_OK)
+        self.assertEqual(replay_fulfill.json(), fulfill_resp.json())
+
+        # Legacy adapter JSON and SSR board remain operational alongside /api/v1/.
+        self.assertEqual(self.client.get(reverse("request_board:api_request_collection")).status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get(reverse("request_board:request_board")).status_code, status.HTTP_200_OK)
+
+        del_resp = owner_client.delete(reverse("request_board_api:request_detail", args=[req_id]))
+        self.assertEqual(del_resp.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(del_resp.content, b"")
+
+        key_status_deleted = owner_client.get(
+            reverse("request_board_api:request_creation_status", args=[key])
+        )
+        self.assertEqual(key_status_deleted.status_code, status.HTTP_200_OK)
+        self.assertEqual(key_status_deleted.json(), {"state": "deleted", "request_id": None})
+
+        replay_deleted = owner_client.post(
+            reverse("request_board_api:request_list"),
+            data={
+                "title": "Butuh nasi kotak",
+                "food_item": "Nasi Kotak",
+                "quantity": "10.00",
+                "unit": "porsi",
+                "description": "Private description test",
+                "location": "Bandung",
+            },
+            format="json",
+            HTTP_IDEMPOTENCY_KEY=key,
+        )
+        self.assertEqual(replay_deleted.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(replay_deleted.json()["code"], "idempotency_deleted")

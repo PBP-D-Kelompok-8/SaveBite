@@ -1406,7 +1406,7 @@
       const details = card.querySelector('.request-board__delete');
       if (details) details.dataset.removing = 'true';
       card.after(marker);
-      card.closest('dialog')?.close();
+      form.closest('dialog')?.close();
       if (details) details.open = false;
       card.remove();
       return {

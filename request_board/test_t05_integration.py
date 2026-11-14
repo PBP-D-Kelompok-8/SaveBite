@@ -112,6 +112,10 @@ class T05TemplateContractTests(TestCase):
             offers_html,
         )
         self.assertIn(
+            f'data-api-offer-detail-template="{reverse("request_board_api:request_offer_detail", args=[self.item.pk, 222222222])}"',
+            offers_html,
+        )
+        self.assertIn(
             f'data-api-selection-url="{reverse("request_board_api:request_selection", args=[self.item.pk])}"',
             offers_html,
         )
@@ -819,6 +823,15 @@ async function runTests() {
             created_at: '2026-11-14T10:00:00+07:00',
           }), { status: 200 }));
         }
+        if (m === 'GET' && u.endsWith('/api/v1/requests/10/offers/22/')) {
+          return Promise.resolve(new Response(JSON.stringify({
+            id: 22,
+            request_id: 10,
+            offered_by: { id: 4, display_name: 'DonorSatu' },
+            created_at: '2026-11-14T11:00:00+07:00',
+            is_selected: selectedOfferId === 22,
+          }), { status: 200 }));
+        }
         if (m === 'GET' && u.includes('/api/v1/requests/10/offers/')) {
           const page = new URL(u, 'http://testserver').searchParams.get('page') || '1';
           return Promise.resolve(new Response(JSON.stringify({
@@ -853,6 +866,7 @@ async function runTests() {
         offersEl.setAttribute('data-board-url', '/board/');
         offersEl.setAttribute('data-api-detail-url', '/api/v1/requests/10/');
         offersEl.setAttribute('data-api-offers-url', '/api/v1/requests/10/offers/');
+        offersEl.setAttribute('data-api-offer-detail-template', '/api/v1/requests/10/offers/222222222/');
         offersEl.setAttribute('data-api-selection-url', '/api/v1/requests/10/selection/');
         offersEl.setAttribute('data-offer-select-fallback-template', '/board/10/offers/111111111/select/');
         offersEl.setAttribute('data-offer-user-icon', '/static/request-board/offer-user.svg');
@@ -914,19 +928,23 @@ async function runTests() {
     await new Promise(r => setTimeout(r, 40));
     assert.equal(historyPush.some(u => String(u).includes('?page=2')), true);
     assert.equal(doc.querySelector('.request-board__donor-name')?.textContent, '<b>Page2Donor</b>');
+    assert.ok(
+      doc.querySelector('[data-offer-selection]')?.textContent.includes('DonorSatu'),
+      'Page-2 pagination must hydrate selected donor name via data-api-offer-detail-template',
+    );
   }
 
   // 5. Create 400 field errors + 409 idempotency_deleted + 403 Auth login link
   {
     let mode = '400';
-    const { doc } = makeEnv(
+    const { doc, toasts } = makeEnv(
       (url, opts) => {
         if ((opts?.method || 'GET').toUpperCase() === 'POST') {
           if (mode === '400') {
             return Promise.resolve(new Response(JSON.stringify({ title: ['Judul tidak valid.'] }), { status: 400 }));
           }
           if (mode === '403') {
-            return Promise.resolve(new Response(JSON.stringify({ detail: 'Authentication credentials were not provided.' }), { status: 403 }));
+            return Promise.resolve(new Response(JSON.stringify({ detail: 'Autentikasi diperlukan untuk mengelola request.' }), { status: 403 }));
           }
           if (mode === '409del') {
             return Promise.resolve(new Response(JSON.stringify({ detail: 'Sudah dihapus.', code: 'idempotency_deleted' }), { status: 409 }));
@@ -959,6 +977,16 @@ async function runTests() {
     await new Promise(r => setTimeout(r, 30));
     assert.equal(form.elements.namedItem('title').getAttribute('aria-invalid'), 'true');
     assert.equal(form.querySelector('.request-board__field-errors')?.textContent, 'Judul tidak valid.');
+    assert.equal(form.querySelector('button[type=submit]').disabled, false);
+
+    mode = '403';
+    form.dispatchEvent({ type: 'submit', bubbles: true, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } });
+    await new Promise(r => setTimeout(r, 30));
+    assert.equal(
+      toasts.some(t => t.isError && t.loginUrl && t.loginUrl.includes('/login/')),
+      true,
+      'Expired session 403 must produce an auth login link toast',
+    );
     assert.equal(form.querySelector('button[type=submit]').disabled, false);
 
     mode = '409del';

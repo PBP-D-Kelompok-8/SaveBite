@@ -11,11 +11,16 @@ class IsRequestOwnerOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view) -> bool:
         if request.method in permissions.SAFE_METHODS:
             return True
-        return bool(request.user and request.user.is_authenticated)
+        if not (request.user and request.user.is_authenticated):
+            self.message = "Autentikasi diperlukan untuk mengelola request."
+            return False
+        self.message = "Hanya pemilik request yang dapat mengelola request ini."
+        return True
 
     def has_object_permission(self, request, view, obj) -> bool:
         if request.method in permissions.SAFE_METHODS:
             return True
+        self.message = "Hanya pemilik request yang dapat mengelola request ini."
         return bool(
             request.user
             and request.user.is_authenticated
@@ -29,9 +34,14 @@ class IsRequestOwner(permissions.BasePermission):
     message = "Hanya pemilik request yang dapat mengelola request ini."
 
     def has_permission(self, request, view) -> bool:
-        return bool(request.user and request.user.is_authenticated)
+        if not (request.user and request.user.is_authenticated):
+            self.message = "Autentikasi diperlukan untuk mengelola request."
+            return False
+        self.message = "Hanya pemilik request yang dapat mengelola request ini."
+        return True
 
     def has_object_permission(self, request, view, obj) -> bool:
+        self.message = "Hanya pemilik request yang dapat mengelola request ini."
         return bool(
             request.user
             and request.user.is_authenticated
@@ -45,10 +55,15 @@ class CanAccessRequestOffers(permissions.BasePermission):
     message = "Izin akses penawaran ditolak."
 
     def has_permission(self, request, view) -> bool:
-        return bool(request.user and request.user.is_authenticated)
+        if not (request.user and request.user.is_authenticated):
+            self.message = "Autentikasi diperlukan untuk mengakses penawaran."
+            return False
+        self.message = "Izin akses penawaran ditolak."
+        return True
 
     def has_object_permission(self, request, view, obj) -> bool:
         if not (request.user and request.user.is_authenticated):
+            self.message = "Autentikasi diperlukan untuk mengakses penawaran."
             return False
         if request.method in permissions.SAFE_METHODS:
             self.message = "Hanya pemilik request yang dapat melihat daftar penawar."

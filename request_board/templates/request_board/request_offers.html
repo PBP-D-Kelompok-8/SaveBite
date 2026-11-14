@@ -15,6 +15,7 @@
      data-board-url="{% url 'request_board:request_board' %}"
      data-api-detail-url="{% url 'request_board_api:request_detail' item.pk %}"
      data-api-offers-url="{% url 'request_board_api:request_offer_list' item.pk %}"
+     data-api-offer-detail-template="{% url 'request_board_api:request_offer_detail' item.pk 222222222 %}"
      data-api-selection-url="{% url 'request_board_api:request_selection' item.pk %}"
      data-offer-select-fallback-template="{% url 'request_board:request_select_offer' item.pk 111111111 %}"
      data-offer-user-icon="{% static 'request-board/offer-user.svg' %}">
