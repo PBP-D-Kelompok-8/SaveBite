@@ -478,6 +478,9 @@ class RequestReadAndPrivacyAPITests(APITestCase):
 
                 list_resp = client.get(self.list_url)
                 self.assertEqual(list_resp.status_code, status.HTTP_200_OK)
+                list_cache_control = list_resp.headers.get("Cache-Control", "")
+                self.assertIn("private", list_cache_control)
+                self.assertIn("no-store", list_cache_control)
                 list_payload = list_resp.json()
                 self.assertEqual(
                     set(list_payload.keys()),
@@ -525,6 +528,9 @@ class RequestReadAndPrivacyAPITests(APITestCase):
 
                 detail_resp = client.get(detail_url)
                 self.assertEqual(detail_resp.status_code, status.HTTP_200_OK)
+                detail_cache_control = detail_resp.headers.get("Cache-Control", "")
+                self.assertIn("private", detail_cache_control)
+                self.assertIn("no-store", detail_cache_control)
                 self.assert_safe_request_payload(
                     detail_resp.json(),
                     offered_req,

@@ -187,6 +187,7 @@ def _handle_request_list_post(request):
     )
 
 
+@never_cache
 @api_view(["GET", "POST"])
 @authentication_classes([SessionAuthentication])
 @permission_classes([IsRequestOwnerOrReadOnly])
@@ -222,6 +223,7 @@ def request_creation_status(request, key):
     )
 
 
+@never_cache
 @api_view(["GET", "DELETE"])
 @authentication_classes([SessionAuthentication])
 @permission_classes([IsRequestOwnerOrReadOnly])
