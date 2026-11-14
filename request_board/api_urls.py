@@ -1,3 +1,10 @@
+from django.urls import path
+
+from request_board import api_views
+
 app_name = "request_board_api"
 
-urlpatterns = []
+urlpatterns = [
+    path("requests/", api_views.request_list, name="request_list"),
+    path("requests/<int:request_id>/", api_views.request_detail, name="request_detail"),
+]

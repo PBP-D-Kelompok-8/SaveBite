@@ -154,8 +154,8 @@ def delete_request(*, actor, request_id: int) -> None:
         locked_request.delete()
 
 
-def _requests_for_display(actor):
-    """Muat pemilik, jumlah penawaran, dan status penawaran pengguna sekaligus."""
+def get_requests_queryset(*, actor=None):
+    """Bangun queryset Request teranotasi dengan owner, offer_count, dan has_offered."""
     if actor is not None and getattr(actor, "is_authenticated", False):
         has_offered = Exists(
             RequestOffer.objects.filter(request=OuterRef("pk"), offered_by=actor)
@@ -167,6 +167,11 @@ def _requests_for_display(actor):
         offer_count=Count("offers", distinct=True),
         has_offered=has_offered,
     )
+
+
+def _requests_for_display(actor):
+    """Muat pemilik, jumlah penawaran, dan status penawaran pengguna sekaligus."""
+    return get_requests_queryset(actor=actor)
 
 
 def get_board_page(*, actor=None, page_value: str | int | None = None, filters=None):
