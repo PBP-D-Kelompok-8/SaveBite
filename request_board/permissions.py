@@ -23,6 +23,42 @@ class IsRequestOwnerOrReadOnly(permissions.BasePermission):
         )
 
 
+class IsRequestOwner(permissions.BasePermission):
+    """Allow authenticated requests only when the caller owns the target Request."""
+
+    message = "Hanya pemilik request yang dapat mengelola request ini."
+
+    def has_permission(self, request, view) -> bool:
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and obj.owner_id == request.user.pk
+        )
+
+
+class CanAccessRequestOffers(permissions.BasePermission):
+    """Allow Request owners to read offers and authenticated non-owners to submit offers."""
+
+    message = "Izin akses penawaran ditolak."
+
+    def has_permission(self, request, view) -> bool:
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            self.message = "Hanya pemilik request yang dapat melihat daftar penawar."
+            return obj.owner_id == request.user.pk
+        if request.method == "POST":
+            self.message = "Pemilik request tidak dapat membuat tawaran."
+            return obj.owner_id != request.user.pk
+        return False
+
+
 def check_object_permissions(request, obj) -> None:
     """Invoke DRF object-level permission checks inside a function-based API view."""
     view = (request.parser_context or {}).get("view")

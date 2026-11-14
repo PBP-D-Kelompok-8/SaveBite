@@ -285,33 +285,9 @@ def _requests_for_display(actor):
     return get_requests_queryset(actor=actor)
 
 
-def get_board_page(*, actor=None, page_value: str | int | None = None, filters=None):
-    """Ambil satu halaman board dengan urutan terbaru yang stabil."""
-    filters = filters or {}
-    queryset = _requests_for_display(actor)
-    if filters.get("q"):
-        term = filters["q"]
-        queryset = queryset.filter(
-            Q(title__icontains=term) | Q(food_item__icontains=term) | Q(location__icontains=term)
-        )
-    if filters.get("title"):
-        queryset = queryset.filter(title__icontains=filters["title"])
-    if filters.get("food_item"):
-        queryset = queryset.filter(food_item__iexact=filters["food_item"])
-    if filters.get("status"):
-        expired = Q(status__in=[Request.STATUS_PENDING, Request.STATUS_OFFERED], expires_at__lte=timezone.now())
-        if filters["status"] == Request.STATUS_EXPIRED:
-            queryset = queryset.filter(expired)
-        else:
-            queryset = queryset.filter(status=filters["status"]).exclude(expired)
-    if filters.get("location"):
-        queryset = queryset.filter(location__iexact=filters["location"])
-    if filters.get("mine"):
-        _require_saved_user(actor)
-        queryset = queryset.filter(owner=actor)
-    ordering = ("created_at", "id") if filters.get("sort") == "oldest" else ("-created_at", "-id")
-    queryset = queryset.order_by(*ordering)
-    paginator = Paginator(queryset, PAGE_SIZE)
+def _paginate_queryset(queryset, *, page_value: str | int | None = None, page_size: int = PAGE_SIZE):
+    """Paginate an ordered queryset with strict ASCII positive integer page validation."""
+    paginator = Paginator(queryset, page_size)
 
     if page_value is None:
         page_number = 1
@@ -339,6 +315,41 @@ def get_board_page(*, actor=None, page_value: str | int | None = None, filters=N
         raise PageNotAnInteger("Tipe nomor halaman tidak didukung.")
 
     return paginator.page(page_number)
+
+
+def get_board_page(*, actor=None, page_value: str | int | None = None, filters=None):
+    """Ambil satu halaman board dengan urutan terbaru yang stabil."""
+    filters = filters or {}
+    queryset = _requests_for_display(actor)
+    if filters.get("q"):
+        term = filters["q"]
+        queryset = queryset.filter(
+            Q(title__icontains=term) | Q(food_item__icontains=term) | Q(location__icontains=term)
+        )
+    if filters.get("title"):
+        queryset = queryset.filter(title__icontains=filters["title"])
+    if filters.get("food_item"):
+        queryset = queryset.filter(food_item__iexact=filters["food_item"])
+    if filters.get("status"):
+        expired = Q(status__in=[Request.STATUS_PENDING, Request.STATUS_OFFERED], expires_at__lte=timezone.now())
+        if filters["status"] == Request.STATUS_EXPIRED:
+            queryset = queryset.filter(expired)
+        else:
+            queryset = queryset.filter(status=filters["status"]).exclude(expired)
+    if filters.get("location"):
+        queryset = queryset.filter(location__iexact=filters["location"])
+    if filters.get("mine"):
+        _require_saved_user(actor)
+        queryset = queryset.filter(owner=actor)
+    ordering = ("created_at", "id") if filters.get("sort") == "oldest" else ("-created_at", "-id")
+    queryset = queryset.order_by(*ordering)
+    return _paginate_queryset(queryset, page_value=page_value, page_size=PAGE_SIZE)
+
+
+def get_request_offers_page(*, food_request: Request, page_value: str | int | None = None):
+    """Ambil satu halaman penawaran untuk sebuah Request dengan relasi penawar ter-preload."""
+    queryset = food_request.offers.select_related("offered_by").order_by("-created_at", "-id")
+    return _paginate_queryset(queryset, page_value=page_value, page_size=PAGE_SIZE)
 
 
 def get_request_for_display(*, request_id: int, actor=None) -> Request:

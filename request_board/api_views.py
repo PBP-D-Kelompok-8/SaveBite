@@ -22,14 +22,30 @@ from rest_framework.response import Response
 
 from request_board.api_exceptions import handle_domain_exceptions
 from request_board.forms import BoardFilterForm
-from request_board.models import RequestCreationKey
-from request_board.permissions import IsRequestOwnerOrReadOnly, check_object_permissions
-from request_board.serializers import RequestCreateSerializer, RequestSerializer
+from request_board.models import Request, RequestCreationKey, RequestOffer
+from request_board.permissions import (
+    CanAccessRequestOffers,
+    IsRequestOwner,
+    IsRequestOwnerOrReadOnly,
+    check_object_permissions,
+)
+from request_board.serializers import (
+    RequestCreateSerializer,
+    RequestOfferCreateSerializer,
+    RequestOfferSerializer,
+    RequestSelectionSerializer,
+    RequestSerializer,
+    RequestStatusSerializer,
+)
 from request_board.services import (
     create_request_from_api_idempotent,
     delete_request,
+    fulfill_request,
     get_board_page,
     get_request_for_display,
+    get_request_offers_page,
+    offer_request,
+    select_request_offer,
 )
 
 
@@ -90,13 +106,38 @@ def _parse_idempotency_key(request) -> UUID:
         ) from exc
 
 
-def _handle_request_list_get(request):
-    """Return a paginated, filtered public list of food rescue requests."""
+def _extract_page_value(request) -> str | None:
     page_param_list = request.query_params.getlist("page")
     if len(page_param_list) > 1:
         raise PageNotAnInteger("Parameter halaman tidak boleh berulang.")
+    return page_param_list[0] if page_param_list else None
 
-    page_value = page_param_list[0] if page_param_list else None
+
+def _paginated_response(page, results_data) -> Response:
+    return Response(
+        {
+            "count": page.paginator.count,
+            "page": page.number,
+            "page_size": page.paginator.per_page,
+            "total_pages": page.paginator.num_pages,
+            "results": results_data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+def _refresh_request_response(request, *, request_id: int, status_code: int = status.HTTP_200_OK) -> Response:
+    persisted_request = get_request_for_display(
+        request_id=request_id,
+        actor=request.user,
+    )
+    serializer = RequestSerializer(persisted_request, context={"request": request})
+    return Response(serializer.data, status=status_code)
+
+
+def _handle_request_list_get(request):
+    """Return a paginated, filtered public list of food rescue requests."""
+    page_value = _extract_page_value(request)
 
     filter_form = BoardFilterForm(request.query_params)
     if not filter_form.is_valid():
@@ -115,16 +156,7 @@ def _handle_request_list_get(request):
         many=True,
         context={"request": request},
     )
-    return Response(
-        {
-            "count": page.paginator.count,
-            "page": page.number,
-            "page_size": page.paginator.per_page,
-            "total_pages": page.paginator.num_pages,
-            "results": serializer.data,
-        },
-        status=status.HTTP_200_OK,
-    )
+    return _paginated_response(page, serializer.data)
 
 
 def _handle_request_list_post(request):
@@ -148,14 +180,10 @@ def _handle_request_list_post(request):
         validated_data=create_serializer.validated_data,
         key=key,
     )
-    persisted_request = get_request_for_display(
+    return _refresh_request_response(
+        request,
         request_id=food_request.pk,
-        actor=request.user,
-    )
-    response_serializer = RequestSerializer(persisted_request, context={"request": request})
-    return Response(
-        response_serializer.data,
-        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        status_code=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
     )
 
 
@@ -214,3 +242,109 @@ def request_detail(request, request_id: int):
 
     delete_request(actor=request.user, request_id=food_request.pk)
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _handle_request_offer_list_get(request, food_request: Request):
+    page_value = _extract_page_value(request)
+    page = get_request_offers_page(food_request=food_request, page_value=page_value)
+    serializer = RequestOfferSerializer(
+        page.object_list,
+        many=True,
+        context={"request": request, "food_request": food_request},
+    )
+    return _paginated_response(page, serializer.data)
+
+
+def _handle_request_offer_list_post(request, food_request: Request):
+    if not request.body:
+        raise exceptions.ParseError("Body request tidak boleh kosong.")
+    offer_serializer = RequestOfferCreateSerializer(data=request.data)
+    offer_serializer.is_valid(raise_exception=True)
+
+    offer, created = offer_request(actor=request.user, request_id=food_request.pk)
+    persisted_request = get_request_for_display(
+        request_id=food_request.pk,
+        actor=request.user,
+    )
+    persisted_offer = RequestOffer.objects.select_related("offered_by").get(pk=offer.pk)
+    response_serializer = RequestOfferSerializer(
+        persisted_offer,
+        context={"request": request, "food_request": persisted_request},
+    )
+    return Response(
+        response_serializer.data,
+        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET", "POST"])
+@authentication_classes([SessionAuthentication])
+@permission_classes([CanAccessRequestOffers])
+@parser_classes([StrictJSONParser])
+@handle_domain_exceptions
+def request_offer_list(request, request_id: int):
+    """List offers privately for the request owner or submit an offer as a non-owner."""
+    food_request = Request.objects.only("id", "owner_id", "selected_offer_id").get(pk=request_id)
+    check_object_permissions(request, food_request)
+
+    if request.method == "GET":
+        return _handle_request_offer_list_get(request, food_request)
+    return _handle_request_offer_list_post(request, food_request)
+
+
+@api_view(["GET"])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsRequestOwner])
+@handle_domain_exceptions
+def request_offer_detail(request, request_id: int, offer_id: int):
+    """Retrieve a single offer scoped to the parent Request for its owner."""
+    food_request = Request.objects.only("id", "owner_id", "selected_offer_id").get(pk=request_id)
+    check_object_permissions(request, food_request)
+
+    offer = RequestOffer.objects.select_related("offered_by").get(
+        pk=offer_id,
+        request=food_request,
+    )
+    serializer = RequestOfferSerializer(
+        offer,
+        context={"request": request, "food_request": food_request},
+    )
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(["PATCH"])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsRequestOwner])
+@parser_classes([StrictJSONParser])
+@handle_domain_exceptions
+def request_selection(request, request_id: int):
+    """Select or replace the chosen offer on an active Request as its owner."""
+    food_request = Request.objects.only("id", "owner_id").get(pk=request_id)
+    check_object_permissions(request, food_request)
+
+    selection_serializer = RequestSelectionSerializer(data=request.data)
+    selection_serializer.is_valid(raise_exception=True)
+
+    select_request_offer(
+        actor=request.user,
+        request_id=food_request.pk,
+        offer_id=selection_serializer.validated_data["offer_id"],
+    )
+    return _refresh_request_response(request, request_id=food_request.pk)
+
+
+@api_view(["PATCH"])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsRequestOwner])
+@parser_classes([StrictJSONParser])
+@handle_domain_exceptions
+def request_status(request, request_id: int):
+    """Mark an active Request with a selected offer as fulfilled as its owner."""
+    food_request = Request.objects.only("id", "owner_id").get(pk=request_id)
+    check_object_permissions(request, food_request)
+
+    status_serializer = RequestStatusSerializer(data=request.data)
+    status_serializer.is_valid(raise_exception=True)
+
+    fulfill_request(actor=request.user, request_id=food_request.pk)
+    return _refresh_request_response(request, request_id=food_request.pk)

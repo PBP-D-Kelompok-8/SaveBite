@@ -58,16 +58,40 @@ class DRFFoundationTests(APITestCase):
         self.assertNotIn("DEFAULT_PERMISSION_CLASSES", global_drf_settings)
         self.assertNotIn("EXCEPTION_HANDLER", global_drf_settings)
 
-    def test_api_urls_namespace_mounted_at_api_v1_with_t03_routes(self):
+    def test_api_urls_namespace_mounted_at_api_v1_with_t04_routes(self):
         self.assertEqual(api_urls.app_name, "request_board_api")
         self.assertEqual(
             [pattern.name for pattern in api_urls.urlpatterns],
-            ["request_list", "request_detail", "request_creation_status"],
+            [
+                "request_list",
+                "request_detail",
+                "request_offer_list",
+                "request_offer_detail",
+                "request_selection",
+                "request_status",
+                "request_creation_status",
+            ],
         )
         self.assertEqual(reverse("request_board_api:request_list"), "/api/v1/requests/")
         self.assertEqual(
             reverse("request_board_api:request_detail", args=[42]),
             "/api/v1/requests/42/",
+        )
+        self.assertEqual(
+            reverse("request_board_api:request_offer_list", args=[42]),
+            "/api/v1/requests/42/offers/",
+        )
+        self.assertEqual(
+            reverse("request_board_api:request_offer_detail", args=[42, 7]),
+            "/api/v1/requests/42/offers/7/",
+        )
+        self.assertEqual(
+            reverse("request_board_api:request_selection", args=[42]),
+            "/api/v1/requests/42/selection/",
+        )
+        self.assertEqual(
+            reverse("request_board_api:request_status", args=[42]),
+            "/api/v1/requests/42/status/",
         )
         sample_key = uuid4()
         self.assertEqual(
@@ -78,6 +102,22 @@ class DRFFoundationTests(APITestCase):
         self.assertEqual(
             resolve("/api/v1/requests/42/").view_name,
             "request_board_api:request_detail",
+        )
+        self.assertEqual(
+            resolve("/api/v1/requests/42/offers/").view_name,
+            "request_board_api:request_offer_list",
+        )
+        self.assertEqual(
+            resolve("/api/v1/requests/42/offers/7/").view_name,
+            "request_board_api:request_offer_detail",
+        )
+        self.assertEqual(
+            resolve("/api/v1/requests/42/selection/").view_name,
+            "request_board_api:request_selection",
+        )
+        self.assertEqual(
+            resolve("/api/v1/requests/42/status/").view_name,
+            "request_board_api:request_status",
         )
         self.assertEqual(
             resolve(f"/api/v1/request-creations/{sample_key}/").view_name,
@@ -1366,3 +1406,617 @@ class RequestIdempotentCreateAPITests(APITestCase):
         self.assertEqual(replayed.status_code, status.HTTP_200_OK)
         self.assertEqual(created.json()["id"], replayed.json()["id"])
         self.assertEqual(Request.objects.count(), 1)
+
+
+class RequestOfferAndFulfillmentAPITests(APITestCase):
+    """Verify T04 offer create/list/detail, selection, fulfillment, scoping, and privacy."""
+
+    @classmethod
+    def setUpTestData(cls):
+        User = get_user_model()
+        cls.password = "offer-api-password-123"
+        cls.owner = User.objects.create_user(
+            username="t04_owner",
+            password=cls.password,
+            email="t04-owner@example.invalid",
+            first_name="OwnerFirst",
+            last_name="OwnerLast",
+        )
+        cls.donor = User.objects.create_user(
+            username="t04_donor",
+            password=cls.password,
+            email="t04-donor@example.invalid",
+            first_name="DonorFirst",
+            last_name="DonorLast",
+        )
+        cls.second_donor = User.objects.create_user(
+            username="t04_second_donor",
+            password=cls.password,
+            email="t04-second@example.invalid",
+            first_name="SecondFirst",
+            last_name="SecondLast",
+        )
+        cls.outsider = User.objects.create_user(
+            username="t04_outsider",
+            password=cls.password,
+            email="t04-outsider@example.invalid",
+        )
+        cls.superuser = User.objects.create_superuser(
+            username="t04_superuser",
+            password=cls.password,
+            email="t04-su@example.invalid",
+        )
+
+    def make_request(self, owner=None, **overrides):
+        values = {
+            "owner": owner or self.owner,
+            "title": "Butuh beras",
+            "food_item": "Beras",
+            "quantity": Decimal("2.50"),
+            "unit": "kg",
+            "description": "Untuk makan bersama",
+            "location": "Depok",
+            "status": Request.STATUS_PENDING,
+            "expires_at": timezone.now() + timedelta(hours=24),
+        }
+        values.update(overrides)
+        return Request.objects.create(**values)
+
+    def auth_client(self, user=None):
+        client = APIClient()
+        if user is not None:
+            client.force_authenticate(user=user)
+        return client
+
+    def database_snapshot(self):
+        return {
+            "requests": list(Request.objects.order_by("pk").values()),
+            "offers": list(RequestOffer.objects.order_by("pk").values()),
+        }
+
+    def offers_url(self, request_id):
+        return reverse("request_board_api:request_offer_list", args=[request_id])
+
+    def offer_detail_url(self, request_id, offer_id):
+        return reverse("request_board_api:request_offer_detail", args=[request_id, offer_id])
+
+    def selection_url(self, request_id):
+        return reverse("request_board_api:request_selection", args=[request_id])
+
+    def status_url(self, request_id):
+        return reverse("request_board_api:request_status", args=[request_id])
+
+    def assert_offer_payload(self, item: dict, offer: RequestOffer, *, is_selected: bool):
+        self.assertEqual(
+            set(item.keys()),
+            {"id", "request_id", "offered_by", "created_at", "is_selected"},
+        )
+        self.assertEqual(item["id"], offer.pk)
+        self.assertEqual(item["request_id"], offer.request_id)
+        self.assertEqual(
+            item["offered_by"],
+            {"id": offer.offered_by_id, "display_name": offer.offered_by.get_username()},
+        )
+        parsed_created = parse_datetime(item["created_at"])
+        self.assertIsNotNone(parsed_created)
+        self.assertIsNotNone(parsed_created.utcoffset())
+        self.assertEqual(parsed_created, offer.created_at)
+        self.assertIs(item["is_selected"], is_selected)
+
+    def assert_no_user_secrets(self, raw_body: str):
+        for secret in (
+            self.owner.email,
+            self.owner.first_name,
+            self.owner.last_name,
+            self.owner.password,
+            self.donor.email,
+            self.donor.first_name,
+            self.donor.last_name,
+            self.donor.password,
+            self.second_donor.email,
+            self.second_donor.first_name,
+            self.second_donor.last_name,
+        ):
+            self.assertNotIn(secret, raw_body)
+
+    def test_offer_create_first_and_duplicate_transitions_and_refreshes_request(self):
+        target = self.make_request()
+        donor_client = self.auth_client(self.donor)
+        url = self.offers_url(target.pk)
+
+        first = donor_client.post(url, data={}, format="json")
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        target.refresh_from_db()
+        offer = RequestOffer.objects.get(request=target, offered_by=self.donor)
+        self.assertEqual(target.status, Request.STATUS_OFFERED)
+        self.assertEqual(RequestOffer.objects.filter(request=target).count(), 1)
+        self.assert_offer_payload(first.json(), offer, is_selected=False)
+        self.assert_no_user_secrets(first.content.decode("utf-8"))
+
+        # Public Request representation reflects refreshed offer_count & has_offered without leaking donor identity.
+        detail_url = reverse("request_board_api:request_detail", args=[target.pk])
+        donor_detail = donor_client.get(detail_url)
+        self.assertEqual(donor_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(donor_detail.json()["offer_count"], 1)
+        self.assertIs(donor_detail.json()["has_offered"], True)
+        self.assertIsNone(donor_detail.json()["selected_offer_id"])
+        self.assertNotIn(self.donor.username, donor_detail.content.decode("utf-8"))
+
+        outsider_detail = self.auth_client(self.outsider).get(detail_url)
+        self.assertEqual(outsider_detail.json()["offer_count"], 1)
+        self.assertIs(outsider_detail.json()["has_offered"], False)
+        self.assertNotIn(self.donor.username, outsider_detail.content.decode("utf-8"))
+
+        # Replay by same donor returns 200 without creating a duplicate row.
+        before = self.database_snapshot()
+        replay = donor_client.post(url, data={}, format="json")
+        self.assertEqual(replay.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.database_snapshot(), before)
+        self.assert_offer_payload(replay.json(), offer, is_selected=False)
+
+    def test_offer_create_rejects_anonymous_self_offer_and_spoofed_or_invalid_payloads(self):
+        target = self.make_request()
+        url = self.offers_url(target.pk)
+        before = self.database_snapshot()
+
+        anon_resp = self.auth_client().post(url, data={}, format="json")
+        self.assertEqual(anon_resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.database_snapshot(), before)
+
+        owner_resp = self.auth_client(self.owner).post(url, data={}, format="json")
+        self.assertEqual(owner_resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.database_snapshot(), before)
+
+        donor_client = self.auth_client(self.donor)
+        for bad_payload in (
+            {"offered_by": self.outsider.pk},
+            {"offered_by_id": self.outsider.pk},
+            {"request": target.pk},
+            {"request_id": target.pk},
+            {"created_at": "2020-01-01T00:00:00Z"},
+            {"is_selected": True},
+            {"unexpected": "value"},
+            [],
+            "text",
+            123,
+        ):
+            with self.subTest(bad_payload=bad_payload):
+                resp = donor_client.post(url, data=bad_payload, format="json")
+                self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(self.database_snapshot(), before)
+
+        for raw_bad in (b"", b"null", b"{bad"):
+            with self.subTest(raw_bad=raw_bad):
+                raw_resp = donor_client.post(url, data=raw_bad, content_type="application/json")
+                self.assertEqual(raw_resp.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(self.database_snapshot(), before)
+
+        wrong_type = donor_client.post(url, data="{}", content_type="text/plain")
+        self.assertEqual(wrong_type.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        self.assertEqual(self.database_snapshot(), before)
+
+        missing_resp = donor_client.post(self.offers_url(target.pk + 999), data={}, format="json")
+        self.assertEqual(missing_resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(self.database_snapshot(), before)
+
+    def test_offer_conflicts_for_fulfilled_expired_and_selected_offer(self):
+        # Fulfilled request rejects both new offers and replays of prior offers.
+        fulfilled_req = self.make_request(status=Request.STATUS_OFFERED)
+        existing_fulfilled_offer = RequestOffer.objects.create(
+            request=fulfilled_req,
+            offered_by=self.donor,
+        )
+        fulfilled_req.selected_offer = existing_fulfilled_offer
+        fulfilled_req.status = Request.STATUS_FULFILLED
+        fulfilled_req.save(update_fields=["selected_offer", "status"])
+
+        before_fulfilled = self.database_snapshot()
+        for actor in (self.donor, self.second_donor):
+            resp = self.auth_client(actor).post(
+                self.offers_url(fulfilled_req.pk),
+                data={},
+                format="json",
+            )
+            self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
+            self.assertEqual(resp.json()["code"], "request_fulfilled")
+            self.assertEqual(self.database_snapshot(), before_fulfilled)
+
+        # Expired request rejects both new offers and replays of prior offers.
+        expired_req = self.make_request(
+            status=Request.STATUS_OFFERED,
+            expires_at=timezone.now() - timedelta(minutes=5),
+        )
+        RequestOffer.objects.create(request=expired_req, offered_by=self.donor)
+
+        before_expired = self.database_snapshot()
+        for actor in (self.donor, self.second_donor):
+            resp = self.auth_client(actor).post(
+                self.offers_url(expired_req.pk),
+                data={},
+                format="json",
+            )
+            self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
+            self.assertEqual(resp.json()["code"], "request_expired")
+            self.assertEqual(self.database_snapshot(), before_expired)
+
+        # Selected offer closes new donors (409 offers_closed) while allowing prior donors to replay (200).
+        selected_req = self.make_request(status=Request.STATUS_OFFERED)
+        chosen_offer = RequestOffer.objects.create(request=selected_req, offered_by=self.donor)
+        other_prior_offer = RequestOffer.objects.create(
+            request=selected_req,
+            offered_by=self.second_donor,
+        )
+        selected_req.selected_offer = chosen_offer
+        selected_req.save(update_fields=["selected_offer"])
+
+        before_selected = self.database_snapshot()
+        new_donor_resp = self.auth_client(self.outsider).post(
+            self.offers_url(selected_req.pk),
+            data={},
+            format="json",
+        )
+        self.assertEqual(new_donor_resp.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(new_donor_resp.json()["code"], "offers_closed")
+        self.assertEqual(self.database_snapshot(), before_selected)
+
+        chosen_replay = self.auth_client(self.donor).post(
+            self.offers_url(selected_req.pk),
+            data={},
+            format="json",
+        )
+        self.assertEqual(chosen_replay.status_code, status.HTTP_200_OK)
+        self.assert_offer_payload(chosen_replay.json(), chosen_offer, is_selected=True)
+
+        other_replay = self.auth_client(self.second_donor).post(
+            self.offers_url(selected_req.pk),
+            data={},
+            format="json",
+        )
+        self.assertEqual(other_replay.status_code, status.HTTP_200_OK)
+        self.assert_offer_payload(other_replay.json(), other_prior_offer, is_selected=False)
+        self.assertEqual(self.database_snapshot(), before_selected)
+
+    def test_offer_list_and_detail_are_private_paginated_and_scoped_to_request(self):
+        target = self.make_request(status=Request.STATUS_OFFERED)
+        other_request = self.make_request(owner=self.owner, title="Permintaan Lain", status=Request.STATUS_OFFERED)
+        offer_one = RequestOffer.objects.create(request=target, offered_by=self.donor)
+        offer_two = RequestOffer.objects.create(request=target, offered_by=self.second_donor)
+        foreign_offer = RequestOffer.objects.create(request=other_request, offered_by=self.donor)
+        target.selected_offer = offer_one
+        target.save(update_fields=["selected_offer"])
+
+        list_url = self.offers_url(target.pk)
+        detail_url = self.offer_detail_url(target.pk, offer_one.pk)
+        foreign_detail_url = self.offer_detail_url(target.pk, foreign_offer.pk)
+
+        # Anonymous, donor, outsider, and superuser are all rejected with 403 before serializing offers.
+        for actor in (None, self.donor, self.outsider, self.superuser):
+            client = self.auth_client(actor)
+            for url in (
+                list_url,
+                f"{list_url}?page=invalid",
+                detail_url,
+                foreign_detail_url,
+            ):
+                with self.subTest(actor=getattr(actor, "username", "anon"), url=url):
+                    resp = client.get(url)
+                    self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+                    self.assertNotIn(self.donor.username, resp.content.decode("utf-8"))
+                    self.assertNotIn(self.second_donor.username, resp.content.decode("utf-8"))
+
+        owner_client = self.auth_client(self.owner)
+        # Foreign offer scoped to wrong Request returns 404.
+        scoped_miss = owner_client.get(foreign_detail_url)
+        self.assertEqual(scoped_miss.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(scoped_miss.json(), {"detail": "Penawaran tidak ditemukan."})
+
+        missing_req_list = owner_client.get(self.offers_url(target.pk + 9999))
+        self.assertEqual(missing_req_list.status_code, status.HTTP_404_NOT_FOUND)
+
+        detail_resp = owner_client.get(detail_url)
+        self.assertEqual(detail_resp.status_code, status.HTTP_200_OK)
+        self.assert_offer_payload(detail_resp.json(), offer_one, is_selected=True)
+        self.assert_no_user_secrets(detail_resp.content.decode("utf-8"))
+
+        unselected_detail = owner_client.get(self.offer_detail_url(target.pk, offer_two.pk))
+        self.assertEqual(unselected_detail.status_code, status.HTTP_200_OK)
+        self.assert_offer_payload(unselected_detail.json(), offer_two, is_selected=False)
+
+        # Verify pagination (20 per page) and constant query count on GET /offers/.
+        User = get_user_model()
+        with CaptureQueriesContext(connection) as small_queries:
+            small_resp = owner_client.get(list_url)
+        self.assertEqual(small_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(small_resp.json()["count"], 2)
+
+        extra_offers = []
+        for idx in range(19):
+            extra_user = User.objects.create_user(username=f"t04_extra_donor_{idx:02}")
+            extra_offers.append(RequestOffer.objects.create(request=target, offered_by=extra_user))
+
+        with CaptureQueriesContext(connection) as full_page_queries:
+            page1 = owner_client.get(list_url)
+        self.assertEqual(page1.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(full_page_queries), len(small_queries))
+        p1_data = page1.json()
+        self.assertEqual(p1_data["count"], 21)
+        self.assertEqual(p1_data["page"], 1)
+        self.assertEqual(p1_data["page_size"], 20)
+        self.assertEqual(p1_data["total_pages"], 2)
+        self.assertEqual(len(p1_data["results"]), 20)
+        self.assert_no_user_secrets(page1.content.decode("utf-8"))
+
+        page2 = owner_client.get(list_url, {"page": 2})
+        self.assertEqual(page2.status_code, status.HTTP_200_OK)
+        p2_data = page2.json()
+        self.assertEqual(len(p2_data["results"]), 1)
+        self.assert_offer_payload(p2_data["results"][0], offer_one, is_selected=True)
+
+        self.assertEqual(owner_client.get(list_url, {"page": "abc"}).status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(owner_client.get(f"{list_url}?page=1&page=2").status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(owner_client.get(list_url, {"page": 3}).status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_selection_requires_owner_scopes_offer_and_allows_replace_until_fulfilled(self):
+        target = self.make_request(status=Request.STATUS_OFFERED)
+        other_request = self.make_request(owner=self.owner, title="Lain", status=Request.STATUS_OFFERED)
+        offer_one = RequestOffer.objects.create(request=target, offered_by=self.donor)
+        offer_two = RequestOffer.objects.create(request=target, offered_by=self.second_donor)
+        foreign_offer = RequestOffer.objects.create(request=other_request, offered_by=self.donor)
+
+        sel_url = self.selection_url(target.pk)
+        before = self.database_snapshot()
+
+        # Anonymous and non-owners (including donor & superuser) get 403 without DB writes.
+        for actor in (None, self.donor, self.outsider, self.superuser):
+            resp = self.auth_client(actor).patch(sel_url, data={"offer_id": offer_one.pk}, format="json")
+            self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(self.database_snapshot(), before)
+
+        owner_client = self.auth_client(self.owner)
+
+        # Foreign offer belonging to another Request returns 404 and leaves DB untouched.
+        foreign_resp = owner_client.patch(sel_url, data={"offer_id": foreign_offer.pk}, format="json")
+        self.assertEqual(foreign_resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(foreign_resp.json(), {"detail": "Penawaran tidak ditemukan."})
+        self.assertEqual(self.database_snapshot(), before)
+
+        missing_offer_resp = owner_client.patch(sel_url, data={"offer_id": 999999}, format="json")
+        self.assertEqual(missing_offer_resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(self.database_snapshot(), before)
+
+        for bad_payload in (
+            {},
+            {"offer_id": None},
+            {"offer_id": 0},
+            {"offer_id": -1},
+            {"offer_id": True},
+            {"offer_id": 1.5},
+            {"offer_id": "abc"},
+            {"offer_id": offer_one.pk, "extra": 1},
+            [],
+            None,
+        ):
+            with self.subTest(bad_payload=bad_payload):
+                resp = owner_client.patch(sel_url, data=bad_payload, format="json")
+                self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(self.database_snapshot(), before)
+
+        # Owner selects offer_one -> 200 with refreshed Request annotations.
+        first_sel = owner_client.patch(sel_url, data={"offer_id": offer_one.pk}, format="json")
+        self.assertEqual(first_sel.status_code, status.HTTP_200_OK)
+        self.assertEqual(first_sel.json()["selected_offer_id"], offer_one.pk)
+        self.assertEqual(first_sel.json()["offer_count"], 2)
+        self.assertIs(first_sel.json()["has_offered"], False)
+        self.assertEqual(first_sel.json()["status"], Request.STATUS_OFFERED)
+        self.assertNotIn(self.donor.username, first_sel.content.decode("utf-8"))
+
+        # Owner can replace selection with offer_two while active and not fulfilled.
+        second_sel = owner_client.patch(sel_url, data={"offer_id": offer_two.pk}, format="json")
+        self.assertEqual(second_sel.status_code, status.HTTP_200_OK)
+        self.assertEqual(second_sel.json()["selected_offer_id"], offer_two.pk)
+        self.assertEqual(second_sel.json()["offer_count"], 2)
+        target.refresh_from_db()
+        self.assertEqual(target.selected_offer_id, offer_two.pk)
+
+        # Fulfill then verify selection can no longer be changed (409 request_fulfilled).
+        fulfill_resp = owner_client.patch(
+            self.status_url(target.pk),
+            data={"status": "fulfilled"},
+            format="json",
+        )
+        self.assertEqual(fulfill_resp.status_code, status.HTTP_200_OK)
+        before_locked = self.database_snapshot()
+        after_fulfill_sel = owner_client.patch(sel_url, data={"offer_id": offer_one.pk}, format="json")
+        self.assertEqual(after_fulfill_sel.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(after_fulfill_sel.json()["code"], "request_fulfilled")
+        self.assertEqual(self.database_snapshot(), before_locked)
+
+        # Expired request rejects selection with 409 request_expired.
+        expired_req = self.make_request(
+            status=Request.STATUS_OFFERED,
+            expires_at=timezone.now() - timedelta(minutes=1),
+        )
+        expired_offer = RequestOffer.objects.create(request=expired_req, offered_by=self.donor)
+        before_exp = self.database_snapshot()
+        exp_sel = owner_client.patch(
+            self.selection_url(expired_req.pk),
+            data={"offer_id": expired_offer.pk},
+            format="json",
+        )
+        self.assertEqual(exp_sel.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(exp_sel.json()["code"], "request_expired")
+        self.assertEqual(self.database_snapshot(), before_exp)
+
+    def test_status_fulfill_requires_owner_selection_and_active_and_supports_replay(self):
+        target = self.make_request(status=Request.STATUS_OFFERED)
+        offer = RequestOffer.objects.create(request=target, offered_by=self.donor)
+        st_url = self.status_url(target.pk)
+        before_no_sel = self.database_snapshot()
+
+        # Anonymous and non-owners (including donor & superuser) get 403 without DB writes.
+        for actor in (None, self.donor, self.outsider, self.superuser):
+            resp = self.auth_client(actor).patch(st_url, data={"status": "fulfilled"}, format="json")
+            self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(self.database_snapshot(), before_no_sel)
+
+        owner_client = self.auth_client(self.owner)
+
+        # Invalid status values (pending/offered/expired/etc.) and extra fields are rejected 400.
+        for bad_payload in (
+            {},
+            {"status": "pending"},
+            {"status": "offered"},
+            {"status": "expired"},
+            {"status": "FULFILLED"},
+            {"status": ""},
+            {"status": None},
+            {"status": 1},
+            {"status": "fulfilled", "extra": "x"},
+            [],
+            None,
+        ):
+            with self.subTest(bad_payload=bad_payload):
+                resp = owner_client.patch(st_url, data=bad_payload, format="json")
+                self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(self.database_snapshot(), before_no_sel)
+
+        # Fulfill without selected_offer returns 409 offer_selection_required without DB changes.
+        no_sel_resp = owner_client.patch(st_url, data={"status": "fulfilled"}, format="json")
+        self.assertEqual(no_sel_resp.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(no_sel_resp.json()["code"], "offer_selection_required")
+        self.assertEqual(self.database_snapshot(), before_no_sel)
+
+        # Select offer, then fulfill -> 200 with refreshed annotations.
+        sel_resp = owner_client.patch(
+            self.selection_url(target.pk),
+            data={"offer_id": offer.pk},
+            format="json",
+        )
+        self.assertEqual(sel_resp.status_code, status.HTTP_200_OK)
+
+        fulfill_resp = owner_client.patch(st_url, data={"status": "fulfilled"}, format="json")
+        self.assertEqual(fulfill_resp.status_code, status.HTTP_200_OK)
+        fulfill_data = fulfill_resp.json()
+        self.assertEqual(fulfill_data["status"], Request.STATUS_FULFILLED)
+        self.assertEqual(fulfill_data["effective_status"], Request.STATUS_FULFILLED)
+        self.assertEqual(fulfill_data["selected_offer_id"], offer.pk)
+        self.assertEqual(fulfill_data["offer_count"], 1)
+        self.assertIs(fulfill_data["has_offered"], False)
+
+        # Replay fulfill returns 200 with the exact same state (even if expires_at is now in the past).
+        after_fulfill = self.database_snapshot()
+        with patch(
+            "request_board.models.timezone.now",
+            return_value=timezone.now() + timedelta(days=5),
+        ):
+            replay_resp = owner_client.patch(st_url, data={"status": "fulfilled"}, format="json")
+        self.assertEqual(replay_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(replay_resp.json(), fulfill_data)
+        self.assertEqual(self.database_snapshot(), after_fulfill)
+
+        # Unfulfilled expired request cannot be fulfilled (409 request_expired).
+        expired_req = self.make_request(
+            status=Request.STATUS_OFFERED,
+            expires_at=timezone.now() - timedelta(minutes=1),
+        )
+        expired_offer = RequestOffer.objects.create(request=expired_req, offered_by=self.donor)
+        expired_req.selected_offer = expired_offer
+        expired_req.save(update_fields=["selected_offer"])
+        before_exp = self.database_snapshot()
+        exp_fulfill = owner_client.patch(
+            self.status_url(expired_req.pk),
+            data={"status": "fulfilled"},
+            format="json",
+        )
+        self.assertEqual(exp_fulfill.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(exp_fulfill.json()["code"], "request_expired")
+        self.assertEqual(self.database_snapshot(), before_exp)
+
+    def test_t04_endpoints_enforce_real_csrf_and_reject_disallowed_methods(self):
+        target = self.make_request()
+        offer_seed = RequestOffer.objects.create(request=target, offered_by=self.second_donor)
+        target.status = Request.STATUS_OFFERED
+        target.save(update_fields=["status"])
+
+        # Disallowed methods return 403 for anonymous and 405 for authenticated users without DB writes.
+        method_cases = [
+            (self.offers_url(target.pk), ("put", "patch", "delete")),
+            (self.offer_detail_url(target.pk, offer_seed.pk), ("post", "put", "patch", "delete")),
+            (self.selection_url(target.pk), ("get", "post", "put", "delete")),
+            (self.status_url(target.pk), ("get", "post", "put", "delete")),
+        ]
+        for url, bad_methods in method_cases:
+            for actor in (None, self.owner):
+                client = self.auth_client(actor)
+                for method in bad_methods:
+                    with self.subTest(url=url, actor=getattr(actor, "username", "anon"), method=method):
+                        before = self.database_snapshot()
+                        resp = getattr(client, method)(url, data={}, format="json")
+                        expected = (
+                            status.HTTP_403_FORBIDDEN
+                            if actor is None
+                            else status.HTTP_405_METHOD_NOT_ALLOWED
+                        )
+                        self.assertEqual(resp.status_code, expected)
+                        self.assertEqual(self.database_snapshot(), before)
+
+        # Real SessionAuthentication + CSRF enforcement for POST offer, PATCH selection, PATCH status.
+        donor_csrf = APIClient(enforce_csrf_checks=True)
+        self.assertTrue(donor_csrf.login(username=self.donor.username, password=self.password))
+        before = self.database_snapshot()
+        no_csrf_offer = donor_csrf.post(self.offers_url(target.pk), data={}, format="json")
+        self.assertEqual(no_csrf_offer.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.database_snapshot(), before)
+
+        csrf_req_donor = RequestFactory().get("/")
+        donor_token = get_token(csrf_req_donor)
+        donor_csrf.cookies["csrftoken"] = csrf_req_donor.META["CSRF_COOKIE"]
+        ok_offer = donor_csrf.post(
+            self.offers_url(target.pk),
+            data={},
+            format="json",
+            HTTP_X_CSRFTOKEN=donor_token,
+        )
+        self.assertEqual(ok_offer.status_code, status.HTTP_201_CREATED)
+        donor_offer_id = ok_offer.json()["id"]
+
+        owner_csrf = APIClient(enforce_csrf_checks=True)
+        self.assertTrue(owner_csrf.login(username=self.owner.username, password=self.password))
+        before_sel = self.database_snapshot()
+        no_csrf_sel = owner_csrf.patch(
+            self.selection_url(target.pk),
+            data={"offer_id": donor_offer_id},
+            format="json",
+        )
+        self.assertEqual(no_csrf_sel.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.database_snapshot(), before_sel)
+
+        csrf_req_owner = RequestFactory().get("/")
+        owner_token = get_token(csrf_req_owner)
+        owner_csrf.cookies["csrftoken"] = csrf_req_owner.META["CSRF_COOKIE"]
+        ok_sel = owner_csrf.patch(
+            self.selection_url(target.pk),
+            data={"offer_id": donor_offer_id},
+            format="json",
+            HTTP_X_CSRFTOKEN=owner_token,
+        )
+        self.assertEqual(ok_sel.status_code, status.HTTP_200_OK)
+        self.assertEqual(ok_sel.json()["selected_offer_id"], donor_offer_id)
+
+        before_st = self.database_snapshot()
+        no_csrf_st = owner_csrf.patch(
+            self.status_url(target.pk),
+            data={"status": "fulfilled"},
+            format="json",
+        )
+        self.assertEqual(no_csrf_st.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.database_snapshot(), before_st)
+
+        ok_st = owner_csrf.patch(
+            self.status_url(target.pk),
+            data={"status": "fulfilled"},
+            format="json",
+            HTTP_X_CSRFTOKEN=owner_token,
+        )
+        self.assertEqual(ok_st.status_code, status.HTTP_200_OK)
+        self.assertEqual(ok_st.json()["status"], Request.STATUS_FULFILLED)

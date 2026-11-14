@@ -1,13 +1,14 @@
 """DRF serializers for Request Board read and input validation contracts."""
 
 from collections.abc import Mapping
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from request_board.forms import BOARD_FIELD_ERRORS
-from request_board.models import Request
+from request_board.models import Request, RequestOffer
 from request_board.validators import (
     ALLOWED_CREATE_FIELDS,
     DESCRIPTION_MAX_LENGTH,
@@ -27,6 +28,35 @@ _SERIALIZER_TEXT_ERRORS = {
     "blank": BOARD_FIELD_ERRORS["required"],
     "null": BOARD_FIELD_ERRORS["required"],
 }
+
+_INT64_MAX = 9223372036854775807
+
+
+def _validate_mapping_allowlist(data, allowed_fields):
+    """Ensure the input payload is a mapping containing only allowlisted keys."""
+    if not isinstance(data, Mapping):
+        raise serializers.ValidationError(
+            {"detail": "Payload harus berupa object."},
+            code="invalid_payload",
+        )
+    unknown_fields = sorted(set(data.keys()) - set(allowed_fields))
+    if unknown_fields:
+        raise serializers.ValidationError(
+            {field: ["Field ini tidak diizinkan."] for field in unknown_fields},
+            code="invalid_fields",
+        )
+    return data
+
+
+class _StrictPositiveIntField(serializers.IntegerField):
+    """IntegerField rejecting booleans, floats, decimals, and non-digit strings."""
+
+    def to_internal_value(self, data):
+        if isinstance(data, (bool, float, Decimal)):
+            self.fail("invalid")
+        if isinstance(data, str) and (not data.isascii() or not data.isdigit()):
+            self.fail("invalid")
+        return super().to_internal_value(data)
 
 
 class _StrictTextField(serializers.CharField):
@@ -188,17 +218,7 @@ class RequestCreateSerializer(serializers.ModelSerializer):
         fields = ALLOWED_CREATE_FIELDS
 
     def to_internal_value(self, data):
-        if not isinstance(data, Mapping):
-            raise serializers.ValidationError(
-                {"detail": "Payload harus berupa object."},
-                code="invalid_payload",
-            )
-        unknown_fields = sorted(set(data.keys()) - set(ALLOWED_CREATE_FIELDS))
-        if unknown_fields:
-            raise serializers.ValidationError(
-                {field: ["Field ini tidak diizinkan."] for field in unknown_fields},
-                code="invalid_fields",
-            )
+        _validate_mapping_allowlist(data, ALLOWED_CREATE_FIELDS)
         return super().to_internal_value(data)
 
     def _run_shared_validator(self, validator, *args, **kwargs):
@@ -246,3 +266,82 @@ class RequestCreateSerializer(serializers.ModelSerializer):
         if self.context.get("defer_future_check"):
             return value
         return self._run_shared_validator(validate_future_expires_at, value)
+
+
+class RequestOfferSerializer(serializers.ModelSerializer):
+    """Read-only representation of RequestOffer without sensitive user attributes."""
+
+    request_id = serializers.IntegerField(read_only=True)
+    offered_by = RequestOwnerSerializer(read_only=True)
+    is_selected = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RequestOffer
+        fields = (
+            "id",
+            "request_id",
+            "offered_by",
+            "created_at",
+            "is_selected",
+        )
+        read_only_fields = fields
+
+    def get_is_selected(self, obj: RequestOffer) -> bool:
+        food_request = self.context.get("food_request")
+        if food_request is not None:
+            return food_request.selected_offer_id == obj.pk
+        return obj.request.selected_offer_id == obj.pk
+
+
+class RequestOfferCreateSerializer(serializers.Serializer):
+    """Strict empty-object input serializer for submitting an offer."""
+
+    ALLOWED_FIELDS = ()
+
+    def to_internal_value(self, data):
+        _validate_mapping_allowlist(data, self.ALLOWED_FIELDS)
+        return {}
+
+
+class RequestSelectionSerializer(serializers.Serializer):
+    """Strict input serializer for selecting an offer on a Request."""
+
+    ALLOWED_FIELDS = ("offer_id",)
+
+    offer_id = _StrictPositiveIntField(
+        min_value=1,
+        max_value=_INT64_MAX,
+        required=True,
+        allow_null=False,
+        error_messages={**BOARD_FIELD_ERRORS, "null": BOARD_FIELD_ERRORS["required"]},
+    )
+
+    def to_internal_value(self, data):
+        _validate_mapping_allowlist(data, self.ALLOWED_FIELDS)
+        return super().to_internal_value(data)
+
+
+class RequestStatusSerializer(serializers.Serializer):
+    """Strict input serializer for marking a Request as fulfilled."""
+
+    ALLOWED_FIELDS = ("status",)
+
+    status = _StrictTextField(
+        required=True,
+        allow_blank=False,
+        allow_null=False,
+        trim_whitespace=False,
+        error_messages=_SERIALIZER_TEXT_ERRORS,
+    )
+
+    def to_internal_value(self, data):
+        _validate_mapping_allowlist(data, self.ALLOWED_FIELDS)
+        return super().to_internal_value(data)
+
+    def validate_status(self, value: str) -> str:
+        if value != Request.STATUS_FULFILLED:
+            raise serializers.ValidationError(
+                "Status hanya dapat diubah menjadi 'fulfilled'.",
+                code="invalid_choice",
+            )
+        return value
