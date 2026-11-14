@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from datetime import timezone as dt_timezone
+from decimal import Decimal
 import hashlib
 import json
 
@@ -19,6 +22,9 @@ from django.db.models import (
 
 from request_board.forms import RequestForm
 from request_board.models import Request, RequestCreationKey, RequestOffer
+from request_board.validators import default_expires_at, validate_future_expires_at
+
+CANONICAL_API_PAYLOAD_VERSION = "api-v1"
 
 PAGE_SIZE = 20
 OFFER_PREVIEW_LIMIT = 20
@@ -47,23 +53,128 @@ def create_request(*, actor, data) -> Request:
     return food_request
 
 
+def build_canonical_request_payload(validated_data: Mapping) -> dict:
+    """Build a deterministic canonical payload envelope for API idempotency hashing."""
+    expires_at = validated_data.get("expires_at")
+    if expires_at is not None:
+        if timezone.is_naive(expires_at):
+            expires_at = timezone.make_aware(expires_at)
+        canonical_expires_at = expires_at.astimezone(dt_timezone.utc).isoformat()
+    else:
+        canonical_expires_at = None
+
+    return {
+        "v": CANONICAL_API_PAYLOAD_VERSION,
+        "payload": {
+            "title": validated_data["title"],
+            "food_item": validated_data["food_item"],
+            "quantity": format(Decimal(validated_data["quantity"]), ".2f"),
+            "unit": validated_data["unit"],
+            "description": validated_data.get("description", ""),
+            "location": validated_data.get("location", ""),
+            "expires_at": canonical_expires_at,
+        },
+    }
+
+
+def compute_canonical_request_digest(validated_data: Mapping) -> str:
+    """Compute a stable SHA-256 hex digest for a canonical API create payload."""
+    canonical = build_canonical_request_payload(validated_data)
+    encoded = json.dumps(
+        canonical,
+        sort_keys=True,
+        ensure_ascii=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _execute_idempotent_create(*, actor, key, digest: str, create_fn) -> tuple[Request, bool]:
+    """Serialize owner create keys under a row lock and distinguish new vs replayed."""
+    _require_saved_user(actor)
+    with transaction.atomic():
+        get_user_model().objects.select_for_update().get(pk=actor.pk)
+        previous = (
+            RequestCreationKey.objects.select_related("request")
+            .filter(owner=actor, key=key)
+            .first()
+        )
+        if previous is not None:
+            if previous.payload_digest != digest:
+                raise ValidationError(
+                    "Kunci penyimpanan sudah digunakan untuk draft lain.",
+                    code="idempotency_conflict",
+                )
+            if previous.request_id is None:
+                raise ValidationError(
+                    "Permintaan untuk kunci ini sudah dihapus.",
+                    code="idempotency_deleted",
+                )
+            return previous.request, False
+
+        food_request = create_fn()
+        RequestCreationKey.objects.create(
+            owner=actor,
+            key=key,
+            payload_digest=digest,
+            request=food_request,
+        )
+        return food_request, True
+
+
 def create_request_idempotent(*, actor, data, key) -> Request:
     """Serialize each owner's create keys, including retries concurrent with commit."""
     _require_saved_user(actor)
     payload = {name: data.getlist(name) for name in RequestForm.Meta.fields}
-    digest = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
-    with transaction.atomic():
-        get_user_model().objects.select_for_update().get(pk=actor.pk)
-        previous = RequestCreationKey.objects.filter(owner=actor, key=key).first()
-        if previous:
-            if previous.payload_digest != digest:
-                raise ValidationError('Kunci penyimpanan sudah digunakan untuk draft lain.', code='idempotency_conflict')
-            if previous.request_id is None:
-                raise ValidationError('Permintaan untuk kunci ini sudah dihapus.', code='idempotency_deleted')
-            return previous.request
-        food_request = create_request(actor=actor, data=data)
-        RequestCreationKey.objects.create(owner=actor, key=key, payload_digest=digest, request=food_request)
-        return food_request
+    digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=True).encode()
+    ).hexdigest()
+    food_request, _created = _execute_idempotent_create(
+        actor=actor,
+        key=key,
+        digest=digest,
+        create_fn=lambda: create_request(actor=actor, data=data),
+    )
+    return food_request
+
+
+def create_request_from_api_idempotent(
+    *,
+    actor,
+    validated_data: Mapping,
+    key,
+) -> tuple[Request, bool]:
+    """Create or replay a Request from validated API JSON data under an owner lock."""
+    _require_saved_user(actor)
+    digest = compute_canonical_request_digest(validated_data)
+
+    def _create_new_request() -> Request:
+        expires_at = validated_data.get("expires_at")
+        if expires_at is None:
+            expires_at = default_expires_at()
+        else:
+            try:
+                expires_at = validate_future_expires_at(expires_at)
+            except ValidationError as exc:
+                raise ValidationError({"expires_at": exc}) from exc
+
+        return Request.objects.create(
+            owner=actor,
+            title=validated_data["title"],
+            food_item=validated_data["food_item"],
+            quantity=validated_data["quantity"],
+            unit=validated_data["unit"],
+            description=validated_data.get("description", ""),
+            location=validated_data.get("location", ""),
+            expires_at=expires_at,
+        )
+
+    return _execute_idempotent_create(
+        actor=actor,
+        key=key,
+        digest=digest,
+        create_fn=_create_new_request,
+    )
 
 
 def _require_not_expired(food_request):

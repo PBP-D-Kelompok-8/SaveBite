@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 from queue import Queue
 from threading import Event, Thread
@@ -13,7 +14,14 @@ from django.http import QueryDict
 from django.urls import reverse
 
 from request_board.models import Request, RequestOffer
-from request_board.services import create_request_idempotent, delete_request, fulfill_request, offer_request, select_request_offer
+from request_board.services import (
+    create_request_from_api_idempotent,
+    create_request_idempotent,
+    delete_request,
+    fulfill_request,
+    offer_request,
+    select_request_offer,
+)
 
 
 @skipUnless(connection.vendor == "postgresql", "Requires isolated PostgreSQL and real row locks")
@@ -58,6 +66,40 @@ class RequestConcurrencyTests(TransactionTestCase):
         leader, contender = self._run_race(create, create, snapshot, committed)
         self.assertEqual(leader['id'], contender['id'])
         self.assertEqual(committed(), [leader['id']])
+
+    def test_concurrent_api_create_same_key_creates_only_one_request(self):
+        key = uuid4()
+        validated_data = {
+            "title": "Race API create",
+            "food_item": "Nasi",
+            "quantity": Decimal("1.00"),
+            "unit": "porsi",
+            "description": "",
+            "location": "",
+        }
+
+        def create():
+            item, created = create_request_from_api_idempotent(
+                actor=self.owner,
+                validated_data=validated_data,
+                key=key,
+            )
+            return {"id": item.pk, "created": created}
+
+        def snapshot(role, result):
+            return result
+
+        def committed():
+            return list(
+                Request.objects.filter(owner=self.owner, title="Race API create")
+                .values_list("pk", flat=True)
+            )
+
+        leader, contender = self._run_race(create, create, snapshot, committed)
+        self.assertEqual(leader["id"], contender["id"])
+        self.assertIs(leader["created"], True)
+        self.assertIs(contender["created"], False)
+        self.assertEqual(committed(), [leader["id"]])
 
     def _run_race(self, leader_action, contender_action, snapshot, committed):
         """Run the leader, then the contender, and prove a real row-lock wait.

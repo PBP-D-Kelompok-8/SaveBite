@@ -3,13 +3,14 @@ from decimal import Decimal
 import hashlib
 import json
 from types import ModuleType
+from unittest.mock import patch
 from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
 from django.core.paginator import EmptyPage, InvalidPage, PageNotAnInteger
-from django.db import connection
+from django.db import IntegrityError, connection
 from django.http import Http404, QueryDict
 from django.middleware.csrf import get_token
 from django.test import RequestFactory, override_settings
@@ -39,7 +40,12 @@ from request_board.api_exceptions import (
 from request_board.forms import RequestForm
 from request_board.models import Request, RequestCreationKey, RequestOffer
 from request_board.serializers import RequestCreateSerializer, RequestSerializer
-from request_board.services import create_request, create_request_idempotent, delete_request
+from request_board.services import (
+    create_request,
+    create_request_from_api_idempotent,
+    create_request_idempotent,
+    delete_request,
+)
 
 
 class DRFFoundationTests(APITestCase):
@@ -52,21 +58,30 @@ class DRFFoundationTests(APITestCase):
         self.assertNotIn("DEFAULT_PERMISSION_CLASSES", global_drf_settings)
         self.assertNotIn("EXCEPTION_HANDLER", global_drf_settings)
 
-    def test_api_urls_namespace_mounted_at_api_v1_with_t02_routes(self):
+    def test_api_urls_namespace_mounted_at_api_v1_with_t03_routes(self):
         self.assertEqual(api_urls.app_name, "request_board_api")
         self.assertEqual(
             [pattern.name for pattern in api_urls.urlpatterns],
-            ["request_list", "request_detail"],
+            ["request_list", "request_detail", "request_creation_status"],
         )
         self.assertEqual(reverse("request_board_api:request_list"), "/api/v1/requests/")
         self.assertEqual(
             reverse("request_board_api:request_detail", args=[42]),
             "/api/v1/requests/42/",
         )
+        sample_key = uuid4()
+        self.assertEqual(
+            reverse("request_board_api:request_creation_status", args=[sample_key]),
+            f"/api/v1/request-creations/{sample_key}/",
+        )
         self.assertEqual(resolve("/api/v1/requests/").view_name, "request_board_api:request_list")
         self.assertEqual(
             resolve("/api/v1/requests/42/").view_name,
             "request_board_api:request_detail",
+        )
+        self.assertEqual(
+            resolve(f"/api/v1/request-creations/{sample_key}/").view_name,
+            "request_board_api:request_creation_status",
         )
 
         root_resolver = resolve("/api-auth/login/")
@@ -793,7 +808,7 @@ class RequestCreateSerializerAndAlignmentTests(APITestCase):
 
 
 class RequestMethodAndDeleteAPITests(APITestCase):
-    """Verify POST returns 405 until T03, and DELETE enforces owner-only + CSRF + cascade."""
+    """Verify disallowed methods and DELETE owner-only + CSRF + cascade enforcement."""
 
     @classmethod
     def setUpTestData(cls):
@@ -830,9 +845,10 @@ class RequestMethodAndDeleteAPITests(APITestCase):
         values.update(overrides)
         return Request.objects.create(**values)
 
-    def test_post_and_other_disallowed_methods_return_405_without_db_change(self):
+    def test_disallowed_methods_return_403_for_anon_and_405_for_auth_without_db_change(self):
         target = self.make_target()
         detail_url = reverse("request_board_api:request_detail", args=[target.pk])
+        status_url = reverse("request_board_api:request_creation_status", args=[uuid4()])
 
         for actor in (None, self.owner):
             client = APIClient()
@@ -840,16 +856,32 @@ class RequestMethodAndDeleteAPITests(APITestCase):
                 client.force_authenticate(user=actor)
 
             before = self.database_snapshot()
-            for method in ("post", "put", "patch", "delete"):
+            for method in ("put", "patch", "delete"):
                 with self.subTest(endpoint="list", actor=actor, method=method):
                     resp = getattr(client, method)(self.list_url, data={}, format="json")
-                    self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+                    expected_status = (
+                        status.HTTP_403_FORBIDDEN
+                        if actor is None
+                        else status.HTTP_405_METHOD_NOT_ALLOWED
+                    )
+                    self.assertEqual(resp.status_code, expected_status)
                     self.assertEqual(self.database_snapshot(), before)
 
             for method in ("post", "put", "patch"):
                 with self.subTest(endpoint="detail", actor=actor, method=method):
                     resp = getattr(client, method)(detail_url, data={}, format="json")
                     # DRF checks has_permission before method dispatch: anonymous unsafe -> 403, authenticated -> 405.
+                    expected_status = (
+                        status.HTTP_403_FORBIDDEN
+                        if actor is None
+                        else status.HTTP_405_METHOD_NOT_ALLOWED
+                    )
+                    self.assertEqual(resp.status_code, expected_status)
+                    self.assertEqual(self.database_snapshot(), before)
+
+            for method in ("post", "put", "patch", "delete"):
+                with self.subTest(endpoint="creation_status", actor=actor, method=method):
+                    resp = getattr(client, method)(status_url, data={}, format="json")
                     expected_status = (
                         status.HTTP_403_FORBIDDEN
                         if actor is None
@@ -932,3 +964,405 @@ class RequestMethodAndDeleteAPITests(APITestCase):
 
         repeat = client.delete(detail_url, HTTP_X_CSRFTOKEN=csrf_token)
         self.assertEqual(repeat.status_code, status.HTTP_404_NOT_FOUND)
+
+
+_UNSET = object()
+
+
+class RequestIdempotentCreateAPITests(APITestCase):
+    """Verify POST /api/v1/requests/ and GET /api/v1/request-creations/<key>/ contracts."""
+
+    @classmethod
+    def setUpTestData(cls):
+        User = get_user_model()
+        cls.password = "create-api-password-123"
+        cls.owner = User.objects.create_user(username="create_owner", password=cls.password)
+        cls.other_user = User.objects.create_user(username="create_other", password=cls.password)
+        cls.donor = User.objects.create_user(username="create_donor", password=cls.password)
+        cls.superuser = User.objects.create_superuser(
+            username="create_superuser",
+            password=cls.password,
+            email="create-su@example.invalid",
+        )
+
+    def setUp(self):
+        self.list_url = reverse("request_board_api:request_list")
+
+    def status_url(self, key):
+        return reverse("request_board_api:request_creation_status", args=[key])
+
+    def valid_payload(self, **overrides):
+        data = {
+            "title": "Butuh beras",
+            "food_item": "Beras",
+            "quantity": "2.50",
+            "unit": "kg",
+            "description": "Untuk makan bersama",
+            "location": "Depok",
+            "expires_at": (timezone.now() + timedelta(hours=12)).isoformat(),
+        }
+        data.update(overrides)
+        return data
+
+    def auth_client(self, user):
+        client = APIClient()
+        client.force_authenticate(user=user)
+        return client
+
+    def post_create(self, client, payload=_UNSET, *, key=None, **extra):
+        headers = {}
+        if key is not None:
+            headers["HTTP_IDEMPOTENCY_KEY"] = str(key)
+        headers.update(extra)
+        return client.post(
+            self.list_url,
+            data=self.valid_payload() if payload is _UNSET else payload,
+            format="json",
+            **headers,
+        )
+
+    def test_create_and_replay_return_201_then_200_for_same_record(self):
+        key = uuid4()
+        client = self.auth_client(self.owner)
+        payload = self.valid_payload()
+
+        first = self.post_create(client, payload, key=key)
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        first_body = first.json()
+        self.assertEqual(first_body["owner"], {"id": self.owner.pk, "display_name": self.owner.username})
+        self.assertEqual(first_body["status"], Request.STATUS_PENDING)
+        self.assertEqual(first_body["effective_status"], Request.STATUS_PENDING)
+        self.assertEqual(first_body["quantity"], "2.50")
+        self.assertEqual(first_body["offer_count"], 0)
+        self.assertIs(first_body["has_offered"], False)
+        self.assertIsNone(first_body["selected_offer_id"])
+        self.assertEqual(Request.objects.count(), 1)
+        self.assertEqual(RequestCreationKey.objects.count(), 1)
+
+        RequestOffer.objects.create(request_id=first_body["id"], offered_by=self.donor)
+        Request.objects.filter(pk=first_body["id"]).update(status=Request.STATUS_OFFERED)
+
+        second = self.post_create(client, payload, key=key)
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        second_body = second.json()
+        self.assertEqual(second_body["id"], first_body["id"])
+        self.assertEqual(second_body["status"], Request.STATUS_OFFERED)
+        self.assertEqual(second_body["offer_count"], 1)
+        self.assertEqual(Request.objects.count(), 1)
+        self.assertEqual(RequestCreationKey.objects.count(), 1)
+
+    def test_same_key_with_different_payload_returns_409_conflict(self):
+        key = uuid4()
+        client = self.auth_client(self.owner)
+        payload = self.valid_payload()
+
+        first = self.post_create(client, payload, key=key)
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+
+        for changed in (
+            {**payload, "title": "Butuh roti"},
+            {**payload, "quantity": "3.00"},
+            {**payload, "description": "Deskripsi berbeda"},
+        ):
+            with self.subTest(changed=changed["title"]):
+                conflict = self.post_create(client, changed, key=key)
+                self.assertEqual(conflict.status_code, status.HTTP_409_CONFLICT)
+                self.assertEqual(conflict.json()["code"], "idempotency_conflict")
+                self.assertIn("detail", conflict.json())
+                self.assertEqual(Request.objects.count(), 1)
+
+        omitted_expiry_key = uuid4()
+        minimal = {"title": "Beras", "food_item": "Beras", "quantity": "1", "unit": "kg"}
+        self.assertEqual(self.post_create(client, minimal, key=omitted_expiry_key).status_code, status.HTTP_201_CREATED)
+        mismatch_expiry = self.post_create(
+            client,
+            {**minimal, "expires_at": (timezone.now() + timedelta(hours=6)).isoformat()},
+            key=omitted_expiry_key,
+        )
+        self.assertEqual(mismatch_expiry.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(mismatch_expiry.json()["code"], "idempotency_conflict")
+
+    def test_deleted_record_replay_returns_409_and_does_not_recreate(self):
+        key = uuid4()
+        client = self.auth_client(self.owner)
+        payload = self.valid_payload()
+
+        created = self.post_create(client, payload, key=key)
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        request_id = created.json()["id"]
+
+        deleted = client.delete(reverse("request_board_api:request_detail", args=[request_id]))
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Request.objects.count(), 0)
+
+        replay_same = self.post_create(client, payload, key=key)
+        self.assertEqual(replay_same.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(replay_same.json()["code"], "idempotency_deleted")
+        self.assertEqual(Request.objects.count(), 0)
+
+        replay_different = self.post_create(client, {**payload, "title": "Baru"}, key=key)
+        self.assertEqual(replay_different.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(replay_different.json()["code"], "idempotency_conflict")
+        self.assertEqual(Request.objects.count(), 0)
+
+    def test_missing_or_invalid_idempotency_key_returns_400_without_db_writes(self):
+        client = self.auth_client(self.owner)
+        payload = self.valid_payload()
+
+        for bad_key in (None, "", "   ", "not-a-uuid", "12345"):
+            with self.subTest(bad_key=bad_key):
+                resp = self.post_create(client, payload, key=bad_key)
+                self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn("detail", resp.json())
+                self.assertEqual(Request.objects.count(), 0)
+                self.assertEqual(RequestCreationKey.objects.count(), 0)
+
+    def test_owner_isolation_on_key_namespace_and_private_status_endpoint(self):
+        shared_key = uuid4()
+        owner_client = self.auth_client(self.owner)
+        other_client = self.auth_client(self.other_user)
+        superuser_client = self.auth_client(self.superuser)
+
+        anon_status = APIClient().get(self.status_url(shared_key))
+        self.assertEqual(anon_status.status_code, status.HTTP_403_FORBIDDEN)
+
+        first = self.post_create(owner_client, self.valid_payload(title="Milik A"), key=shared_key)
+        second = self.post_create(other_client, self.valid_payload(title="Milik B"), key=shared_key)
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+        self.assertNotEqual(first.json()["id"], second.json()["id"])
+
+        owner_status = owner_client.get(self.status_url(shared_key))
+        self.assertEqual(owner_status.status_code, status.HTTP_200_OK)
+        self.assertEqual(owner_status.json(), {"state": "created", "request_id": first.json()["id"]})
+        self.assertNotIn("digest", owner_status.content.decode("utf-8"))
+        self.assertIn("no-store", owner_status.headers.get("Cache-Control", ""))
+
+        other_status = other_client.get(self.status_url(shared_key))
+        self.assertEqual(other_status.status_code, status.HTTP_200_OK)
+        self.assertEqual(other_status.json(), {"state": "created", "request_id": second.json()["id"]})
+
+        outsider_only_key = uuid4()
+        self.assertEqual(
+            self.post_create(owner_client, self.valid_payload(), key=outsider_only_key).status_code,
+            status.HTTP_201_CREATED,
+        )
+        foreign_resp = other_client.get(self.status_url(outsider_only_key))
+        superuser_resp = superuser_client.get(self.status_url(outsider_only_key))
+        unknown_resp = owner_client.get(self.status_url(uuid4()))
+        self.assertEqual(foreign_resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(superuser_resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(unknown_resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(foreign_resp.json(), unknown_resp.json())
+
+        owner_client.delete(reverse("request_board_api:request_detail", args=[first.json()["id"]]))
+        deleted_status = owner_client.get(self.status_url(shared_key))
+        self.assertEqual(deleted_status.status_code, status.HTTP_200_OK)
+        self.assertEqual(deleted_status.json(), {"state": "deleted", "request_id": None})
+        self.assertEqual(
+            other_client.get(self.status_url(shared_key)).json(),
+            {"state": "created", "request_id": second.json()["id"]},
+        )
+
+    def test_canonical_payload_omission_sanitization_decimal_and_timezone_stability(self):
+        client = self.auth_client(self.owner)
+        omission_key = uuid4()
+        t0 = datetime(2030, 1, 1, 10, 0, 0, tzinfo=dt_timezone.utc)
+
+        with patch("request_board.validators.timezone.now", return_value=t0):
+            first = self.post_create(
+                client,
+                {
+                    "title": "  <b>Beras</b>  ",
+                    "food_item": " <i>Beras</i> ",
+                    "quantity": "2",
+                    "unit": "kg",
+                },
+                key=omission_key,
+            )
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        first_body = first.json()
+        self.assertEqual(first_body["title"], "Beras")
+        self.assertEqual(first_body["food_item"], "Beras")
+        self.assertEqual(first_body["quantity"], "2.00")
+        self.assertEqual(
+            parse_datetime(first_body["expires_at"]),
+            t0 + timedelta(hours=24),
+        )
+
+        # Advancing clock + equivalent canonical inputs must still replay 200 without conflict.
+        with patch("request_board.validators.timezone.now", return_value=t0 + timedelta(minutes=15)):
+            replay = self.post_create(
+                client,
+                {
+                    "title": "Beras",
+                    "food_item": "Beras",
+                    "quantity": 2.0,
+                    "unit": "kg",
+                    "description": "  <p></p> ",
+                    "location": "",
+                },
+                key=omission_key,
+            )
+        self.assertEqual(replay.status_code, status.HTTP_200_OK)
+        self.assertEqual(replay.json()["id"], first_body["id"])
+
+        tz_key = uuid4()
+        with patch("request_board.validators.timezone.now", return_value=t0):
+            tz_first = self.post_create(
+                client,
+                self.valid_payload(
+                    quantity=123456.78,
+                    expires_at="2030-01-02T10:00:00+07:00",
+                ),
+                key=tz_key,
+            )
+            tz_replay = self.post_create(
+                client,
+                self.valid_payload(
+                    quantity="123456.78",
+                    expires_at="2030-01-02T03:00:00Z",
+                ),
+                key=tz_key,
+            )
+        self.assertEqual(tz_first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(tz_replay.status_code, status.HTTP_200_OK)
+        self.assertEqual(tz_first.json()["id"], tz_replay.json()["id"])
+        self.assertEqual(tz_first.json()["quantity"], "123456.78")
+
+    def test_replay_after_deadline_succeeds_while_new_past_deadline_and_conflict_fail(self):
+        client = self.auth_client(self.owner)
+        t0 = datetime(2030, 1, 1, 10, 0, 0, tzinfo=dt_timezone.utc)
+        deadline = t0 + timedelta(hours=1)
+        payload = self.valid_payload(expires_at=deadline.isoformat())
+        key = uuid4()
+
+        with patch("request_board.validators.timezone.now", return_value=t0):
+            first = self.post_create(client, payload, key=key)
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+
+        t_after = t0 + timedelta(hours=2)
+        with (
+            patch("request_board.validators.timezone.now", return_value=t_after),
+            patch("request_board.models.timezone.now", return_value=t_after),
+        ):
+            replay = self.post_create(client, payload, key=key)
+            self.assertEqual(replay.status_code, status.HTTP_200_OK)
+            self.assertEqual(replay.json()["id"], first.json()["id"])
+            self.assertEqual(replay.json()["effective_status"], Request.STATUS_EXPIRED)
+
+            conflict = self.post_create(client, {**payload, "title": "Berubah"}, key=key)
+            self.assertEqual(conflict.status_code, status.HTTP_409_CONFLICT)
+            self.assertEqual(conflict.json()["code"], "idempotency_conflict")
+
+            fresh_key = uuid4()
+            past_new = self.post_create(client, payload, key=fresh_key)
+            self.assertEqual(past_new.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn("expires_at", past_new.json())
+            self.assertEqual(Request.objects.count(), 1)
+            self.assertEqual(RequestCreationKey.objects.count(), 1)
+
+            # Unused fresh_key remains valid once deadline is corrected.
+            recovered = self.post_create(
+                client,
+                self.valid_payload(expires_at=(t_after + timedelta(hours=1)).isoformat()),
+                key=fresh_key,
+            )
+            self.assertEqual(recovered.status_code, status.HTTP_201_CREATED)
+
+    def test_validation_transport_and_transaction_rollback_leave_no_orphan_records(self):
+        client = self.auth_client(self.owner)
+        reusable_key = uuid4()
+
+        bad_payloads = [
+            self.valid_payload(owner=self.other_user.pk),
+            self.valid_payload(status="fulfilled"),
+            self.valid_payload(selected_offer_id=1),
+            self.valid_payload(unknown_field="x"),
+            self.valid_payload(title="  <b></b>  "),
+            {"title": "incomplete"},
+            [],
+            "text",
+            123,
+            None,
+        ]
+        for bad_payload in bad_payloads:
+            with self.subTest(bad_payload=bad_payload):
+                resp = self.post_create(client, bad_payload, key=reusable_key)
+                self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(Request.objects.count(), 0)
+                self.assertEqual(RequestCreationKey.objects.count(), 0)
+
+        for raw_body in (b"", b"null", b"{invalid", b'{"title":"a","title":"b"}', b'{"quantity":NaN}', b"\xff"):
+            with self.subTest(raw_body=raw_body):
+                resp = client.post(
+                    self.list_url,
+                    data=raw_body,
+                    content_type="application/json",
+                    HTTP_IDEMPOTENCY_KEY=str(reusable_key),
+                )
+                self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(Request.objects.count(), 0)
+
+        for bad_type in ("text/plain", "application/x-www-form-urlencoded"):
+            resp = client.post(
+                self.list_url,
+                data=json.dumps(self.valid_payload()),
+                content_type=bad_type,
+                HTTP_IDEMPOTENCY_KEY=str(reusable_key),
+            )
+            self.assertEqual(resp.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+            self.assertEqual(Request.objects.count(), 0)
+
+        with patch(
+            "request_board.services.RequestCreationKey.objects.create",
+            side_effect=IntegrityError("simulated key insert failure"),
+        ):
+            with self.assertRaises(IntegrityError):
+                create_request_from_api_idempotent(
+                    actor=self.owner,
+                    validated_data={
+                        "title": "Rollback test",
+                        "food_item": "Beras",
+                        "quantity": Decimal("1.00"),
+                        "unit": "kg",
+                        "description": "",
+                        "location": "",
+                    },
+                    key=reusable_key,
+                )
+        self.assertEqual(Request.objects.count(), 0)
+        self.assertEqual(RequestCreationKey.objects.count(), 0)
+
+        # Key was never consumed by failures and succeeds on valid retry.
+        recovered = self.post_create(client, self.valid_payload(), key=reusable_key)
+        self.assertEqual(recovered.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Request.objects.count(), 1)
+        self.assertEqual(RequestCreationKey.objects.count(), 1)
+
+    def test_post_create_enforces_session_auth_and_real_csrf(self):
+        key = uuid4()
+        payload = self.valid_payload()
+
+        anon = APIClient(enforce_csrf_checks=True)
+        anon_resp = self.post_create(anon, payload, key=key)
+        self.assertEqual(anon_resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Request.objects.count(), 0)
+
+        client = APIClient(enforce_csrf_checks=True)
+        self.assertTrue(client.login(username=self.owner.username, password=self.password))
+
+        no_csrf = self.post_create(client, payload, key=key)
+        self.assertEqual(no_csrf.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Request.objects.count(), 0)
+
+        csrf_request = RequestFactory().get("/")
+        csrf_token = get_token(csrf_request)
+        client.cookies["csrftoken"] = csrf_request.META["CSRF_COOKIE"]
+
+        created = self.post_create(client, payload, key=key, HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        replayed = self.post_create(client, payload, key=key, HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(replayed.status_code, status.HTTP_200_OK)
+        self.assertEqual(created.json()["id"], replayed.json()["id"])
+        self.assertEqual(Request.objects.count(), 1)

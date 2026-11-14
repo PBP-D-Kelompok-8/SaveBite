@@ -114,6 +114,16 @@ class RequestSerializer(serializers.ModelSerializer):
         return None
 
 
+class _CreateExpiresAtField(serializers.DateTimeField):
+    """DateTimeField that leaves omitted deadlines unset when temporal checks are deferred."""
+
+    def get_default(self):
+        parent = self.parent
+        if parent is not None and parent.context.get("defer_future_check"):
+            raise serializers.SkipField()
+        return super().get_default()
+
+
 class RequestCreateSerializer(serializers.ModelSerializer):
     """Strict input serializer for creating a Request (consumed by T03)."""
 
@@ -166,7 +176,7 @@ class RequestCreateSerializer(serializers.ModelSerializer):
         trim_whitespace=True,
         error_messages=_SERIALIZER_TEXT_ERRORS,
     )
-    expires_at = serializers.DateTimeField(
+    expires_at = _CreateExpiresAtField(
         required=False,
         allow_null=False,
         default=default_expires_at,
@@ -233,4 +243,6 @@ class RequestCreateSerializer(serializers.ModelSerializer):
         )
 
     def validate_expires_at(self, value):
+        if self.context.get("defer_future_check"):
+            return value
         return self._run_shared_validator(validate_future_expires_at, value)
