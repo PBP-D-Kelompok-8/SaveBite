@@ -8,7 +8,16 @@
 {% endblock %}
 {% block content %}
 {% include 'request_board/_messages.html' %}
-<div class="request-board" lang="id" data-board-offers>
+<div class="request-board" lang="id" data-board-offers
+     data-request-id="{{ item.pk }}"
+     data-current-user-id="{{ user.pk|default:'' }}"
+     data-login-url="{% url 'login' %}"
+     data-board-url="{% url 'request_board:request_board' %}"
+     data-api-detail-url="{% url 'request_board_api:request_detail' item.pk %}"
+     data-api-offers-url="{% url 'request_board_api:request_offer_list' item.pk %}"
+     data-api-selection-url="{% url 'request_board_api:request_selection' item.pk %}"
+     data-offer-select-fallback-template="{% url 'request_board:request_select_offer' item.pk 111111111 %}"
+     data-offer-user-icon="{% static 'request-board/offer-user.svg' %}">
   <a class="request-board__offer-back request-board__offer-back--outline" href="{% url 'request_board:request_board' %}">Kembali ke papan</a>
   <header class="request-board__offers-heading">
     <h1>Semua penawaran</h1>
@@ -43,7 +52,7 @@
             {% if item.selected_offer_id == offer.id %}
               <span class="request-board__offer-selected">Terpilih</span>
             {% elif item.effective_status != 'fulfilled' and item.effective_status != 'expired' %}
-              <form method="post" action="{% url 'request_board:request_select_offer' item.pk offer.pk %}">
+              <form method="post" action="{% url 'request_board:request_select_offer' item.pk offer.pk %}" data-offer-id="{{ offer.pk }}">
                 {% csrf_token %}<button class="request-board__offer-action" type="submit" aria-label="{% if item.selected_offer_id %}Ganti pilihan{% else %}Pilih penawar{% endif %} {{ offer.offered_by.get_username }}">{% if item.selected_offer_id %}Ganti pilihan{% else %}Pilih penawar{% endif %}</button>
               </form>
             {% endif %}
