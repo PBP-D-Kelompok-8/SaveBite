@@ -106,7 +106,7 @@ Ketiga halaman modul memuat `request-board-tailwind.css` untuk utility berprefik
 | `../static/js/request-board*.js` | Interaksi browser, termasuk dialog dan pembaruan AJAX. |
 | `migrations/` | Perubahan skema database. |
 | `management/commands/cleanup_request_creation_keys.py` | Pembersihan kunci pembuatan lama. |
-| `tests.py`, `test_*.py` | Pengujian aturan bisnis, akses, API, dan browser. |
+| `tests/` | Pengujian aturan bisnis, akses, API, dan browser. |
 
 Data permintaan dan penawaran berasal dari input pengguna di database SaveBite. Modul memakai autentikasi/session bersama proyek dan **tidak mengambil data dari TheMealDB**. `RequestCreationKey` menyimpan UUID per pemilik untuk mencegah permintaan ganda saat pengiriman diulang, termasuk ketika respons jaringan tidak diterima browser.
 
@@ -146,7 +146,7 @@ python -m playwright install chromium
 python manage.py test request_board --noinput
 ```
 
-Untuk Microsoft Edge yang sudah terpasang, set `$env:PLAYWRIGHT_CHROMIUM_CHANNEL = 'msedge'` pada PowerShell. Tes browser dapat dilewati jika dependensinya tidak tersedia. Tes konkurensi PostgreSQL dilewati pada SQLite; kelulusan di SQLite tidak membuktikan penguncian baris PostgreSQL. Lihat prasyarat database uji terisolasi dalam `test_concurrency.py` sebelum menjalankannya pada PostgreSQL.
+Untuk Microsoft Edge yang sudah terpasang, set `$env:PLAYWRIGHT_CHROMIUM_CHANNEL = 'msedge'` pada PowerShell. Tes browser dapat dilewati jika dependensinya tidak tersedia. Tes konkurensi PostgreSQL dilewati pada SQLite; kelulusan di SQLite tidak membuktikan penguncian baris PostgreSQL. Lihat prasyarat database uji terisolasi dalam `tests/test_concurrency.py` sebelum menjalankannya pada PostgreSQL.
 
 ## Pemeliharaan dan batasan
 

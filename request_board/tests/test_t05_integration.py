@@ -13,8 +13,8 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Request, RequestOffer
-from .templatetags.request_board_assets import ASSET_VERSION
+from request_board.models import Request, RequestOffer
+from request_board.templatetags.request_board_assets import ASSET_VERSION
 
 User = get_user_model()
 

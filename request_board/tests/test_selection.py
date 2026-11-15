@@ -209,7 +209,7 @@ class RequestSelectionTests(TestCase):
         self.assertLessEqual(len(queries), 6)
 
     def test_offers_selected_row_has_badge_without_reselect_form(self):
-        from request_board.test_rendering import BoardMarkup
+        from request_board.tests.test_rendering import BoardMarkup
         self.client.force_login(self.owner)
         url = reverse('request_board:request_offers', args=[self.item.pk])
         before = self.client.get(url)
@@ -232,7 +232,7 @@ class RequestSelectionTests(TestCase):
         self.assertEqual(len(markup.select('form', within=other)), 1)
 
     def test_fulfilled_and_legacy_offers_are_read_only(self):
-        from request_board.test_rendering import BoardMarkup
+        from request_board.tests.test_rendering import BoardMarkup
         self.client.force_login(self.owner)
         url = reverse('request_board:request_offers', args=[self.item.pk])
         for selected in (True, False):
