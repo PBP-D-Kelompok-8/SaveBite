@@ -1,10 +1,20 @@
-from decimal import Decimal
-from datetime import timedelta
+from django import forms
 from django.utils import timezone
 
-from django import forms
-
 from request_board.models import Request
+from request_board.validators import (
+    ALLOWED_CREATE_FIELDS,
+    DESCRIPTION_MAX_LENGTH,
+    FOOD_ITEM_MAX_LENGTH,
+    LOCATION_MAX_LENGTH,
+    QUANTITY_DECIMAL_PLACES,
+    QUANTITY_MAX_DIGITS,
+    QUANTITY_MIN,
+    TITLE_MAX_LENGTH,
+    clean_request_text,
+    default_expires_at,
+    validate_future_expires_at,
+)
 
 
 BOARD_FIELD_ERRORS = {
@@ -77,12 +87,12 @@ class RequestForm(forms.ModelForm):
         input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S%z"],
     )
     quantity = forms.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        min_value=Decimal("0.01"),
+        max_digits=QUANTITY_MAX_DIGITS,
+        decimal_places=QUANTITY_DECIMAL_PLACES,
+        min_value=QUANTITY_MIN,
     )
     description = forms.CharField(
-        max_length=1000,
+        max_length=DESCRIPTION_MAX_LENGTH,
         required=False,
         widget=forms.Textarea,
     )
@@ -90,7 +100,7 @@ class RequestForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.is_bound:
-            self.initial.setdefault("expires_at", timezone.localtime(timezone.now() + timedelta(hours=24)))
+            self.initial.setdefault("expires_at", timezone.localtime(default_expires_at()))
         # Instance fields also translate errors from native/model validators by code.
         for field in self.fields.values():
             field.error_messages.update(BOARD_FIELD_ERRORS)
@@ -105,24 +115,42 @@ class RequestForm(forms.ModelForm):
         if field in {"title", "food_item", "quantity", "expires_at", "description", "location"}:
             self.fields[field].widget.attrs["aria-describedby"] = f"id_{field}_hint id_{field}_error"
 
+    def clean_title(self):
+        return clean_request_text(
+            self.cleaned_data.get("title", ""),
+            max_length=TITLE_MAX_LENGTH,
+            required=True,
+        )
+
+    def clean_food_item(self):
+        return clean_request_text(
+            self.cleaned_data.get("food_item", ""),
+            max_length=FOOD_ITEM_MAX_LENGTH,
+            required=True,
+        )
+
+    def clean_description(self):
+        return clean_request_text(
+            self.cleaned_data.get("description", ""),
+            max_length=DESCRIPTION_MAX_LENGTH,
+            required=False,
+        )
+
+    def clean_location(self):
+        return clean_request_text(
+            self.cleaned_data.get("location", ""),
+            max_length=LOCATION_MAX_LENGTH,
+            required=False,
+        )
+
     def clean_expires_at(self):
         value = self.cleaned_data.get("expires_at")
         if value is None:
             if "expires_at" in self.data:
                 raise forms.ValidationError("Isi batas waktu permintaan.")
-            return timezone.now() + timedelta(hours=24)
-        if value <= timezone.now():
-            raise forms.ValidationError("Batas waktu harus di masa mendatang.")
-        return value
+            return default_expires_at()
+        return validate_future_expires_at(value)
 
     class Meta:
         model = Request
-        fields = [
-            "title",
-            "food_item",
-            "quantity",
-            "unit",
-            "description",
-            "location",
-            "expires_at",
-        ]
+        fields = list(ALLOWED_CREATE_FIELDS)

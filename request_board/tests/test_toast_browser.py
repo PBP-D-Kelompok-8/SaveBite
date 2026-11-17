@@ -1,6 +1,6 @@
 """Optional browser regression: pip install playwright, then playwright install chromium.
 
-Run with python manage.py test request_board.test_toast_browser.
+Run with python manage.py test request_board.tests.test_toast_browser.
 Set PLAYWRIGHT_CHROMIUM_CHANNEL=msedge to use an installed Microsoft Edge.
 """
 import os

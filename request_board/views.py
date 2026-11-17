@@ -21,6 +21,7 @@ from django.urls import reverse
 from django.contrib.auth.views import redirect_to_login
 from django.views.decorators.vary import vary_on_headers
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from request_board.forms import BoardFilterForm, RequestForm
 from request_board.models import Request, RequestCreationKey, RequestOffer
@@ -483,6 +484,7 @@ def api_request_delete(request, request_id: int) -> HttpResponse:
     return HttpResponse(status=204)
 
 
+@ensure_csrf_cookie
 @vary_on_headers("X-Requested-With")
 def request_board(request):
     """Tampilkan board publik dan ringkasan penawar khusus pemilik."""
@@ -538,6 +540,7 @@ def request_board(request):
     return TemplateResponse(request, template, context)
 
 
+@ensure_csrf_cookie
 @login_required
 def request_offers(request, request_id: int):
     if request.method != "GET":
@@ -590,6 +593,7 @@ def request_select_offer(request, request_id: int, offer_id: int):
     return HttpResponseRedirect(reverse("request_board:request_offers", args=[request_id]))
 
 
+@ensure_csrf_cookie
 @_board_login_required
 def request_create(request):
     if request.method not in ("GET", "POST"):
