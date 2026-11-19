@@ -33,5 +33,8 @@ urlpatterns = [
     path('katalog/', include('katalog.urls')),
     path('api/v1/', include('request_board.api_urls')),
     path('api-auth/', include('rest_framework.urls')),
+
+    
+    path('api/v3/', include('resep_komunitas.api_urls')),
 ]
 
