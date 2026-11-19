@@ -7,6 +7,9 @@ from django.urls import reverse
 from .models import FoodRescuePlan
 from jurnal.models import FoodLog
 
+from rest_framework.test import APITestCase
+from rest_framework import status
+
 
 User = get_user_model()
 
@@ -348,5 +351,204 @@ class FoodRescuePlannerTests(TestCase):
             FoodLog.objects.filter(
                 rescue_plan_id=self.plan.pk,
                 status='terselamatkan',
+            ).exists()
+        )
+
+class FoodRescuePlannerAPITests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='api_user',
+            password='test-password-123',
+        )
+        self.other_user = User.objects.create_user(
+            username='api_other_user',
+            password='test-password-123',
+        )
+
+        self.list_url = '/api/v1/rescue-plans/'
+
+        self.client.force_authenticate(user=self.user)
+
+        self.plan = FoodRescuePlan.objects.create(
+            user=self.user,
+            nama_bahan='Pisang',
+            jumlah=3,
+            satuan='pcs',
+            target_date=date(2026, 11, 1),
+            metode_aksi='cook',
+            notes='Untuk dibuat kue',
+        )
+
+    def test_list_returns_only_own_plans(self):
+        FoodRescuePlan.objects.create(
+            user=self.other_user,
+            nama_bahan='Apel',
+            jumlah=2,
+            satuan='kg',
+            target_date=date(2026, 11, 2),
+            metode_aksi='share',
+        )
+
+        response = self.client.get(self.list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['nama_bahan'], 'Pisang')
+
+    def test_unauthenticated_user_cannot_access_api(self):
+        self.client.force_authenticate(user=None)
+
+        response = self.client.get(self.list_url)
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_create_plan_successfully(self):
+        payload = {
+            'nama_bahan': 'Wortel',
+            'jumlah': 5,
+            'satuan': 'kg',
+            'target_date': '2026-11-05',
+            'metode_aksi': 'preserve',
+            'notes': 'Disimpan dengan benar',
+        }
+
+        response = self.client.post(
+            self.list_url,
+            payload,
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            FoodRescuePlan.objects.filter(
+                user=self.user,
+                nama_bahan='Wortel',
+                status='ongoing',
+            ).exists()
+        )
+
+    def test_create_rejects_invalid_quantity(self):
+        payload = {
+            'nama_bahan': 'Wortel',
+            'jumlah': 0,
+            'satuan': 'kg',
+            'target_date': '2026-11-05',
+            'metode_aksi': 'preserve',
+        }
+
+        response = self.client.post(
+            self.list_url,
+            payload,
+            format='json',
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    def test_user_cannot_access_other_users_plan(self):
+        other_plan = FoodRescuePlan.objects.create(
+            user=self.other_user,
+            nama_bahan='Apel',
+            jumlah=2,
+            satuan='kg',
+            target_date=date(2026, 11, 2),
+            metode_aksi='share',
+        )
+
+        response = self.client.get(
+            f'{self.list_url}{other_plan.pk}/'
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+
+    def test_patch_plan_successfully(self):
+        payload = {
+            'nama_bahan': 'Pisang Matang',
+            'status': 'success',
+        }
+
+        response = self.client.patch(
+            f'{self.list_url}{self.plan.pk}/',
+            payload,
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.nama_bahan, 'Pisang Matang')
+        self.assertEqual(self.plan.status, 'success')
+        self.assertIsNotNone(self.plan.completed_at)
+
+        self.assertTrue(
+            FoodLog.objects.filter(
+                rescue_plan_id=self.plan.pk,
+                status='terselamatkan',
+            ).exists()
+        )
+
+    def test_returning_to_ongoing_removes_food_log(self):
+        self.plan.status = 'success'
+        self.plan.save()
+
+        from jurnal.services import sync_log_from_rescue_plan
+        sync_log_from_rescue_plan(self.plan)
+
+        self.assertTrue(
+            FoodLog.objects.filter(
+                rescue_plan_id=self.plan.pk
+            ).exists()
+        )
+
+        response = self.client.patch(
+            f'{self.list_url}{self.plan.pk}/',
+            {'status': 'ongoing'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertFalse(
+            FoodLog.objects.filter(
+                rescue_plan_id=self.plan.pk
+            ).exists()
+        )
+
+    def test_delete_plan_also_deletes_food_log(self):
+        self.plan.status = 'success'
+        self.plan.save()
+
+        from jurnal.services import sync_log_from_rescue_plan
+        sync_log_from_rescue_plan(self.plan)
+
+        self.assertTrue(
+            FoodLog.objects.filter(
+                rescue_plan_id=self.plan.pk
+            ).exists()
+        )
+
+        response = self.client.delete(
+            f'{self.list_url}{self.plan.pk}/'
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_204_NO_CONTENT,
+        )
+
+        self.assertFalse(
+            FoodRescuePlan.objects.filter(pk=self.plan.pk).exists()
+        )
+        self.assertFalse(
+            FoodLog.objects.filter(
+                rescue_plan_id=self.plan.pk
             ).exists()
         )
