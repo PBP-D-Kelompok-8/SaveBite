@@ -14,10 +14,4 @@ urlpatterns = [
     path("<int:pk>/", views.recipe_detail, name="recipe_detail"),
     path("api/recipes/", views.get_recipes_json, name="get_recipes_json"),
 
-    # API: Login untuk mendapatkan token
-    path("api/v1/token/", obtain_auth_token, name="api-token"),
-    # API: Daftar dan tambah resep
-    path("api/v1/recipes/", api_views.recipe_list_api, name="recipe-list-api"),
-    # API: Detail, update, dan delete resep
-    path("api/v1/recipes/<int:pk>/", api_views.recipe_detail_api, name="recipe-detail-api"),
 ]
