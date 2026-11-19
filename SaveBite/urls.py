@@ -32,6 +32,7 @@ urlpatterns = [
     path('resep-komunitas/', include('resep_komunitas.urls')),
     path('katalog/', include('katalog.urls')),
     path('api/v1/', include('request_board.api_urls')),
+    path('api/v1/', include('food_rescue_planner.api_urls')),
     path('api-auth/', include('rest_framework.urls')),
 
     
