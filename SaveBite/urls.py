@@ -35,7 +35,7 @@ urlpatterns = [
     path('api/v1/', include('food_rescue_planner.api_urls')),
     path('api-auth/', include('rest_framework.urls')),
 
-    
+    path("api/v1/", include("jurnal.api_urls")),
     path('api/v3/', include('resep_komunitas.api_urls')),
 ]
 
