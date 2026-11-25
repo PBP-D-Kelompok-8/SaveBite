@@ -149,6 +149,15 @@ Fixture tidak berisi bookmark Katalog Resep; data resep eksternal dicari melalui
 ---
 
 ## 🤖 Ai Disclosure
+### 1. Katalog Resep Bahan Sisa (Muhammad Ilhami Yasya | 2506593891)
+
+ChatGPT digunakan untuk menghasilkan keseluruhan kode modul Katalog Resep Bahan Sisa serta rancangan antarmuka Figma berdasarkan kebutuhan dan arahan yang saya berikan. Kode yang dihasilkan mencakup backend Django, template HTML, CSS, dan JavaScript.
+
+Saya menentukan kebutuhan fitur dan memberikan arahan selama pengerjaan. Hasilnya kemudian saya tinjau dan uji, termasuk memeriksa logika program, kemungkinan error, serta kesesuaian desain Figma dengan implementasi aplikasi.
+
+**Chatlog pemeriksaan:** [ChatGPT — Pengecekan Logika Repository dan Kesesuaian Desain Figma](https://chatgpt.com/share/6ae4b18e-0ee0-83ec-afd6-ae79bdeac29f)
+
+
 ### 3. Resep Komunitas (Silvia Lalita D. | 2506621863)
 Saya menggunakan **ChatGPT** sebagai alat bantu selama pengembangan modul **Resep Komunitas** pada proyek SaveBite. AI digunakan untuk menghasilkan kode awal, membantu menyelesaikan masalah selama pengembangan, memahami error, serta membantu proses penggunaan Git. Kode yang dihasilkan AI tidak selalu langsung sesuai dengan kebutuhan modul. Oleh karena itu, saya melakukan penyesuaian dan modifikasi terhadap kode tersebut agar sesuai dengan kebutuhan dan implementasi yang saya inginkan.
 AI digunakan sebagai alat bantu dalam proses pengembangan, sedangkan implementasi akhir tetap disesuaikan dengan kebutuhan modul.

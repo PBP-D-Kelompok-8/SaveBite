@@ -1,7 +1,8 @@
 
 from django.urls import path
+from rest_framework.authtoken.views import obtain_auth_token
 
-from . import views
+from . import views, api_views
 
 app_name = "resep_komunitas"
 
@@ -12,4 +13,5 @@ urlpatterns = [
     path("<int:pk>/delete/", views.recipe_delete, name="recipe_delete"),
     path("<int:pk>/", views.recipe_detail, name="recipe_detail"),
     path("api/recipes/", views.get_recipes_json, name="get_recipes_json"),
+
 ]

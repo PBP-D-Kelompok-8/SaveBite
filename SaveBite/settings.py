@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'jurnal',
     "resep_komunitas.apps.ResepKomunitasConfig",
     "katalog.apps.KatalogConfig",
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
